@@ -1,99 +1,97 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.removeDups = exports.addToDefaultDict = exports.arrayToBitstring = exports.FlatModule = void 0;
-var Skin_1 = require("./Skin");
-var Cell_1 = require("./Cell");
-var _ = require("lodash");
-var FlatModule = /** @class */ (function () {
-    function FlatModule(netlist) {
-        var _this = this;
+exports.FlatModule = void 0;
+exports.arrayToBitstring = arrayToBitstring;
+exports.addToDefaultDict = addToDefaultDict;
+exports.removeDups = removeDups;
+const Skin_1 = __importDefault(require("./Skin"));
+const Cell_1 = __importDefault(require("./Cell"));
+class FlatModule {
+    constructor(netlist) {
         this.moduleName = null;
-        _.forEach(netlist.modules, function (mod, name) {
+        // Find top module
+        for (const name in netlist.modules) {
+            const mod = netlist.modules[name];
             if (mod.attributes && Number(mod.attributes.top) === 1) {
-                _this.moduleName = name;
+                this.moduleName = name;
+                break; // Exit loop once top module is found
             }
-        });
-        // Otherwise default the first one in the file...
+        }
+        // Default to the first module if no top module is marked
         if (this.moduleName == null) {
             this.moduleName = Object.keys(netlist.modules)[0];
         }
-        var top = netlist.modules[this.moduleName];
-        var ports = _.map(top.ports, Cell_1.default.fromPort);
-        var cells = _.map(top.cells, function (c, key) { return Cell_1.default.fromYosysCell(c, key); });
+        const top = netlist.modules[this.moduleName];
+        const ports = Object.entries(top.ports).map(([key, portData]) => Cell_1.default.fromPort(portData, key));
+        const cells = Object.entries(top.cells).map(([key, cellData]) => Cell_1.default.fromYosysCell(cellData, key));
         this.nodes = cells.concat(ports);
         // populated by createWires
         this.wires = [];
     }
     // converts input ports with constant assignments to constant nodes
-    FlatModule.prototype.addConstants = function () {
+    addConstants() {
         // find the maximum signal number
-        var maxNum = this.nodes.reduce((function (acc, v) { return v.maxOutVal(acc); }), -1);
+        let maxNum = this.nodes.reduce(((acc, v) => v.maxOutVal(acc)), -1);
         // add constants to nodes
-        var signalsByConstantName = {};
-        var cells = [];
-        this.nodes.forEach(function (n) {
+        const signalsByConstantName = {};
+        const cells = [];
+        this.nodes.forEach((n) => {
             maxNum = n.findConstants(signalsByConstantName, maxNum, cells);
         });
         this.nodes = this.nodes.concat(cells);
-    };
+    }
     // solves for minimal bus splits and joins and adds them to module
-    FlatModule.prototype.addSplitsJoins = function () {
-        var allInputs = _.flatMap(this.nodes, function (n) { return n.inputPortVals(); });
-        var allOutputs = _.flatMap(this.nodes, function (n) { return n.outputPortVals(); });
-        var allInputsCopy = allInputs.slice();
-        var splits = {};
-        var joins = {};
-        allInputs.forEach(function (input) {
+    addSplitsJoins() {
+        const allInputs = this.nodes.flatMap((n) => n.inputPortVals());
+        const allOutputs = this.nodes.flatMap((n) => n.outputPortVals());
+        const allInputsCopy = allInputs.slice();
+        const splits = {};
+        const joins = {};
+        allInputs.forEach((input) => {
             gather(allOutputs, allInputsCopy, input, 0, input.length, splits, joins);
         });
-        this.nodes = this.nodes.concat(_.map(joins, function (joinOutput, joinInputs) {
-            return Cell_1.default.fromJoinInfo(joinInputs, joinOutput);
-        })).concat(_.map(splits, function (splitOutputs, splitInput) {
+        const joinCells = Object.entries(joins).map(([joinInputs, joinOutput]) => {
+            return Cell_1.default.fromJoinInfo(joinInputs, joinOutput[0]); // joinOutput is an array
+        });
+        const splitCells = Object.entries(splits).map(([splitInput, splitOutputs]) => {
             return Cell_1.default.fromSplitInfo(splitInput, splitOutputs);
-        }));
-    };
+        });
+        this.nodes = this.nodes.concat(joinCells, splitCells);
+    }
     // search through all the ports to find all of the wires
-    FlatModule.prototype.createWires = function () {
-        var layoutProps = Skin_1.default.getProperties();
-        var ridersByNet = {};
-        var driversByNet = {};
-        var lateralsByNet = {};
-        this.nodes.forEach(function (n) {
+    createWires() {
+        const layoutProps = Skin_1.default.getProperties();
+        const ridersByNet = {};
+        const driversByNet = {};
+        const lateralsByNet = {};
+        this.nodes.forEach((n) => {
             n.collectPortsByDirection(ridersByNet, driversByNet, lateralsByNet, layoutProps.genericsLaterals);
         });
         // list of unique nets
-        var nets = removeDups(_.keys(ridersByNet).concat(_.keys(driversByNet)).concat(_.keys(lateralsByNet)));
-        var wires = nets.map(function (net) {
-            var drivers = driversByNet[net] || [];
-            var riders = ridersByNet[net] || [];
-            var laterals = lateralsByNet[net] || [];
-            var wire = { netName: net, drivers: drivers, riders: riders, laterals: laterals };
-            drivers.concat(riders).concat(laterals).forEach(function (port) {
+        const allKeys = Object.keys(ridersByNet).concat(Object.keys(driversByNet)).concat(Object.keys(lateralsByNet));
+        const nets = removeDups(allKeys);
+        const wires = nets.map((net) => {
+            const drivers = driversByNet[net] || [];
+            const riders = ridersByNet[net] || [];
+            const laterals = lateralsByNet[net] || [];
+            const wire = { netName: net, drivers, riders, laterals };
+            drivers.concat(riders).concat(laterals).forEach((port) => {
                 port.wire = wire;
             });
             return wire;
         });
         this.wires = wires;
-    };
-    return FlatModule;
-}());
+    }
+}
 exports.FlatModule = FlatModule;
 // returns a string that represents the values of the array of integers
 // [1, 2, 3] -> ',1,2,3,'
 function arrayToBitstring(bitArray) {
-    var ret = '';
-    bitArray.forEach(function (bit) {
-        var sbit = String(bit);
-        if (ret === '') {
-            ret = sbit;
-        }
-        else {
-            ret += ',' + sbit;
-        }
-    });
-    return ',' + ret + ',';
+    return ',' + bitArray.join(',') + ',';
 }
-exports.arrayToBitstring = arrayToBitstring;
 // returns whether needle is a substring of haystack
 function arrayContains(needle, haystack) {
     return (haystack.indexOf(needle) > -1);
@@ -101,7 +99,7 @@ function arrayContains(needle, haystack) {
 // returns the index of the string that contains a substring
 // given arrhaystack, an array of strings
 function indexOfContains(needle, arrhaystack) {
-    return _.findIndex(arrhaystack, function (haystack) {
+    return arrhaystack.findIndex((haystack) => {
         return arrayContains(needle, haystack);
     });
 }
@@ -113,13 +111,12 @@ function addToDefaultDict(dict, key, value) {
         dict[key].push(value);
     }
 }
-exports.addToDefaultDict = addToDefaultDict;
 // string (for labels), that represents an index
 // or range of indices.
 function getIndicesString(bitstring, query, start) {
-    var splitStart = _.max([bitstring.indexOf(query), start]);
-    var startIndex = bitstring.substring(0, splitStart).split(',').length - 1;
-    var endIndex = startIndex + query.split(',').length - 3;
+    const splitStart = Math.max(bitstring.indexOf(query), start);
+    const startIndex = bitstring.substring(0, splitStart).split(',').length - 1;
+    const endIndex = startIndex + query.split(',').length - 3;
     if (startIndex === endIndex) {
         return String(startIndex);
     }
@@ -136,7 +133,7 @@ end, // index of toSolve to end at
 splits, // container collecting the splits
 joins) {
     // remove myself from outputs list if present
-    var outputIndex = outputs.indexOf(toSolve);
+    const outputIndex = outputs.indexOf(toSolve);
     if (outputIndex !== -1) {
         outputs.splice(outputIndex, 1);
     }
@@ -144,7 +141,7 @@ joins) {
     if (start >= toSolve.length || end - start < 2) {
         return;
     }
-    var query = toSolve.slice(start, end);
+    const query = toSolve.slice(start, end);
     // are there are perfect matches?
     if (arrayContains(query, inputs)) {
         if (query !== toSolve) {
@@ -153,7 +150,7 @@ joins) {
         gather(inputs, outputs, toSolve, end - 1, toSolve.length, splits, joins);
         return;
     }
-    var index = indexOfContains(query, inputs);
+    const index = indexOfContains(query, inputs);
     // are there any partial matches?
     if (index !== -1) {
         if (query !== toSolve) {
@@ -180,10 +177,10 @@ joins) {
     gather(inputs, outputs, toSolve, start, start + query.slice(0, -1).lastIndexOf(',') + 1, splits, joins);
 }
 function removeDups(inStrs) {
-    var map = {};
-    inStrs.forEach(function (str) {
+    const map = {};
+    inStrs.forEach((str) => {
         map[str] = true;
     });
-    return _.keys(map);
+    return Object.keys(map);
 }
-exports.removeDups = removeDups;
+//# sourceMappingURL=FlatModule.js.map

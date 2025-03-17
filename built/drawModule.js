@@ -1,17 +1,13 @@
 "use strict";
-var __spreadArrays = (this && this.__spreadArrays) || function () {
-    for (var s = 0, i = 0, il = arguments.length; i < il; i++) s += arguments[i].length;
-    for (var r = Array(s), k = 0, i = 0; i < il; i++)
-        for (var a = arguments[i], j = 0, jl = a.length; j < jl; j++, k++)
-            r[k] = a[j];
-    return r;
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.removeDummyEdges = void 0;
-var elkGraph_1 = require("./elkGraph");
-var Skin_1 = require("./Skin");
-var _ = require("lodash");
-var onml = require("onml");
+exports.default = drawModule;
+exports.removeDummyEdges = removeDummyEdges;
+const elkGraph_1 = require("./elkGraph");
+const Skin_1 = __importDefault(require("./Skin"));
+const onml = require("onml");
 var WireDirection;
 (function (WireDirection) {
     WireDirection[WireDirection["Up"] = 0] = "Up";
@@ -20,21 +16,23 @@ var WireDirection;
     WireDirection[WireDirection["Right"] = 3] = "Right";
 })(WireDirection || (WireDirection = {}));
 function drawModule(g, module) {
-    var nodes = module.nodes.map(function (n) {
-        var kchild = _.find(g.children, function (c) { return c.id === n.Key; });
+    var _a, _b;
+    const nodes = module.nodes.map((n) => {
+        const kchild = g.children.find((c) => c.id === n.Key);
         return n.render(kchild);
     });
     removeDummyEdges(g);
-    var lines = _.flatMap(g.edges, function (e) {
-        var netId = elkGraph_1.ElkModel.wireNameLookup[e.id];
-        var numWires = netId.split(',').length - 2;
-        var lineStyle = 'stroke-width: ' + (numWires > 1 ? 2 : 1);
-        var netName = 'net_' + netId.slice(1, netId.length - 1) + ' width_' + numWires;
-        return _.flatMap(e.sections, function (s) {
-            var startPoint = s.startPoint;
+    let lines = [];
+    g.edges.forEach((e) => {
+        const netId = elkGraph_1.ElkModel.wireNameLookup[e.id];
+        const numWires = netId.split(',').length - 2;
+        const lineStyle = 'stroke-width: ' + (numWires > 1 ? 2 : 1);
+        const netName = 'net_' + netId.slice(1, netId.length - 1) + ' width_' + numWires;
+        e.sections.forEach((s) => {
+            let startPoint = s.startPoint;
             s.bendPoints = s.bendPoints || [];
-            var bends = s.bendPoints.map(function (b) {
-                var l = ['line', {
+            let bends = s.bendPoints.map((b) => {
+                const l = ['line', {
                         x1: startPoint.x,
                         x2: b.x,
                         y1: startPoint.y,
@@ -46,18 +44,16 @@ function drawModule(g, module) {
                 return l;
             });
             if (e.junctionPoints) {
-                var circles = e.junctionPoints.map(function (j) {
-                    return ['circle', {
-                            cx: j.x,
-                            cy: j.y,
-                            r: (numWires > 1 ? 3 : 2),
-                            style: 'fill:#000',
-                            class: netName,
-                        }];
-                });
+                const circles = e.junctionPoints.map((j) => ['circle', {
+                        cx: j.x,
+                        cy: j.y,
+                        r: (numWires > 1 ? 3 : 2),
+                        style: 'fill:#000',
+                        class: netName,
+                    }]);
                 bends = bends.concat(circles);
             }
-            var line = [['line', {
+            const line = [['line', {
                         x1: startPoint.x,
                         x2: s.endPoint.x,
                         y1: startPoint.y,
@@ -65,22 +61,21 @@ function drawModule(g, module) {
                         class: netName,
                         style: lineStyle,
                     }]];
-            return bends.concat(line);
+            bends.push(...line); // Use push(...line) instead of concat
+            lines.push(...bends);
         });
     });
-    var labels;
-    for (var index in g.edges) {
+    let labels = [];
+    for (const index in g.edges) {
         if (g.edges.hasOwnProperty(index)) {
-            var e = g.edges[index];
-            var netId = elkGraph_1.ElkModel.wireNameLookup[e.id];
-            var numWires = netId.split(',').length - 2;
-            var netName = 'net_' + netId.slice(1, netId.length - 1) +
+            const e = g.edges[index];
+            const netId = elkGraph_1.ElkModel.wireNameLookup[e.id];
+            const numWires = netId.split(',').length - 2;
+            const netName = 'net_' + netId.slice(1, netId.length - 1) +
                 ' width_' + numWires +
                 ' busLabel_' + numWires;
-            if (e.labels !== undefined &&
-                e.labels[0] !== undefined &&
-                e.labels[0].text !== undefined) {
-                var label = [
+            if (((_b = (_a = e.labels) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.text) !== undefined) { // Use optional chaining
+                const label = [
                     ['rect',
                         {
                             x: e.labels[0].x + 1,
@@ -99,34 +94,31 @@ function drawModule(g, module) {
                         '/' + e.labels[0].text + '/',
                     ],
                 ];
-                if (labels !== undefined) {
-                    labels = labels.concat(label);
-                }
-                else {
-                    labels = label;
-                }
+                labels.push(...label); // Use push(...label)
             }
         }
     }
     if (labels !== undefined && labels.length > 0) {
-        lines = lines.concat(labels);
+        lines.push(...labels); // Use push(...labels)
     }
-    var svgAttrs = Skin_1.default.skin[1];
+    const svgAttrs = Skin_1.default.skin[1];
     svgAttrs.width = g.width.toString();
     svgAttrs.height = g.height.toString();
-    var styles = ['style', {}, ''];
+    const styles = ['style', {}, ''];
     onml.t(Skin_1.default.skin, {
-        enter: function (node) {
+        enter: (node) => {
             if (node.name === 'style') {
                 styles[2] += node.full[2];
             }
         },
     });
-    var elements = __spreadArrays([styles], nodes, lines);
-    var ret = __spreadArrays(['svg', svgAttrs], elements);
+    const elements = [styles, ...nodes, ...lines];
+    const ret = ['svg', svgAttrs];
+    elements.forEach(element => {
+        ret.push(element);
+    });
     return onml.s(ret);
 }
-exports.default = drawModule;
 function which_dir(start, end) {
     if (end.x === start.x && end.y === start.y) {
         throw new Error('start and end are the same');
@@ -149,34 +141,43 @@ function which_dir(start, end) {
     throw new Error('unexpected direction');
 }
 function findBendNearDummy(net, dummyIsSource, dummyLoc) {
-    var candidates = net.map(function (edge) {
-        var bends = edge.sections[0].bendPoints || [null];
+    const candidates = net.map((edge) => {
+        const bends = edge.sections[0].bendPoints || []; // Default to empty array
         if (dummyIsSource) {
-            return _.first(bends);
+            return bends[0]; // Safe access, first element
         }
         else {
-            return _.last(bends);
+            return bends[bends.length - 1]; // Safe access, last element
         }
-    }).filter(function (p) { return p !== null; });
-    return _.minBy(candidates, function (pt) {
-        return Math.abs(dummyLoc.x - pt.x) + Math.abs(dummyLoc.y - pt.y);
-    });
+    }).filter((p) => p !== null && p !== undefined); // Filter out null and undefined
+    if (candidates.length === 0) {
+        return undefined; // No valid candidates
+    }
+    // Find the closest bend point using Euclidean distance
+    let closestBend = candidates[0];
+    let minDistance = Number.MAX_VALUE;
+    for (const pt of candidates) {
+        const distance = Math.sqrt((dummyLoc.x - pt.x) ** 2 + (dummyLoc.y - pt.y) ** 2); // Euclidean
+        if (distance < minDistance) {
+            minDistance = distance;
+            closestBend = pt;
+        }
+    }
+    return closestBend;
 }
 function removeDummyEdges(g) {
-    // go through each edge group for each dummy
-    var dummyNum = 0;
-    var _loop_1 = function () {
-        var dummyId = '$d_' + String(dummyNum);
-        // find all edges connected to this dummy
-        var edgeGroup = _.filter(g.edges, function (e) {
+    let dummyNum = 0;
+    while (dummyNum < 10000) {
+        const dummyId = '$d_' + String(dummyNum);
+        const edgeGroup = g.edges.filter((e) => {
             return e.source === dummyId || e.target === dummyId;
         });
         if (edgeGroup.length === 0) {
-            return "break";
+            break;
         }
-        var dummyIsSource;
-        var dummyLoc = void 0;
-        var firstEdge = edgeGroup[0];
+        let dummyIsSource;
+        let dummyLoc;
+        const firstEdge = edgeGroup[0];
         if (firstEdge.source === dummyId) {
             dummyIsSource = true;
             dummyLoc = firstEdge.sections[0].startPoint;
@@ -185,11 +186,13 @@ function removeDummyEdges(g) {
             dummyIsSource = false;
             dummyLoc = firstEdge.sections[0].endPoint;
         }
-        var newEnd = findBendNearDummy(edgeGroup, dummyIsSource, dummyLoc);
-        for (var _i = 0, edgeGroup_1 = edgeGroup; _i < edgeGroup_1.length; _i++) {
-            var edge = edgeGroup_1[_i];
-            var e = edge;
-            var section = e.sections[0];
+        const newEnd = findBendNearDummy(edgeGroup, dummyIsSource, dummyLoc);
+        if (newEnd === undefined) { // Handle potential undefined return
+            dummyNum++;
+            continue; // Skip to the next dummy if no bend point is found
+        }
+        for (const edge of edgeGroup) {
+            const section = edge.sections[0];
             if (dummyIsSource) {
                 section.startPoint = newEnd;
                 if (section.bendPoints) {
@@ -203,51 +206,47 @@ function removeDummyEdges(g) {
                 }
             }
         }
-        // delete junction point if necessary
-        var directions = new Set(_.flatMap(edgeGroup, function (edge) {
-            var section = edge.sections[0];
+        const directions = new Set(edgeGroup.flatMap((edge) => {
+            const section = edge.sections[0];
+            let point; // Extract the point to a variable
             if (dummyIsSource) {
-                // get first bend or endPoint
                 if (section.bendPoints && section.bendPoints.length > 0) {
-                    return [section.bendPoints[0]];
+                    point = section.bendPoints[0];
                 }
-                return section.endPoint;
+                else {
+                    point = section.endPoint;
+                }
             }
             else {
                 if (section.bendPoints && section.bendPoints.length > 0) {
-                    return [_.last(section.bendPoints)];
+                    point = section.bendPoints[section.bendPoints.length - 1];
                 }
-                return section.startPoint;
+                else {
+                    point = section.startPoint;
+                }
             }
-        }).map(function (pt) {
-            if (pt.x > newEnd.x) {
+            // Use the extracted point for direction calculation
+            if (point.x > newEnd.x) {
                 return WireDirection.Right;
             }
-            if (pt.x < newEnd.x) {
+            if (point.x < newEnd.x) {
                 return WireDirection.Left;
             }
-            if (pt.y > newEnd.y) {
+            if (point.y > newEnd.y) {
                 return WireDirection.Down;
             }
             return WireDirection.Up;
         }));
         if (directions.size < 3) {
-            // remove junctions at newEnd
-            edgeGroup.forEach(function (edge) {
+            edgeGroup.forEach((edge) => {
                 if (edge.junctionPoints) {
-                    edge.junctionPoints = edge.junctionPoints.filter(function (junct) {
-                        return !_.isEqual(junct, newEnd);
+                    edge.junctionPoints = edge.junctionPoints.filter((junct) => {
+                        return junct.x !== newEnd.x || junct.y !== newEnd.y; // Correct comparison
                     });
                 }
             });
         }
         dummyNum += 1;
-    };
-    // loop until we can't find an edge group or we hit 10,000
-    while (dummyNum < 10000) {
-        var state_1 = _loop_1();
-        if (state_1 === "break")
-            break;
     }
 }
-exports.removeDummyEdges = removeDummyEdges;
+//# sourceMappingURL=drawModule.js.map

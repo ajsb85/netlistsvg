@@ -1,7 +1,6 @@
 import Cell from './Cell';
-import {SigsByConstName} from './FlatModule';
+import { SigsByConstName } from './FlatModule';
 import Yosys from './YosysModel';
-import _ = require('lodash');
 import { ElkModel } from './elkGraph';
 
 export class Port {
@@ -19,11 +18,11 @@ export class Port {
     }
 
     public keyIn(pids: string[]): boolean {
-        return _.includes(pids, this.key);
+        return pids.includes(this.key);
     }
 
     public maxVal() {
-        return _.max(_.map(this.value, (v) => Number(v)));
+        return Math.max(...this.value.map(v => Number(v)));
     }
 
     public valString() {
@@ -36,15 +35,13 @@ export class Port {
         let constNameCollector = '';
         let constNumCollector: number[] = [];
         const portSigs: Yosys.Signals = this.value;
+        
         portSigs.forEach((portSig, portSigIndex) => {
-            // is constant?
             if (portSig === '0' || portSig === '1') {
-            maxNum += 1;
-            constNameCollector += portSig;
-            // replace the constant with new signal num
-            portSigs[portSigIndex] = maxNum;
-            constNumCollector.push(maxNum);
-            // string of constants ended before end of p.value
+                maxNum += 1;
+                constNameCollector += portSig;
+                portSigs[portSigIndex] = maxNum;
+                constNumCollector.push(maxNum);
             } else if (constNumCollector.length > 0) {
                 this.assignConstant(
                     constNameCollector,
@@ -52,11 +49,11 @@ export class Port {
                     portSigIndex,
                     sigsByConstantName,
                     constantCollector);
-                // reset name and num collectors
                 constNameCollector = '';
                 constNumCollector = [];
             }
         });
+        
         if (constNumCollector.length > 0) {
             this.assignConstant(
                 constNameCollector,
@@ -65,6 +62,7 @@ export class Port {
                 sigsByConstantName,
                 constantCollector);
         }
+        
         return maxNum;
     }
 
@@ -75,33 +73,24 @@ export class Port {
     ): ElkModel.Port {
         const nkey = this.parentNode.Key;
         const type = this.parentNode.getTemplate()[1]['s:type'];
+        
         if (index === 0) {
             const ret: ElkModel.Port = {
-                id: nkey + '.' + this.key,
+                id: `${nkey}.${this.key}`,
                 width: 1,
                 height: 1,
                 x: Number(templatePorts[0][1]['s:x']),
                 y: Number(templatePorts[0][1]['s:y']),
             };
 
-            if ((type === 'generic' || type === 'join') && dir === 'in') {
+            if ((type === 'generic' || type === 'join') && dir === 'in' ||
+                (type === 'generic' || type === 'split') && dir === 'out') {
                 ret.labels = [{
-                    id: nkey + '.' + this.key + '.label',
+                    id: `${nkey}.${this.key}.label`,
                     text: this.key,
                     x: Number(templatePorts[0][2][1].x) - 10,
                     y: Number(templatePorts[0][2][1].y) - 6,
-                    width: (6 * this.key.length),
-                    height: 11,
-                }];
-            }
-
-            if ((type === 'generic' || type === 'split') && dir === 'out') {
-                ret.labels = [{
-                    id: nkey + '.' + this.key + '.label',
-                    text: this.key,
-                    x: Number(templatePorts[0][2][1].x) - 10,
-                    y: Number(templatePorts[0][2][1].y) - 6,
-                    width: (6 * this.key.length),
+                    width: 6 * this.key.length,
                     height: 11,
                 }];
             }
@@ -109,19 +98,20 @@ export class Port {
         } else {
             const gap: number = Number(templatePorts[1][1]['s:y']) - Number(templatePorts[0][1]['s:y']);
             const ret: ElkModel.Port = {
-                id: nkey + '.' + this.key,
+                id: `${nkey}.${this.key}`,
                 width: 1,
                 height: 1,
                 x: Number(templatePorts[0][1]['s:x']),
-                y: (index) * gap + Number(templatePorts[0][1]['s:y']),
+                y: index * gap + Number(templatePorts[0][1]['s:y']),
             };
+            
             if (type === 'generic') {
                 ret.labels = [{
-                    id: nkey + '.' + this.key + '.label',
+                    id: `${nkey}.${this.key}.label`,
                     text: this.key,
                     x: Number(templatePorts[0][2][1].x) - 10,
                     y: Number(templatePorts[0][2][1].y) - 6,
-                    width: (6 * this.key.length),
+                    width: 6 * this.key.length,
                     height: 11,
                 }];
             }
@@ -134,15 +124,13 @@ export class Port {
                            currIndex: number,
                            signalsByConstantName: SigsByConstName,
                            constantCollector: Cell[]) {
-        // we've been appending to nameCollector, so reverse to get const name
         const constName = nameCollector.split('').reverse().join('');
-        // if the constant has already been used
+        
         if (signalsByConstantName.hasOwnProperty(constName)) {
             const constSigs: number[] = signalsByConstantName[constName];
-            // go back and fix signal values
             const constLength = constSigs.length;
+            
             constSigs.forEach((constSig, constIndex) => {
-                // i is where in port_signals we need to update
                 const i: number = currIndex - constLength + constIndex;
                 this.value[i] = constSig;
             });

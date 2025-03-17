@@ -1,12 +1,34 @@
 {
     "compilerOptions": {
+        "target": "es2017",
+        "module": "nodenext", // Changed to match moduleResolution
+        "lib": ["es2017", "dom"],
+        "declaration": true,
+        "declarationMap": true,
+        "sourceMap": true,
         "outDir": "./built",
-        "allowJs": true,
-        "lib": [ "es6", "dom" ],
-        "target": "es5"
+        "rootDir": "./lib",
+        "strict": true,
+        "noImplicitAny": false,
+        "esModuleInterop": true,
+        "moduleResolution": "nodenext", // Or "node16"
+        "resolveJsonModule": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "newLine": "lf",
+
     },
     "include": [
-        "./lib/*",
-        "./lib/@types"
+        "lib/**/*"
+    ],
+    "exclude": [
+      "node_modules",
+      "built",
+      "coverage",
+      "examples",
+      "jsmodule",
+      "test",
+      "demo",
+      "doc"
     ]
 }

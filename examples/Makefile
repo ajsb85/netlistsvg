@@ -7,7 +7,7 @@ YOSYS_FLAGS ?= -q
 
 # Node JS is sometimes installed as node and sometimes as nodejs
 ifneq ($(shell which node),)
-NODE	 ?= node
+NODE     ?= node
 else
 ifneq ($(shell which nodejs),)
 NODE     ?= nodejs
@@ -26,8 +26,8 @@ SIMPLE_FILES=dff.v muxcy.v xorcy.v
 COMPLEX_FILES=carry4bits.v carry4whole.v
 
 ALL_TARGETS= \
-	     $(foreach v,$(SIMPLE_FILES) ,$(basename $(v)).simple.all) \
-	     $(foreach v,$(COMPLEX_FILES),$(basename $(v)).complex.all)
+         $(foreach v,$(SIMPLE_FILES) ,$(basename $(v)).simple.all) \
+         $(foreach v,$(COMPLEX_FILES),$(basename $(v)).complex.all)
 
 GET_TOP ?= export TOP=$$(echo $(basename $<) | tr a-z A-Z);
 
@@ -35,61 +35,59 @@ GET_TOP ?= export TOP=$$(echo $(basename $<) | tr a-z A-Z);
 %.json: %.v Makefile
 	$(GET_TOP) $(YOSYS) $(YOSYS_FLAGS) -p "prep -top $$TOP; write_json $@" $<
 
-# Split wires, can make it easier for the diagram if nets are split up
+# Split wires
 %.split.json: %.v Makefile
 	$(GET_TOP) $(YOSYS) $(YOSYS_FLAGS) -p "prep -top $$TOP; splitnets; write_json $@" $<
 
-# Flatten the diagram into logic + black boxes
+# Flatten
 %.flat.json: %.v Makefile
 	$(GET_TOP) $(YOSYS) $(YOSYS_FLAGS) -p "prep -top $$TOP -flatten; write_json $@" $<
 
-# Convert logic into AND and NOT logic
+# AIG
 %.aig.json: %.v Makefile
 	$(GET_TOP) $(YOSYS) $(YOSYS_FLAGS) -p "prep -top $$TOP -flatten; cd $$TOP; aigmap; write_json $@" $<
 
-# Convert logic into NAND, AND and NOT logic
+# NAND/AND/NOT
 %.naig.json: %.v Makefile
 	$(GET_TOP) $(YOSYS) $(YOSYS_FLAGS) -p "prep -top $$TOP -flatten; cd $$TOP; aigmap -nand; write_json $@" $<
 
-# Convert logic into "simple logic" - NOT, AND, XOR, etc
+# Simple logic
 %.simplemap.json: %.v Makefile
 	$(GET_TOP) $(YOSYS) $(YOSYS_FLAGS) -p "prep -top $$TOP -flatten; cd $$TOP; simplemap; write_json $@" $<
 
-# Use netlistsvg to generate SVG files
+# SVG
 %.svg: %.json $(NETLISTSVG_SKIN)
 	$(NODE) $(NETLISTSVG) $< -o $@ --skin $(NETLISTSVG_SKIN)
 
-# Use inkscape to render the SVG files into PNG files.
+# PNG
 %.png: %.svg
-	$(INKSCAPE) --export-png $@ --export-dpi $(NETLISTSVG_DPI) $< 2>&1 | grep -v "WARNING: unknown type: s:alias"
+	-$(INKSCAPE) --export-filename=$@ --export-dpi=$(NETLISTSVG_DPI) $< 2>&1 | grep -v "WARNING: unknown type: s:alias"
 
-# Open the rendered PNG in a file viewer
+# View
 %.view: %.png
-	eog $< &
+	$(VIEWER) $< &
 
-# Generate all PNGs for simple files
+# Simple all
 %.simple.all: %.png %.aig.png
 	@true
 
-# Generate all PNGS for complex files
+# Complex all
 %.complex.all: %.png %.split.png %.flat.png %.aig.png %.simplemap.png
 	@true
 
-# Build everything!
+# Build all
 build.all: $(ALL_TARGETS)
 	@true
 
-# View everything!
-view.all: build.all
-	eog *.png &
+# View all
+view.all: $(ALL_TARGETS)
+	$(VIEWER) *.png &
 
 clean:
 	rm -f *.json *.svg *.png
 
-all:
-	make clean
-	make view.all
+all: build.all
 
 .DEFAULT_GOAL := all
 .PRECIOUS: %.png
-.PHONY: view clean all
+.PHONY: view clean all build.all view.all

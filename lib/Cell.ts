@@ -2,7 +2,6 @@ import { SigsByConstName, NameToPorts, addToDefaultDict } from './FlatModule';
 import Yosys from './YosysModel';
 import Skin from './Skin';
 import {Port} from './Port';
-import _ = require('lodash');
 import { ElkModel } from './elkGraph';
 import clone = require('clone');
 import onml = require('onml');
@@ -26,9 +25,9 @@ export default class Cell {
         const template = Skin.findSkinType(yCell.type);
         const templateInputPids = Skin.getInputPids(template);
         const templateOutputPids = Skin.getOutputPids(template);
-        const ports: Port[] = _.map(yCell.connections, (conn, portName) => {
-            return new Port(portName, conn);
-        });
+        const ports: Port[] = Object.entries(yCell.connections).map(([portName, conn]) => 
+            new Port(portName, conn)
+        );        
         let inputPorts = ports.filter((port) => port.keyIn(templateInputPids));
         let outputPorts = ports.filter((port) => port.keyIn(templateOutputPids));
         if (inputPorts.length + outputPorts.length !== ports.length) {
@@ -37,7 +36,7 @@ export default class Cell {
             inputPorts = ports.filter((port) => port.keyIn(inputPids));
             outputPorts = ports.filter((port) => port.keyIn(outputPids));
         }
-        return new Cell(name, yCell.type, inputPorts, outputPorts, yCell.attributes);
+        return new Cell(name, yCell.type, inputPorts, outputPorts, yCell.attributes || {});
     }
 
     public static fromConstantInfo(name: string, constants: number[]): Cell {
@@ -83,7 +82,7 @@ export default class Cell {
         if ('parameters' in yCell) {
             // if it has a WIDTH parameter greater than one
             // and doesn't have an address parameter (not a memory cell)
-            if ('WIDTH' in yCell.parameters &&
+            if (yCell.parameters && 'WIDTH' in yCell.parameters &&
                 yCell.parameters.WIDTH > 1 &&
                 !('ADDR' in yCell.parameters)) {
                 // turn into a bus version
@@ -133,8 +132,8 @@ export default class Cell {
     }
 
     public maxOutVal(atLeast: number): number {
-        const maxVal: number = _.max(this.outputPorts.map((op) => op.maxVal()));
-        return _.max([maxVal, atLeast]);
+        const maxVal: number = Math.max(...this.outputPorts.map((op) => op.maxVal()), 0);
+        return Math.max(maxVal, atLeast);
     }
 
     public findConstants(sigsByConstantName: SigsByConstName,
@@ -183,7 +182,7 @@ export default class Cell {
         if (this.attributes && this.attributes.value) {
             return this.attributes.value;
         }
-        return null;
+        return '';
     }
 
     public getTemplate(): any {
