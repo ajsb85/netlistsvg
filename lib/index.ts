@@ -1,5 +1,4 @@
-'use strict';
-
+// No major structural changes, just minor cleanup and consistency.
 import ELK = require('elkjs');
 import onml = require('onml');
 
@@ -17,11 +16,10 @@ function createFlatModule(skinData: string, yosysNetlist: Yosys.Netlist): FlatMo
     Skin.skin = onml.p(skinData);
     const layoutProps = Skin.getProperties();
     const flatModule = new FlatModule(yosysNetlist);
-    // this can be skipped if there are no 0's or 1's
+
     if (layoutProps.constants !== false) {
         flatModule.addConstants();
     }
-    // this can be skipped if there are no splits or joins
     if (layoutProps.splitsAndJoins !== false) {
         flatModule.addSplitsJoins();
     }
@@ -29,50 +27,51 @@ function createFlatModule(skinData: string, yosysNetlist: Yosys.Netlist): FlatMo
     return flatModule;
 }
 
-export function dumpLayout(skinData: string, yosysNetlist: Yosys.Netlist, prelayout: boolean, done: ICallback) {
-    const flatModule = createFlatModule(skinData, yosysNetlist);
-    const kgraph: ElkModel.Graph = buildElkGraph(flatModule);
-    if (prelayout) {
-        done(null, JSON.stringify(kgraph, null, 2));
-        return;
-    }
-    const layoutProps = Skin.getProperties();
-    const promise = elk.layout(kgraph, { layoutOptions: layoutProps.layoutEngine });
-    promise.then((graph: ElkModel.Graph) => {
+export async function dumpLayout(skinData: string, yosysNetlist: Yosys.Netlist, prelayout: boolean, done: ICallback) {
+    try {
+        const flatModule = createFlatModule(skinData, yosysNetlist);
+        const kgraph: ElkModel.Graph = buildElkGraph(flatModule);
+
+        if (prelayout) {
+            done(null, JSON.stringify(kgraph, null, 2));
+            return;
+        }
+
+        const layoutProps = Skin.getProperties();
+        const graph = await elk.layout(kgraph, { layoutOptions: layoutProps.layoutEngine });
         done(null, JSON.stringify(graph, null, 2));
-    }).catch((reason) => {
-        throw Error(reason);
-    });
+    } catch (error) {
+        done(error);
+    }
 }
 
-export function render(skinData: string, yosysNetlist: Yosys.Netlist, done?: ICallback, elkData?: ElkModel.Graph) {
+export function render(skinData: string, yosysNetlist: Yosys.Netlist, done?: ICallback, elkData?: ElkModel.Graph): Promise<string> {
     const flatModule = createFlatModule(skinData, yosysNetlist);
     const kgraph: ElkModel.Graph = buildElkGraph(flatModule);
     const layoutProps = Skin.getProperties();
 
-    let promise;
-    // if we already have a layout then use it
-    if (elkData) {
-        promise = new Promise<void>((resolve) => {
-            drawModule(elkData, flatModule);
-            resolve();
-        });
-    } else {
-        // otherwise use ELK to generate the layout
-        promise = elk.layout(kgraph, { layoutOptions: layoutProps.layoutEngine })
-            .then((g) => drawModule(g, flatModule))
-            // tslint:disable-next-line:no-console
-            .catch((e) => { console.error(e); });
+    const renderPromise: Promise<string> = (async () => {
+        if (elkData) {
+            return drawModule(elkData, flatModule);
+        } else {
+            try {
+                const graph = await elk.layout(kgraph, { layoutOptions: layoutProps.layoutEngine });
+                return drawModule(graph, flatModule);
+            } catch (error) {
+                // tslint:disable-next-line:no-console
+                console.error(error);  // Consistent error handling, even with async/await
+                throw error; // Re-throw to propagate to the caller if needed
+            }
+
+        }
+    })();
+
+    if (done) {
+        renderPromise.then(
+            (output) => done(null, output),
+            (error) => done(error)
+        );
     }
 
-    // support legacy callback style
-    if (typeof done === 'function') {
-        promise.then((output: string) => {
-            done(null, output);
-            return output;
-        }).catch((reason) => {
-            throw Error(reason);
-        });
-    }
-    return promise;
+    return renderPromise;
 }

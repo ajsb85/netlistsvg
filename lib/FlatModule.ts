@@ -1,3 +1,4 @@
+// FlatModule.ts
 import Yosys from './YosysModel';
 import Skin from './Skin';
 import Cell from './Cell';
@@ -16,184 +17,63 @@ export interface Wire {
     laterals: FlatPort[];
 }
 
-export class FlatModule {
-    public moduleName: string;
-    public nodes: Cell[];
-    public wires: Wire[];
-
-    constructor(netlist: Yosys.Netlist) {
-        this.moduleName = null;
-        // Find top module
-        for (const name in netlist.modules) {
-            const mod = netlist.modules[name];
-            if (mod.attributes && Number(mod.attributes.top) === 1) {
-                this.moduleName = name;
-                break; // Exit loop once top module is found
-            }
-        }
-
-        // Default to the first module if no top module is marked
-        if (this.moduleName == null) {
-            this.moduleName = Object.keys(netlist.modules)[0];
-        }
-
-        const top = netlist.modules[this.moduleName];
-        const ports = Object.entries(top.ports).map(([key, portData]) => Cell.fromPort(portData, key));
-        const cells = Object.entries(top.cells).map(([key, cellData]) => Cell.fromYosysCell(cellData, key));
-
-        this.nodes = cells.concat(ports);
-        // populated by createWires
-        this.wires = [];
-    }
-
-    // converts input ports with constant assignments to constant nodes
-    public addConstants(): void {
-        // find the maximum signal number
-        let maxNum: number = this.nodes.reduce(((acc, v) => v.maxOutVal(acc)), -1);
-
-        // add constants to nodes
-        const signalsByConstantName: SigsByConstName = {};
-        const cells: Cell[] = [];
-        this.nodes.forEach((n) => {
-            maxNum = n.findConstants(signalsByConstantName, maxNum, cells);
-        });
-        this.nodes = this.nodes.concat(cells);
-    }
-
-    // solves for minimal bus splits and joins and adds them to module
-    public addSplitsJoins(): void {
-        const allInputs = this.nodes.flatMap((n) => n.inputPortVals());
-        const allOutputs = this.nodes.flatMap((n) => n.outputPortVals());
-
-        const allInputsCopy = allInputs.slice();
-        const splits: SplitJoin = {};
-        const joins: SplitJoin = {};
-        allInputs.forEach((input) => {
-            gather(
-                allOutputs,
-                allInputsCopy,
-                input,
-                0,
-                input.length,
-                splits,
-                joins);
-        });
-        const joinCells = Object.entries(joins).map(([joinInputs, joinOutput]) => {
-            return Cell.fromJoinInfo(joinInputs, joinOutput[0]); // joinOutput is an array
-        });
-        const splitCells = Object.entries(splits).map(([splitInput, splitOutputs]) => {
-            return Cell.fromSplitInfo(splitInput, splitOutputs);
-        });
-
-        this.nodes = this.nodes.concat(joinCells, splitCells);
-    }
-
-    // search through all the ports to find all of the wires
-    public createWires() {
-        const layoutProps = Skin.getProperties();
-        const ridersByNet: NameToPorts = {};
-        const driversByNet: NameToPorts = {};
-        const lateralsByNet: NameToPorts = {};
-        this.nodes.forEach((n) => {
-            n.collectPortsByDirection(
-                ridersByNet,
-                driversByNet,
-                lateralsByNet,
-                layoutProps.genericsLaterals as boolean);
-        });
-        // list of unique nets
-        const allKeys = Object.keys(ridersByNet).concat(Object.keys(driversByNet)).concat(Object.keys(lateralsByNet));
-
-        const nets = removeDups(allKeys);
-
-        const wires: Wire[] = nets.map((net) => {
-            const drivers: FlatPort[] = driversByNet[net] || [];
-            const riders: FlatPort[] = ridersByNet[net] || [];
-            const laterals: FlatPort[] = lateralsByNet[net] || [];
-            const wire: Wire = { netName: net, drivers, riders, laterals };
-            drivers.concat(riders).concat(laterals).forEach((port) => {
-                port.wire = wire;
-            });
-            return wire;
-        });
-        this.wires = wires;
-    }
-}
-
 export interface SigsByConstName {
     [constantName: string]: number[];
 }
 
-// returns a string that represents the values of the array of integers
-// [1, 2, 3] -> ',1,2,3,'
-export function arrayToBitstring(bitArray: number[]): string {
-    return ',' + bitArray.join(',') + ',';
-}
-
-// returns whether needle is a substring of haystack
-function arrayContains(needle: string, haystack: string | string[]): boolean {
-    return (haystack.indexOf(needle) > -1);
-}
-
-// returns the index of the string that contains a substring
-// given arrhaystack, an array of strings
-function indexOfContains(needle: string, arrhaystack: string[]): number {
-    return arrhaystack.findIndex((haystack: string) => {
-        return arrayContains(needle, haystack);
-    });
+export interface NameToPorts {
+    [netName: string]: FlatPort[];
 }
 
 interface SplitJoin {
     [portName: string]: string[];
 }
 
-export function addToDefaultDict(dict: any, key: string, value: any): void {
-    if (dict[key] === undefined) {
-        dict[key] = [value];
-    } else {
-        dict[key].push(value);
-    }
+// Helper functions (outside the class) -  These are now *exported*
+
+export function arrayToBitstring(bitArray: number[]): string {
+    return `,${bitArray.join(',')},`;
 }
 
-// string (for labels), that represents an index
-// or range of indices.
-function getIndicesString(bitstring: string,
-                          query: string,
-                          start: number): string {
-
-    const splitStart: number = Math.max(bitstring.indexOf(query), start);
-    const startIndex: number = bitstring.substring(0, splitStart).split(',').length - 1;
-    const endIndex: number = startIndex + query.split(',').length - 3;
-
-    if (startIndex === endIndex) {
-        return String(startIndex);
-    } else {
-        return String(startIndex) + ':' + String(endIndex);
-    }
+export function arrayContains(needle: string, haystack: string | string[]): boolean {
+    return haystack.includes(needle);
 }
 
-// gather splits and joins
-function gather(inputs: string[],  // all inputs
-                outputs: string[], // all outputs
-                toSolve: string, // an input array we are trying to solve
-                start: number,   // index of toSolve to start from
-                end: number,     // index of toSolve to end at
-                splits: SplitJoin,  // container collecting the splits
-                joins: SplitJoin): void {  // container collecting the joins
-    // remove myself from outputs list if present
-    const outputIndex: number = outputs.indexOf(toSolve);
+export function indexOfContains(needle: string, haystack: string[]): number {
+    return haystack.findIndex(hay => hay.includes(needle));
+}
+
+export function addToDefaultDict(dict: Record<string, string[]>, key: string, value: string): void {
+    (dict[key] ??= []).push(value);
+}
+
+export function getIndicesString(bitstring: string, query: string, start: number): string {
+    const splitStart = Math.max(bitstring.indexOf(query), start);
+    const startIndex = bitstring.substring(0, splitStart).split(',').length - 1;
+    const endIndex = startIndex + query.split(',').length - 3;
+    return startIndex === endIndex ? String(startIndex) : `${startIndex}:${endIndex}`;
+}
+export function gather(
+    inputs: string[],
+    outputs: string[],
+    toSolve: string,
+    start: number,
+    end: number,
+    splits: SplitJoin,
+    joins: SplitJoin
+): void {
+
+    const outputIndex = outputs.indexOf(toSolve);
     if (outputIndex !== -1) {
         outputs.splice(outputIndex, 1);
     }
 
-    // This toSolve is compconste
     if (start >= toSolve.length || end - start < 2) {
         return;
     }
 
-    const query: string = toSolve.slice(start, end);
+    const query = toSolve.slice(start, end);
 
-    // are there are perfect matches?
     if (arrayContains(query, inputs)) {
         if (query !== toSolve) {
             addToDefaultDict(joins, toSolve, getIndicesString(toSolve, query, start));
@@ -201,45 +81,106 @@ function gather(inputs: string[],  // all inputs
         gather(inputs, outputs, toSolve, end - 1, toSolve.length, splits, joins);
         return;
     }
-    const index: number = indexOfContains(query, inputs);
-    // are there any partial matches?
+
+    const index = indexOfContains(query, inputs);
     if (index !== -1) {
         if (query !== toSolve) {
             addToDefaultDict(joins, toSolve, getIndicesString(toSolve, query, start));
         }
-        // found a split
         addToDefaultDict(splits, inputs[index], getIndicesString(inputs[index], query, 0));
-        // we can match to this now
-        inputs.push(query);
+        inputs.push(query); // We can now match to this split portion
         gather(inputs, outputs, toSolve, end - 1, toSolve.length, splits, joins);
         return;
     }
-    // are there any output matches?
+
     if (indexOfContains(query, outputs) !== -1) {
         if (query !== toSolve) {
-            // add to join
             addToDefaultDict(joins, toSolve, getIndicesString(toSolve, query, start));
         }
-        // gather without outputs
-        gather(inputs, [], query, 0, query.length, splits, joins);
-        inputs.push(query);
+        gather(inputs, [], query, 0, query.length, splits, joins); // Gather without outputs
+        inputs.push(query); // Add the matched output as a new input for further matching
         return;
     }
-    gather(inputs, outputs, toSolve, start, start + query.slice(0, -1).lastIndexOf(',') + 1, splits, joins);
+    gather(inputs, outputs, toSolve, start, toSolve.substring(0, end).lastIndexOf(',') + 1, splits, joins);
 }
 
-export interface NameToPorts {
-    [netName: string]: FlatPort[];
-}
 
-interface StringToBool {
-    [s: string]: boolean;
-}
 
-export function removeDups(inStrs: string[]): string[] {
-    const map: StringToBool = {};
-    inStrs.forEach((str) => {
-        map[str] = true;
-    });
-    return Object.keys(map);
+export class FlatModule {
+    public moduleName: string;
+    public nodes: Cell[];
+    public wires: Wire[];
+
+    constructor(netlist: Yosys.Netlist) {
+        this.moduleName = Object.keys(netlist.modules).find(name =>
+            netlist.modules[name].attributes?.top === 1
+        ) || Object.keys(netlist.modules)[0]; // Find top module or default
+
+        const top = netlist.modules[this.moduleName];
+        this.nodes = [
+            ...Object.entries(top.ports).map(([key, portData]) => Cell.fromPort(portData, key)),
+            ...Object.entries(top.cells).map(([key, cellData]) => Cell.fromYosysCell(cellData, key)),
+        ];
+        this.wires = []; // Populated by createWires
+    }
+
+    public addConstants(): void {
+        let maxNum = this.nodes.reduce((acc, v) => v.maxOutVal(acc), -1);
+        const signalsByConstantName: SigsByConstName = {};
+        const newCells: Cell[] = [];
+        this.nodes.forEach(node => {
+            maxNum = node.findConstants(signalsByConstantName, maxNum, newCells);
+        });
+        this.nodes.push(...newCells);
+    }
+
+    public addSplitsJoins(): void {
+        const allInputs = this.nodes.flatMap(node => node.inputPortVals());
+        const allOutputs = this.nodes.flatMap(node => node.outputPortVals());
+
+        const splits: SplitJoin = {};
+        const joins: SplitJoin = {};
+
+        const allInputsCopy = allInputs.slice();
+        for (const input of allInputs) {
+            gather(allOutputs, allInputsCopy, input, 0, input.length, splits, joins);
+        }
+
+        const joinCells = Object.entries(joins).map(([joinInputs, [joinOutput]]) =>
+            Cell.fromJoinInfo(joinInputs, joinOutput)
+        );
+        const splitCells = Object.entries(splits).map(([splitInput, splitOutputs]) =>
+            Cell.fromSplitInfo(splitInput, splitOutputs)
+        );
+
+        this.nodes.push(...joinCells, ...splitCells);
+    }
+
+    public createWires() {
+        const layoutProps = Skin.getProperties();
+        const ridersByNet: NameToPorts = {};
+        const driversByNet: NameToPorts = {};
+        const lateralsByNet: NameToPorts = {};
+
+        this.nodes.forEach(node =>
+            node.collectPortsByDirection( // Corrected call
+                ridersByNet,
+                driversByNet,
+                lateralsByNet,
+                layoutProps.genericsLaterals as boolean
+            )
+        );
+
+        const allKeys = [...Object.keys(ridersByNet), ...Object.keys(driversByNet), ...Object.keys(lateralsByNet)];
+        const nets = [...new Set(allKeys)]; // Use Set for unique nets
+
+        this.wires = nets.map(net => {
+            const drivers: FlatPort[] = driversByNet[net] || [];
+            const riders: FlatPort[] = ridersByNet[net] || [];
+            const laterals: FlatPort[] = lateralsByNet[net] || [];
+            const wire: Wire = { netName: net, drivers, riders, laterals };
+            [...drivers, ...riders, ...laterals].forEach(port => port.wire = wire);
+            return wire;
+        });
+    }
 }

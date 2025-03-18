@@ -1,39 +1,62 @@
 {
-  "description": "JSON Schema Yosys netlists JSON format",
+  "description": "JSON Schema for Yosys netlists in JSON format",
   "type": "object",
-  // an empty object is invalid
   "required": ["modules"],
   "errorMessage": {
-    "type": "netlist must be a JSON object",
-    "required": "netlist must have a modules property",
+    "type": "Netlist must be a JSON object",
+    "required": "Netlist must have a 'modules' property"
   },
   "properties": {
     "modules": {
       "type": "object",
-      // there must be at least one module
       "minProperties": 1,
-        "errorMessage": {
-          "type": "netlist modules must be objects",
-          "minProperties": "netlist must have at least one module",
-        },
+      "errorMessage": {
+        "type": "'modules' must be an object",
+        "minProperties": "Netlist must have at least one module defined in 'modules'"
+      },
       "additionalProperties": {
         "type": "object",
+        "required": ["ports"],
+        "anyOf": [
+            { "required": ["ports"] },
+            { "required": ["cells"] }
+        ],
+        "errorMessage": {
+            "required": "Each module must have 'ports' defined.",
+            "anyOf": "Module must have either 'ports' or 'cells' defined."
+        },
         "properties": {
           "ports": {
             "type": "object",
             "additionalProperties": {
               "type": "object",
-              // all ports must have bits and a direction
               "required": ["direction", "bits"],
+              "errorMessage": {
+                "type": "Each port must be an object",
+                "required": "Each port must have 'direction' and 'bits' properties"
+              },
               "properties": {
                 "direction": {
-                  "enum": ["input", "output", "inout"]
+                  "type": "string",
+                  "enum": ["input", "output", "inout"],
+                  "errorMessage": {
+                    "type": "Port 'direction' must be a string",
+                    "enum": "Port 'direction' must be one of: 'input', 'output', 'inout'"
+                  }
                 },
                 "bits": {
                   "type": "array",
-                  // bits can be the string "0", "1", "x", "z", or a number.
                   "items": {
-                    "oneOf":[{"type":"number"}, {"enum":["0","1","x","z"]}]
+                    "oneOf": [
+                      { "type": "integer", "minimum": 0 },
+                      { "type": "string", "enum": ["0", "1", "x", "z"] }
+                    ],
+                    "errorMessage": {
+                      "oneOf": "Each bit must be a non-negative integer or one of '0', '1', 'x', 'z'"
+                    }
+                  },
+                  "errorMessage": {
+                    "type": "Port 'bits' must be an array"
                   }
                 }
               }
@@ -43,64 +66,126 @@
             "type": "object",
             "additionalProperties": {
               "type": "object",
-              // all cells must have a type and connections
-              "required": [
-                "type",
-                "connections"
-              ],
+              "required": ["type", "connections"],
+              "errorMessage": {
+                "type": "Each cell must be an object",
+                "required": "Each cell must have 'type' and 'connections' properties"
+              },
               "properties": {
-                "type":{"type":"string"},
+                "type": {
+                  "type": "string",
+                  "errorMessage": {
+                    "type": "Cell 'type' must be a string"
+                  }
+                },
                 "connections": {
                   "type": "object",
                   "additionalProperties": {
-                    "type":"array",
+                    "type": "array",
                     "items": {
-                      "oneOf":[{"type":"number"}, {"enum":["0","1","x","z"]}]
+                      "oneOf": [
+                        { "type": "integer", "minimum": 0 },
+                        { "type": "string", "enum": ["0", "1", "x", "z"] }
+                      ],
+                      "errorMessage": {
+                        "oneOf": "Each connection bit must be a non-negative integer or one of '0', '1', 'x', 'z'"
+                      }
+                    },
+                    "errorMessage": {
+                      "type": "Cell connections must be arrays",
+                      "items": "Invalid connection bit type"
                     }
+                  },
+                  "errorMessage": {
+                    "type": "Cell 'connections' must be an object",
+                    "additionalProperties": "Invalid cell connection format"
                   }
                 },
-                // port directions are optional
-                "port_directions":{
+                "port_directions": {
                   "type": "object",
                   "additionalProperties": {
-                    "enum": ["input", "output", "inout"]
+                    "type": "string",
+                    "enum": ["input", "output", "inout"],
+                    "errorMessage": {
+                        "type": "Port directions must be strings",
+                        "enum": "'port_directions' values must be one of: 'input', 'output', 'inout'"
+                    }
+                  },
+                  "errorMessage": {
+                    "type": "'port_directions' must be an object"
                   }
                 },
-                // netlistsvg doesn't use these yet
-                "hide_name": {"enum":[0, 1]},
-                "parameters": {"type": "object"},
-                "attributes": {"type": "object"}
-              }
+                "hide_name": {
+                  "type": "integer",
+                  "enum": [0, 1],
+                  "errorMessage": {
+                    "type": "'hide_name' must be an integer",
+                    "enum": "'hide_name' must be 0 or 1"
+                  }
+                },
+                "parameters": {
+                  "type": "object",
+                    "errorMessage": {
+                      "type": "'parameters' must be a object"
+                    }
+                },
+                "attributes": {
+                  "type": "object",
+                  "errorMessage": {
+                    "type": "'attributes' must be an object"
+                  }
+                }
+              },
+               "additionalProperties": false
             }
           },
-          // not yet used by netlistsvg
           "netnames": {
             "type": "object",
             "additionalProperties": {
               "type": "object",
+              "required": ["bits"],
               "properties": {
                 "bits": {
                   "type": "array",
-                  // bits can be the string "0", "1", "x", "z", or a number.
                   "items": {
-                    "oneOf": [{"type": "number"}, {"enum": ["0", "1", "x", "z"]}]
+                    "oneOf": [
+                      { "type": "integer", "minimum": 0 },
+                      { "type": "string", "enum": ["0", "1", "x", "z"] }
+                    ]
                   }
                 },
-                "hide_name": {"enum": [0, 1]},
-                "attributes": {"type": "object"}
-              }
+                "hide_name": {
+                  "type": "integer",
+                  "enum": [0, 1]
+                },
+                "attributes": {
+                  "type": "object"
+                }
+              },
+              "additionalProperties": false
             }
           },
           "attributes": {
             "type": "object",
-            "properties": {
-              "top": {"enum": [0, 1, "00000000000000000000000000000000", "00000000000000000000000000000001"]}
-            }
+             "properties": {
+                "top": {
+                  "type": ["integer", "string"],
+                  "oneOf": [
+                    { "type": "integer", "enum": [0, 1]},
+                    { "type": "string", "enum": ["00000000000000000000000000000000", "00000000000000000000000000000001"]}
+                  ],
+                  "errorMessage":{
+                    "oneOf": "Top values must be either 0 or 1, or \"0000000000000000000000000000000{0,1}\""
+                  }
+
+                }
+              },
+              "additionalProperties": false
           }
         },
-        // there must either be ports or cells attribute
-        "anyOf": [{"required": ["ports"]},{"required": ["cells"]}]
+        "additionalProperties": false,
       }
     }
-  }
+  },
+  "additionalProperties": false
 }

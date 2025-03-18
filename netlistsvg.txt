@@ -1,0 +1,1819 @@
+Folder Structure
+--------------------------------------------------
+lib/
+    index.ts
+    drawModule.ts
+    YosysModel.ts
+    elkGraph.ts
+    Skin.ts
+    FlatModule.ts
+    Cell.ts
+    yosys.schema.json5
+    Port.ts
+    @types/
+        onml/
+            index.d.ts
+        elkjs/
+            index.d.ts
+
+
+File Contents
+--------------------------------------------------
+
+
+/mnt/dataset/dev/netlistsvg/lib/index.ts
+File type: .ts
+import ELK = require('elkjs');
+import onml = require('onml');
+
+import { FlatModule } from './FlatModule';
+import Yosys from './YosysModel';
+import Skin from './Skin';
+import { ElkModel, buildElkGraph } from './elkGraph';
+import drawModule from './drawModule';
+
+const elk = new ELK();
+
+type ICallback = (error: Error, result?: string) => void;
+
+function createFlatModule(skinData: string, yosysNetlist: Yosys.Netlist): FlatModule {
+    Skin.skin = onml.p(skinData);
+    const layoutProps = Skin.getProperties();
+    const flatModule = new FlatModule(yosysNetlist);
+
+    if (layoutProps.constants !== false) {
+        flatModule.addConstants();
+    }
+    if (layoutProps.splitsAndJoins !== false) {
+        flatModule.addSplitsJoins();
+    }
+    flatModule.createWires();
+    return flatModule;
+}
+
+export async function dumpLayout(skinData: string, yosysNetlist: Yosys.Netlist, prelayout: boolean, done: ICallback) {
+    try {
+        const flatModule = createFlatModule(skinData, yosysNetlist);
+        const kgraph: ElkModel.Graph = buildElkGraph(flatModule);
+
+        if (prelayout) {
+            done(null, JSON.stringify(kgraph, null, 2));
+            return;
+        }
+
+        const layoutProps = Skin.getProperties();
+        const graph = await elk.layout(kgraph, { layoutOptions: layoutProps.layoutEngine });
+        done(null, JSON.stringify(graph, null, 2));
+    } catch (error) {
+        done(error);
+    }
+}
+
+export function render(skinData: string, yosysNetlist: Yosys.Netlist, done?: ICallback, elkData?: ElkModel.Graph): Promise<string> {
+    const flatModule = createFlatModule(skinData, yosysNetlist);
+    const kgraph: ElkModel.Graph = buildElkGraph(flatModule);
+    const layoutProps = Skin.getProperties();
+
+    const renderPromise: Promise<string> = (async () => {
+        if (elkData) {
+            return drawModule(elkData, flatModule);
+        } else {
+            try{
+                const graph = await elk.layout(kgraph, { layoutOptions: layoutProps.layoutEngine });
+                return drawModule(graph, flatModule);
+            } catch (error) {
+                // tslint:disable-next-line:no-console
+                console.error(error);  // Consistent error handling, even with async/await
+                throw error; // Re-throw to propagate to the caller if needed
+            }
+
+        }
+    })();
+
+    if (done) {
+        renderPromise.then(
+            (output) => done(null, output),
+            (error) => done(error)
+        );
+    }
+
+    return renderPromise;
+}
+
+--------------------------------------------------
+File End
+--------------------------------------------------
+
+
+/mnt/dataset/dev/netlistsvg/lib/drawModule.ts
+File type: .ts
+import { ElkModel } from './elkGraph';
+import { FlatModule } from './FlatModule';
+import Cell from './Cell';
+import Skin from './Skin';
+
+import onml = require('onml');
+
+enum WireDirection {
+    Up, Down, Left, Right,
+}
+
+export default function drawModule(g: ElkModel.Graph, module: FlatModule): string {
+    const nodes: onml.Element[] = module.nodes.map((n: Cell) => {
+        const kchild: ElkModel.Cell = g.children.find((c) => c.id === n.Key);
+        return n.render(kchild);
+    });
+
+    removeDummyEdges(g);
+
+    const lines: onml.Element[] = g.edges.flatMap((e: ElkModel.Edge) => {
+        const netId = ElkModel.wireNameLookup[e.id];
+        const numWires = netId.split(',').length - 2;
+        const lineStyle = `stroke-width: ${numWires > 1 ? 2 : 1}`;
+        const netName = `net_${netId.slice(1, -1)} width_${numWires}`;
+
+        return e.sections.flatMap((s: ElkModel.Section) => {
+            let startPoint = s.startPoint;
+            const bends: onml.Element[] = (s.bendPoints || []).map((b) => {
+                const line: onml.Element = ['line', {
+                    x1: startPoint.x,
+                    x2: b.x,
+                    y1: startPoint.y,
+                    y2: b.y,
+                    class: netName,
+                    style: lineStyle,
+                }];
+                startPoint = b;
+                return line;
+            });
+
+            const circles: onml.Element[] = (e.junctionPoints || []).map((j: ElkModel.WirePoint) =>
+                ['circle', {
+                    cx: j.x,
+                    cy: j.y,
+                    r: numWires > 1 ? 3 : 2,
+                    style: 'fill:#000',
+                    class: netName,
+                }]
+            );
+
+            const line: onml.Element = ['line', {
+                x1: startPoint.x,
+                x2: s.endPoint.x,
+                y1: startPoint.y,
+                y2: s.endPoint.y,
+                class: netName,
+                style: lineStyle,
+            }];
+
+            return [...bends, ...circles, line];
+        });
+    });
+
+    const labels: onml.Element[] = g.edges.flatMap((e: ElkModel.Edge) => {
+        const netId = ElkModel.wireNameLookup[e.id];
+        const numWires = netId.split(',').length - 2;
+        const netName = `net_${netId.slice(1, -1)} width_${numWires} busLabel_${numWires}`;
+
+        if (e.labels?.[0]?.text) {
+            const label: onml.Element[] = [
+                ['rect', {
+                    x: e.labels[0].x + 1,
+                    y: e.labels[0].y - 1,
+                    width: (e.labels[0].text.length + 2) * 6 - 2,
+                    height: 9,
+                    class: netName,
+                    style: 'fill: white; stroke: none',
+                }],
+                ['text', {
+                    x: e.labels[0].x,
+                    y: e.labels[0].y + 7,
+                    class: netName,
+                }, `/${e.labels[0].text}/`],
+            ];
+            return label;
+        }
+        return []; // Return empty array if no label
+    });
+    if(labels.length > 0){
+      lines.push(...labels);
+    }
+
+
+    const svgAttrs: onml.Attributes = { ...Skin.skin[1] }; // Clone attributes
+    svgAttrs.width = String(g.width); // Use String() for conversion
+    svgAttrs.height = String(g.height);
+
+    const styles: onml.Element = ['style', {}, ''];
+    onml.traverse(Skin.skin, {
+        enter: (node) => {
+            if (node.name === 'style') {
+                styles[2] += node.full[2];
+            }
+        },
+    });
+
+    const ret: onml.Element = ['svg', svgAttrs, styles, ...nodes, ...lines];
+    return onml.s(ret);
+}
+
+function whichDir(start: ElkModel.WirePoint, end: ElkModel.WirePoint): WireDirection {
+    if (end.x === start.x && end.y === start.y) {
+        throw new Error('start and end are the same');
+    }
+    if (end.x !== start.x && end.y !== start.y) {
+        throw new Error('start and end arent orthogonal');
+    }
+    return end.x > start.x ? WireDirection.Right
+        : end.x < start.x ? WireDirection.Left
+        : end.y > start.y ? WireDirection.Down
+        : WireDirection.Up; // Simplified conditional
+}
+function findBendNearDummy(
+    net: ElkModel.Edge[],
+    dummyIsSource: boolean,
+    dummyLoc: ElkModel.WirePoint,
+): ElkModel.WirePoint | undefined {
+    const candidates = net.map((edge) => {
+        const bends = edge.sections[0].bendPoints || [];
+        return dummyIsSource ? bends[0] : bends[bends.length - 1];
+    }).filter((p): p is ElkModel.WirePoint => p !== undefined); // Use type guard
+
+    if (candidates.length === 0) {
+        return undefined;
+    }
+
+    // Find closest bend point using Euclidean distance
+    return candidates.reduce((closest, current) => {
+        const closestDist = (closest.x - dummyLoc.x) ** 2 + (closest.y - dummyLoc.y) ** 2;
+        const currentDist = (current.x - dummyLoc.x) ** 2 + (current.y - dummyLoc.y) ** 2;
+        return currentDist < closestDist ? current : closest;
+    });
+}
+
+export function removeDummyEdges(g: ElkModel.Graph) {
+    for (let dummyNum = 0; dummyNum < 10000; dummyNum++) {
+        const dummyId = `$d_${dummyNum}`;
+        const edgeGroup = g.edges.filter(e => e.source === dummyId || e.target === dummyId);
+
+        if (edgeGroup.length === 0) {
+            break; // Exit loop if no more dummies found
+        }
+
+        const firstEdge = edgeGroup[0];
+        const dummyIsSource = firstEdge.source === dummyId;
+        const dummyLoc = dummyIsSource ? firstEdge.sections[0].startPoint : firstEdge.sections[0].endPoint;
+
+        const newEnd = findBendNearDummy(edgeGroup, dummyIsSource, dummyLoc);
+        if (!newEnd) {
+            continue; // Skip if no bend point found
+        }
+
+        for (const edge of edgeGroup) {
+            const section = edge.sections[0];
+            if (dummyIsSource) {
+                section.startPoint = newEnd;
+                section.bendPoints?.shift(); // Use optional chaining
+            } else {
+                section.endPoint = newEnd;
+                section.bendPoints?.pop(); // Use optional chaining
+            }
+        }
+
+        const directions = new Set(edgeGroup.map(edge => {
+            const section = edge.sections[0];
+            const point = dummyIsSource
+                ? (section.bendPoints?.[0] || section.endPoint)
+                : (section.bendPoints?.[section.bendPoints.length - 1] || section.startPoint);
+            return whichDir(newEnd, point); // Use the whichDir helper
+        }));
+        // Remove junction points only if there are less than 3 directions
+        if (directions.size < 3) {
+          for (const edge of edgeGroup){
+            edge.junctionPoints = (edge.junctionPoints || []).filter(junct => !(junct.x === newEnd.x && junct.y === newEnd.y));
+          }
+
+        }
+    }
+}
+
+--------------------------------------------------
+File End
+--------------------------------------------------
+
+
+/mnt/dataset/dev/netlistsvg/lib/YosysModel.ts
+File type: .ts
+namespace Yosys {
+    // Use string enums for better readability and type safety
+    export enum ConstantVal {
+        Zero = '0',
+        One = '1',
+        X = 'x',
+        Z = 'z', // Added Z for completeness
+    }
+
+    // More descriptive type alias
+    export type Signal = number | ConstantVal;
+    export type Signals = Signal[];
+
+    // Use generics for map types
+    export interface ModuleMap {
+        [moduleName: string]: Module;
+    }
+
+    // Use indexed access types for consistency
+    export interface Netlist {
+        modules: ModuleMap;
+    }
+
+    // More specific types for attributes
+    export interface ModuleAttributes {
+        top?: 0 | 1 | "00000000000000000000000000000000" | "00000000000000000000000000000001"; // Match schema
+        [attrName: string]: any; // Consider more specific types if possible
+    }
+
+    export interface NetAttributes {
+        [attrName: string]: any;  // Consider more specific types if possible
+    }
+
+    export interface CellAttributes {
+        value?: string; // value is usually a string.
+        [attrName: string]: any;  // Consider more specific types if possible
+    }
+
+    export enum Direction {
+        Input = 'input',
+        Output = 'output',
+        Inout = 'inout', // Added Inout for completeness
+    }
+
+    export interface ExtPort {
+        direction: Direction;
+        bits: Signals;
+    }
+
+    // Use Record<string, T> for maps where the key is always a string
+    export type ExtPortMap = Record<string, ExtPort>;
+    export type PortDirMap = Record<string, Direction>;
+    export type PortConnectionMap = Record<string, Signals>;
+
+    export interface Cell {
+        type: string;
+        port_directions?: PortDirMap; // Optional, as per your schema
+        connections: PortConnectionMap;
+        attributes?: CellAttributes;
+        hide_name?: HideName;
+        parameters?: Record<string, any>; // More concise than { [key: string]: any }
+    }
+
+
+    // Helper functions to get input/output port IDs (made more concise)
+    export const getInputPortPids = (cell: Cell): string[] =>
+        Object.entries(cell.port_directions || {}) // Safe access with || {}
+            .filter(([, direction]) => direction === Direction.Input)
+            .map(([portName]) => portName);
+
+    export const getOutputPortPids = (cell: Cell): string[] =>
+        Object.entries(cell.port_directions || {})
+            .filter(([, direction]) => direction === Direction.Output)
+            .map(([portName]) => portName);
+
+
+    export type CellMap = Record<string, Cell>;
+
+    // Use const enum for efficiency, if these values are only used at compile time
+    export const enum HideName {
+        Hide,  // Defaults to 0
+        NoHide, // Defaults to 1
+    }
+
+    export interface Net {
+        bits: Signals;
+        hide_name: HideName;
+        attributes: NetAttributes;
+    }
+
+    export type NetNameMap = Record<string, Net>;
+
+    export interface Module {
+        ports: ExtPortMap;
+        cells: CellMap;
+        netNames: NetNameMap;
+        attributes?: ModuleAttributes;
+    }
+}
+export default Yosys;
+
+--------------------------------------------------
+File End
+--------------------------------------------------
+
+
+/mnt/dataset/dev/netlistsvg/lib/elkGraph.ts
+File type: .ts
+import { FlatModule } from './FlatModule';
+
+export namespace ElkModel {
+    // Using interfaces is generally preferred over type aliases for object shapes
+    export interface WireNameLookup {
+        [edgeId: string]: string;
+    }
+    export let wireNameLookup: WireNameLookup = {};
+    export let dummyNum: number = 0;
+    export let edgeIndex: number = 0;
+
+    export interface WirePoint {
+        x: number;
+        y: number;
+    }
+
+    export interface Cell {
+        id: string;
+        width: number;
+        height: number;
+        ports: Port[];
+        layoutOptions?: LayoutOptions;
+        labels?: Label[];
+        x?: number;
+        y?: number;
+    }
+
+    export interface Graph {
+        id: string;
+        children: Cell[];
+        edges: (Edge | ExtendedEdge)[]; // Use union type directly
+        width?: number;
+        height?: number;
+    }
+
+    export interface Port {
+        id: string;
+        width: number;
+        height: number;
+        x?: number;
+        y?: number;
+        labels?: Label[];
+    }
+
+    export interface Section {
+        id?: string;
+        startPoint: WirePoint;
+        endPoint: WirePoint;
+        bendPoints?: WirePoint[];
+    }
+
+    // Combined Edge and ExtendedEdge using optional properties
+    export interface Edge {
+        id: string;
+        labels?: Label[];
+        source?: string; // Optional for ExtendedEdge
+        sourcePort?: string; // Optional for ExtendedEdge
+        target?: string; // Optional for ExtendedEdge
+        targetPort?: string; // Optional for ExtendedEdge
+        sources?: [string]; // Optional for standard Edge
+        targets?: [string]; // Optional for standard Edge
+        layoutOptions?: LayoutOptions;
+        junctionPoints?: WirePoint[]; // Only in standard Edge
+        bendPoints?: WirePoint[];   // Only in standard Edge
+        sections?: Section[];        // Only in standard Edge
+    }
+
+    export interface LayoutOptions {
+        [option: string]: any;
+    }
+
+    export interface Label {
+        id: string;
+        text: string;
+        x: number;
+        y: number;
+        height: number;
+        width: number;
+        layoutOptions?: LayoutOptions;
+    }
+}
+
+export function buildElkGraph(module: FlatModule): ElkModel.Graph {
+    const children: ElkModel.Cell[] = module.nodes.map(n => n.buildElkChild());
+    ElkModel.edgeIndex = 0;
+    ElkModel.dummyNum = 0;
+    const edges: ElkModel.Edge[] = [];
+
+    module.wires.forEach(wire => {
+        const numWires = wire.netName.split(',').length - 2;
+
+        const addEdges = (sourcePorts, targetPorts) => {
+            route(sourcePorts, targetPorts, edges, numWires);
+        };
+
+        if (wire.drivers.length > 0 && wire.riders.length > 0 && wire.laterals.length === 0) {
+            addEdges(wire.drivers, wire.riders);
+        } else if (wire.drivers.concat(wire.riders).length > 0 && wire.laterals.length > 0) {
+            addEdges(wire.drivers, wire.laterals);
+            addEdges(wire.laterals, wire.riders);
+        } else if (wire.riders.length === 0 && wire.drivers.length > 1) {
+            const dummyId = addDummy(children);
+            const dummyEdges = wire.drivers.map(driver => createDummyEdge(driver, dummyId, 'source'));
+            edges.push(...dummyEdges);
+        } else if (wire.riders.length > 1 && wire.drivers.length === 0) {
+            const dummyId = addDummy(children);
+            const dummyEdges = wire.riders.map(rider => createDummyEdge(rider, dummyId, 'target'));
+            edges.push(...dummyEdges);
+        } else if (wire.laterals.length > 1) {
+            const [source, ...otherLaterals] = wire.laterals; // Destructure for clarity
+            const sourceParentKey = source.parentNode.Key;
+            const lateralEdges = otherLaterals.map(lateral => {
+                const lateralParentKey = lateral.parentNode.Key;
+                const id = `e${ElkModel.edgeIndex++}`;
+                const edge: ElkModel.Edge = {
+                    id,
+                    source: sourceParentKey,
+                    sourcePort: `${sourceParentKey}.${source.key}`,
+                    target: lateralParentKey,
+                    targetPort: `${lateralParentKey}.${lateral.key}`,
+                };
+                ElkModel.wireNameLookup[id] = lateral.wire.netName;
+                return edge;
+            });
+            edges.push(...lateralEdges);
+        }
+    });
+
+    return {
+        id: module.moduleName,
+        children,
+        edges,
+    };
+}
+
+// Helper function to create dummy edges (for drivers or riders)
+function createDummyEdge(port, dummyId: string, type: 'source' | 'target'): ElkModel.Edge {
+    const sourceParentKey = port.parentNode.Key;
+    const id = `e${ElkModel.edgeIndex++}`;
+    const edge: ElkModel.Edge = {
+        id,
+        [type === 'source' ? 'source' : 'target']: sourceParentKey,
+        [(type === 'source' ? 'sourcePort' : 'targetPort')]: `${sourceParentKey}.${port.key}`,
+        [type === 'source' ? 'target' : 'source']: dummyId,
+        [(type === 'source' ? 'targetPort' : 'sourcePort')]: `${dummyId}.p`,
+    };
+    ElkModel.wireNameLookup[id] = port.wire.netName;
+    return edge;
+}
+
+function addDummy(children: ElkModel.Cell[]): string {
+    const dummyId = `$d_${ElkModel.dummyNum++}`;
+    children.push({
+        id: dummyId,
+        width: 0,
+        height: 0,
+        ports: [{ id: `${dummyId}.p`, width: 0, height: 0 }],
+        layoutOptions: { 'org.eclipse.elk.portConstraints': 'FIXED_SIDE' },
+    });
+    return dummyId;
+}
+
+function route(sourcePorts, targetPorts, edges: ElkModel.Edge[], numWires: number) {
+    for (const sourcePort of sourcePorts) {
+        const sourceParentKey = sourcePort.parentNode.Key;
+        const sourceKey = `${sourceParentKey}.${sourcePort.key}`;
+        const edgeLabel: ElkModel.Label[] | undefined = numWires > 1
+            ? [{
+                id: `label_${ElkModel.edgeIndex}`, // Give label a unique ID
+                text: String(numWires),
+                width: 4,
+                height: 6,
+                x: 0,
+                y: 0,
+                layoutOptions: { 'org.eclipse.elk.edgeLabels.inline': true },
+            }]
+            : undefined;
+
+        for (const targetPort of targetPorts) {
+            const targetParentKey = targetPort.parentNode.Key;
+            const targetKey = `${targetParentKey}.${targetPort.key}`;
+            const id = `e${ElkModel.edgeIndex++}`;
+            const edge: ElkModel.Edge = {
+                id,
+                labels: edgeLabel,
+                sources: [sourceKey], // Use sources/targets for consistency
+                targets: [targetKey],
+                layoutOptions: {
+                    'org.eclipse.elk.layered.priority.direction': sourcePort.parentNode.type !== '$dff' ? 10 : undefined,
+                    'org.eclipse.elk.edge.thickness': numWires > 1 ? 2 : 1,
+                },
+            };
+            ElkModel.wireNameLookup[id] = targetPort.wire.netName;
+            edges.push(edge);
+        }
+    }
+}
+
+--------------------------------------------------
+File End
+--------------------------------------------------
+
+
+/mnt/dataset/dev/netlistsvg/lib/Skin.ts
+File type: .ts
+import onml = require('onml');
+import { ElkModel } from './elkGraph';
+
+export namespace Skin {
+
+    export let skin: onml.Element = null;
+
+    // Utility function to extract attributes safely
+    function getAttributes(element: any[]): { [key: string]: string } {
+        return (Array.isArray(element) && element[0] === 'g' && element[1]) ? element[1] : {};
+    }
+
+    // Generic function to filter ports based on a predicate
+    function filterPortPids(template: any[], predicate: (attrs: { [key: string]: string }) => boolean): string[] {
+        return template
+            .filter(element => {
+                const attrs = getAttributes(element);
+                return attrs['s:pid'] !== undefined && predicate(attrs);
+            })
+            .map(element => element[1]['s:pid']);
+    }
+
+    export function getPortsWithPrefix(template: any[], prefix: string): any[] {
+      return template.filter(element => {
+          const attrs = getAttributes(element);
+          return typeof attrs['s:pid'] === 'string' && attrs['s:pid'].startsWith(prefix);
+      });
+    }
+
+    export function getInputPids(template: any[]): string[] {
+        return filterPortPids(template, attrs => attrs['s:dir'] === 'in' || attrs['s:position'] === 'top');
+    }
+
+    export function getOutputPids(template: any[]): string[] {
+        return filterPortPids(template, attrs => attrs['s:dir'] === 'out' || attrs['s:position'] === 'bottom');
+    }
+
+    export function getLateralPortPids(template: any[]): string[] {
+        return filterPortPids(template, attrs =>
+            attrs['s:dir'] === 'lateral' || (attrs['s:position'] === 'left' || attrs['s:position'] === 'right')
+        );
+    }
+
+    // Find a skin type, prioritizing aliases and falling back to generic
+    export function findSkinType(type: string): onml.Element | null {
+        let foundNode: onml.Element | null = null;
+
+        onml.traverse(skin, {
+            enter: (node, parent) => {
+                if (node.name === 's:alias' && node.attr.val === type) {
+                    foundNode = parent;
+                    return true; // Stop traversal
+                }
+            },
+        });
+
+        if (!foundNode) {
+            onml.traverse(skin, {
+                enter: (node) => {
+                    if (node.attr['s:type'] === 'generic') {
+                        foundNode = node;
+                        return true; // Stop traversal
+                    }
+                },
+            });
+        }
+        return foundNode ? foundNode.full : null;
+    }
+
+    // Get a list of low-priority aliases
+    export function getLowPriorityAliases(): string[] {
+      const aliases: string[] = [];
+        onml.traverse(skin, { // Changed from onml.t for consistency and added type
+            enter: (node) => {
+                if (node.name === 's:low_priority_alias' && typeof node.attr.value === 'string') {
+                    aliases.push(node.attr.value);
+                }
+            },
+        });
+        return aliases;
+    }
+
+    // Extract skin properties, converting string values to appropriate types
+    export function getProperties(): { [attr: string]: boolean | string | number | ElkModel.LayoutOptions } {
+        let properties: { [attr: string]: boolean | string | number | ElkModel.LayoutOptions } = {};
+
+        onml.traverse(skin, { // Changed from onml.t
+            enter: (node) => {
+                if (node.name === 's:properties') {
+                    for (const [key, val] of Object.entries(node.attr)) {
+                        const strVal = String(val);
+                        if (!isNaN(Number(strVal))) {
+                            properties[key] = Number(strVal);
+                        } else if (strVal === 'true') {
+                            properties[key] = true;
+                        } else if (strVal === 'false') {
+                            properties[key] = false;
+                        } else {
+                            properties[key] = strVal;
+                        }
+                    }
+                } else if (node.name === 's:layoutEngine') {
+                    properties.layoutEngine = node.attr;
+                }
+            },
+        });
+
+        // Ensure layoutEngine exists
+        if (!properties.layoutEngine) {
+            properties.layoutEngine = {};
+        }
+
+        return properties;
+    }
+}
+
+export default Skin;
+
+--------------------------------------------------
+File End
+--------------------------------------------------
+
+
+/mnt/dataset/dev/netlistsvg/lib/FlatModule.ts
+File type: .ts
+// FlatModule.ts
+import Yosys from './YosysModel';
+import Skin from './Skin';
+import Cell from './Cell';
+
+export interface FlatPort {
+    key: string;
+    value?: number[] | Yosys.Signals;
+    parentNode?: Cell;
+    wire?: Wire;
+}
+
+export interface Wire {
+    netName: string;
+    drivers: FlatPort[];
+    riders: FlatPort[];
+    laterals: FlatPort[];
+}
+
+export interface SigsByConstName {
+    [constantName: string]: number[];
+}
+
+export interface NameToPorts {
+    [netName: string]: FlatPort[];
+}
+
+interface SplitJoin {
+    [portName: string]: string[];
+}
+
+// Helper functions (outside the class) -  These are now *exported*
+
+export function arrayToBitstring(bitArray: number[]): string {
+    return `,${bitArray.join(',')},`;
+}
+
+export function arrayContains(needle: string, haystack: string | string[]): boolean {
+    return haystack.includes(needle);
+}
+
+export function indexOfContains(needle: string, haystack: string[]): number {
+    return haystack.findIndex(hay => hay.includes(needle));
+}
+
+export function addToDefaultDict(dict: Record<string, string[]>, key: string, value: string): void {
+    (dict[key] ??= []).push(value);
+}
+
+export function getIndicesString(bitstring: string, query: string, start: number): string {
+    const splitStart = Math.max(bitstring.indexOf(query), start);
+    const startIndex = bitstring.substring(0, splitStart).split(',').length - 1;
+    const endIndex = startIndex + query.split(',').length - 3;
+    return startIndex === endIndex ? String(startIndex) : `${startIndex}:${endIndex}`;
+}
+export function gather(
+    inputs: string[],
+    outputs: string[],
+    toSolve: string,
+    start: number,
+    end: number,
+    splits: SplitJoin,
+    joins: SplitJoin
+): void {
+
+    const outputIndex = outputs.indexOf(toSolve);
+    if (outputIndex !== -1) {
+        outputs.splice(outputIndex, 1);
+    }
+
+    if (start >= toSolve.length || end - start < 2) {
+        return;
+    }
+
+    const query = toSolve.slice(start, end);
+
+    if (arrayContains(query, inputs)) {
+        if (query !== toSolve) {
+            addToDefaultDict(joins, toSolve, getIndicesString(toSolve, query, start));
+        }
+        gather(inputs, outputs, toSolve, end - 1, toSolve.length, splits, joins);
+        return;
+    }
+
+    const index = indexOfContains(query, inputs);
+    if (index !== -1) {
+        if (query !== toSolve) {
+            addToDefaultDict(joins, toSolve, getIndicesString(toSolve, query, start));
+        }
+        addToDefaultDict(splits, inputs[index], getIndicesString(inputs[index], query, 0));
+        inputs.push(query); // We can now match to this split portion
+        gather(inputs, outputs, toSolve, end - 1, toSolve.length, splits, joins);
+        return;
+    }
+
+    if (indexOfContains(query, outputs) !== -1) {
+        if (query !== toSolve) {
+            addToDefaultDict(joins, toSolve, getIndicesString(toSolve, query, start));
+        }
+        gather(inputs, [], query, 0, query.length, splits, joins); // Gather without outputs
+        inputs.push(query); // Add the matched output as a new input for further matching
+        return;
+    }
+    gather(inputs, outputs, toSolve, start, toSolve.substring(0, end).lastIndexOf(',') + 1, splits, joins);
+}
+
+
+
+export class FlatModule {
+    public moduleName: string;
+    public nodes: Cell[];
+    public wires: Wire[];
+
+    constructor(netlist: Yosys.Netlist) {
+        this.moduleName = Object.keys(netlist.modules).find(name =>
+            netlist.modules[name].attributes?.top === 1
+        ) || Object.keys(netlist.modules)[0]; // Find top module or default
+
+        const top = netlist.modules[this.moduleName];
+        this.nodes = [
+            ...Object.entries(top.ports).map(([key, portData]) => Cell.fromPort(portData, key)),
+            ...Object.entries(top.cells).map(([key, cellData]) => Cell.fromYosysCell(cellData, key)),
+        ];
+        this.wires = []; // Populated by createWires
+    }
+
+    public addConstants(): void {
+        let maxNum = this.nodes.reduce((acc, v) => v.maxOutVal(acc), -1);
+        const signalsByConstantName: SigsByConstName = {};
+        const newCells: Cell[] = [];
+        this.nodes.forEach(node => {
+            maxNum = node.findConstants(signalsByConstantName, maxNum, newCells);
+        });
+        this.nodes.push(...newCells);
+    }
+
+    public addSplitsJoins(): void {
+        const allInputs = this.nodes.flatMap(node => node.inputPortVals());
+        const allOutputs = this.nodes.flatMap(node => node.outputPortVals());
+
+        const splits: SplitJoin = {};
+        const joins: SplitJoin = {};
+
+        const allInputsCopy = allInputs.slice();
+        for (const input of allInputs) {
+            gather(allOutputs, allInputsCopy, input, 0, input.length, splits, joins);
+        }
+
+        const joinCells = Object.entries(joins).map(([joinInputs, [joinOutput]]) =>
+            Cell.fromJoinInfo(joinInputs, joinOutput)
+        );
+        const splitCells = Object.entries(splits).map(([splitInput, splitOutputs]) =>
+            Cell.fromSplitInfo(splitInput, splitOutputs)
+        );
+
+        this.nodes.push(...joinCells, ...splitCells);
+    }
+
+    public createWires() {
+        const layoutProps = Skin.getProperties();
+        const ridersByNet: NameToPorts = {};
+        const driversByNet: NameToPorts = {};
+        const lateralsByNet: NameToPorts = {};
+
+        this.nodes.forEach(node =>
+            node.collectPortsByDirection( // Corrected call
+                ridersByNet,
+                driversByNet,
+                lateralsByNet,
+                layoutProps.genericsLaterals as boolean
+            )
+        );
+
+        const allKeys = [...Object.keys(ridersByNet), ...Object.keys(driversByNet), ...Object.keys(lateralsByNet)];
+        const nets = [...new Set(allKeys)]; // Use Set for unique nets
+
+        this.wires = nets.map(net => {
+            const drivers: FlatPort[] = driversByNet[net] || [];
+            const riders: FlatPort[] = ridersByNet[net] || [];
+            const laterals: FlatPort[] = lateralsByNet[net] || [];
+            const wire: Wire = { netName: net, drivers, riders, laterals };
+            [...drivers, ...riders, ...laterals].forEach(port => port.wire = wire);
+            return wire;
+        });
+    }
+}
+
+--------------------------------------------------
+File End
+--------------------------------------------------
+
+
+/mnt/dataset/dev/netlistsvg/lib/Cell.ts
+File type: .ts
+import { SigsByConstName, NameToPorts, addToDefaultDict } from './FlatModule';
+import Yosys from './YosysModel';
+import Skin from './Skin';
+import {Port} from './Port';
+import { ElkModel } from './elkGraph';
+import clone = require('clone');
+import onml = require('onml');
+
+export default class Cell {
+    /**
+     * creates a Cell from a Yosys Port
+     * @param yPort the Yosys Port with our port data
+     * @param name the name of the port
+     */
+    public static fromPort(yPort: Yosys.ExtPort, name: string): Cell {
+        const isInput: boolean = yPort.direction === Yosys.Direction.Input;
+        if (isInput) {
+            return new Cell(name, '$_inputExt_', [], [new Port('Y', yPort.bits)], {});
+        }
+        return new Cell(name, '$_outputExt_', [new Port('A', yPort.bits)], [], {});
+    }
+
+    public static fromYosysCell(yCell: Yosys.Cell, name: string) {
+        this.setAlternateCellType(yCell);
+        const template = Skin.findSkinType(yCell.type);
+        const templateInputPids = Skin.getInputPids(template);
+        const templateOutputPids = Skin.getOutputPids(template);
+        const ports: Port[] = Object.entries(yCell.connections).map(([portName, conn]) => 
+            new Port(portName, conn)
+        );        
+        let inputPorts = ports.filter((port) => port.keyIn(templateInputPids));
+        let outputPorts = ports.filter((port) => port.keyIn(templateOutputPids));
+        if (inputPorts.length + outputPorts.length !== ports.length) {
+            const inputPids: string[] = Yosys.getInputPortPids(yCell);
+            const outputPids: string[] = Yosys.getOutputPortPids(yCell);
+            inputPorts = ports.filter((port) => port.keyIn(inputPids));
+            outputPorts = ports.filter((port) => port.keyIn(outputPids));
+        }
+        return new Cell(name, yCell.type, inputPorts, outputPorts, yCell.attributes || {});
+    }
+
+    public static fromConstantInfo(name: string, constants: number[]): Cell {
+        return new Cell(name, '$_constant_', [], [new Port('Y', constants)], {});
+    }
+
+    /**
+     * creates a join cell
+     * @param target string name of net (starts and ends with and delimited by commas)
+     * @param sources list of index strings (one number, or two numbers separated by a colon)
+     */
+    public static fromJoinInfo(target: string, sources: string[]): Cell {
+        const signalStrs: string[] = target.slice(1, -1).split(',');
+        const signals: number[] = signalStrs.map((ss) =>  Number(ss));
+        const joinOutPorts: Port[] = [new Port('Y', signals)];
+        const inPorts: Port[] = sources.map((name) => {
+            return new Port(name, getBits(signals, name));
+        });
+        return new Cell('$join$' + target, '$_join_', inPorts, joinOutPorts, {});
+    }
+
+    /**
+     * creates a split cell
+     * @param source string name of net (starts and ends with and delimited by commas)
+     * @param targets list of index strings (one number, or two numbers separated by a colon)
+     */
+    public static fromSplitInfo(source: string, targets: string[]): Cell {
+        // turn string into array of signal names
+        const sigStrs: string[] = source.slice(1, -1).split(',');
+        // convert the signals into actual numbers
+        // after running constant pass, all signals should be numbers
+        const signals: Yosys.Signals = sigStrs.map((s) => Number(s));
+        const inPorts: Port[] = [new Port('A', signals)];
+        const splitOutPorts: Port[] = targets.map((name) => {
+            const sigs: Yosys.Signals = getBits(signals, name);
+            return new Port(name, sigs);
+        });
+        return new Cell('$split$' + source, '$_split_', inPorts, splitOutPorts, {});
+    }
+
+    // Set cells to alternate types/tags based on their parameters
+    private static setAlternateCellType(yCell: Yosys.Cell) {
+        if ('parameters' in yCell) {
+            // if it has a WIDTH parameter greater than one
+            // and doesn't have an address parameter (not a memory cell)
+            if (yCell.parameters && 'WIDTH' in yCell.parameters &&
+                yCell.parameters.WIDTH > 1 &&
+                !('ADDR' in yCell.parameters)) {
+                // turn into a bus version
+                yCell.type = yCell.type + '-bus';
+            }
+        }
+    }
+
+    protected key: string;
+    protected type: string;
+    protected inputPorts: Port[];
+    protected outputPorts: Port[];
+    protected attributes: Yosys.CellAttributes;
+
+    constructor(key: string,
+                type: string,
+                inputPorts: Port[],
+                outputPorts: Port[],
+                attributes: Yosys.CellAttributes) {
+        this.key = key;
+        this.type = type;
+        this.inputPorts = inputPorts;
+        this.outputPorts = outputPorts;
+        this.attributes = attributes || {};
+        inputPorts.forEach((ip) => {
+            ip.parentNode = this;
+        });
+        outputPorts.forEach((op) => {
+            op.parentNode = this;
+        });
+    }
+
+    public get Type(): string {
+        return this.type;
+    }
+
+    public get Key(): string {
+        return this.key;
+    }
+
+    public get InputPorts(): Port[] {
+        return this.inputPorts;
+    }
+
+    public get OutputPorts(): Port[] {
+        return this.outputPorts;
+    }
+
+    public maxOutVal(atLeast: number): number {
+        const maxVal: number = Math.max(...this.outputPorts.map((op) => op.maxVal()), 0);
+        return Math.max(maxVal, atLeast);
+    }
+
+    public findConstants(sigsByConstantName: SigsByConstName,
+                         maxNum: number,
+                         constantCollector: Cell[]): number {
+        this.inputPorts.forEach((ip) => {
+            maxNum = ip.findConstants(sigsByConstantName, maxNum, constantCollector);
+        });
+        return maxNum;
+    }
+
+    public inputPortVals(): string[] {
+        return this.inputPorts.map((port) => port.valString());
+    }
+
+    public outputPortVals(): string[] {
+        return this.outputPorts.map((port) => port.valString());
+    }
+
+    public collectPortsByDirection(ridersByNet: NameToPorts,
+                                   driversByNet: NameToPorts,
+                                   lateralsByNet: NameToPorts,
+                                   genericsLaterals: boolean): void {
+        const template = Skin.findSkinType(this.type);
+        const lateralPids = Skin.getLateralPortPids(template);
+        // find all ports connected to the same net
+        this.inputPorts.forEach((port) => {
+            const isLateral = port.keyIn(lateralPids);
+            if (isLateral || (template[1]['s:type'] === 'generic' && genericsLaterals)) {
+                addToDefaultDict(lateralsByNet, port.valString(), port);
+            } else {
+                addToDefaultDict(ridersByNet, port.valString(), port);
+            }
+        });
+        this.outputPorts.forEach((port) => {
+            const isLateral = port.keyIn(lateralPids);
+            if (isLateral || (template[1]['s:type'] === 'generic' && genericsLaterals)) {
+                addToDefaultDict(lateralsByNet, port.valString(), port);
+            } else {
+                addToDefaultDict(driversByNet, port.valString(), port);
+            }
+        });
+    }
+
+    public getValueAttribute(): string {
+        if (this.attributes && this.attributes.value) {
+            return this.attributes.value;
+        }
+        return '';
+    }
+
+    public getTemplate(): any {
+        return Skin.findSkinType(this.type);
+    }
+
+    public buildElkChild(): ElkModel.Cell {
+        const template = this.getTemplate();
+        const type: string = template[1]['s:type'];
+        const layoutAttrs = { 'org.eclipse.elk.portConstraints': 'FIXED_POS' };
+        let fixedPosX = null;
+        let fixedPosY = null;
+        for (const attr in this.attributes) {
+            if (attr.startsWith('org.eclipse.elk')) {
+                if (attr === 'org.eclipse.elk.x') {
+                    fixedPosX = this.attributes[attr];
+                    continue;
+                }
+                if (attr === 'org.eclipse.elk.y') {
+                    fixedPosY = this.attributes[attr];
+                    continue;
+                }
+                layoutAttrs[attr] = this.attributes[attr];
+            }
+        }
+        if (type === 'join' ||
+            type === 'split' ||
+            type === 'generic') {
+            const inTemplates: any[] = Skin.getPortsWithPrefix(template, 'in');
+            const outTemplates: any[] = Skin.getPortsWithPrefix(template, 'out');
+            const inPorts = this.inputPorts.map((ip, i) =>
+                ip.getGenericElkPort(i, inTemplates, 'in'));
+            const outPorts = this.outputPorts.map((op, i) =>
+                op.getGenericElkPort(i, outTemplates, 'out'));
+            const cell: ElkModel.Cell = {
+                id: this.key,
+                width: Number(template[1]['s:width']),
+                height: Number(this.getGenericHeight()),
+                ports: inPorts.concat(outPorts),
+                layoutOptions: layoutAttrs,
+                labels: [],
+            };
+            if (fixedPosX) {
+                cell.x = fixedPosX;
+            }
+            if (fixedPosY) {
+                cell.y = fixedPosY;
+            }
+            this.addLabels(template, cell);
+            return cell;
+        }
+        const ports: ElkModel.Port[] = Skin.getPortsWithPrefix(template, '').map((tp) => {
+            return {
+                id: this.key + '.' + tp[1]['s:pid'],
+                width: 0,
+                height: 0,
+                x: Number(tp[1]['s:x']),
+                y: Number(tp[1]['s:y']),
+            };
+        });
+        const nodeWidth: number = Number(template[1]['s:width']);
+        const ret: ElkModel.Cell = {
+            id: this.key,
+            width: nodeWidth,
+            height: Number(template[1]['s:height']),
+            ports,
+            layoutOptions: layoutAttrs,
+            labels: [],
+        };
+        if (fixedPosX) {
+            ret.x = fixedPosX;
+        }
+        if (fixedPosY) {
+            ret.y = fixedPosY;
+        }
+        this.addLabels(template, ret);
+        return ret;
+    }
+
+    public render(cell: ElkModel.Cell): onml.Element {
+        const template = this.getTemplate();
+        const tempclone = clone(template);
+        for (const label of cell.labels) {
+            const labelIDSplit = label.id.split('.');
+            const attrName = labelIDSplit[labelIDSplit.length - 1];
+            setTextAttribute(tempclone, attrName, label.text);
+        }
+        for (let i = 2; i < tempclone.length; i++) {
+            const node = tempclone[i];
+            if (node[0] === 'text' && node[1]['s:attribute']) {
+                const attrib = node[1]['s:attribute'];
+                if (!(attrib in this.attributes)) {
+                    node[2] = '';
+                }
+            }
+        }
+        tempclone[1].id = 'cell_' + this.key;
+        tempclone[1].transform = 'translate(' + cell.x + ',' + cell.y + ')';
+        if (this.type === '$_split_') {
+            setGenericSize(tempclone, Number(this.getGenericHeight()));
+            const outPorts = Skin.getPortsWithPrefix(template, 'out');
+            const gap: number = Number(outPorts[1][1]['s:y']) - Number(outPorts[0][1]['s:y']);
+            const startY: number = Number(outPorts[0][1]['s:y']);
+            tempclone.pop();
+            tempclone.pop();
+            this.outputPorts.forEach((op, i) => {
+                const portClone = clone(outPorts[0]);
+                portClone[portClone.length - 1][2] = op.Key;
+                portClone[1].transform = 'translate(' + outPorts[1][1]['s:x'] + ','
+                    + (startY + i * gap) + ')';
+                tempclone.push(portClone);
+            });
+        } else if (this.type === '$_join_') {
+            setGenericSize(tempclone, Number(this.getGenericHeight()));
+            const inPorts = Skin.getPortsWithPrefix(template, 'in');
+            const gap: number = Number(inPorts[1][1]['s:y']) - Number(inPorts[0][1]['s:y']);
+            const startY: number = Number(inPorts[0][1]['s:y']);
+            tempclone.pop();
+            tempclone.pop();
+            this.inputPorts.forEach((port, i) => {
+                const portClone = clone(inPorts[0]);
+                portClone[portClone.length - 1][2] = port.Key;
+                portClone[1].transform = 'translate(' + inPorts[1][1]['s:x'] + ','
+                    + (startY + i * gap) + ')';
+                tempclone.push(portClone);
+            });
+        } else if (template[1]['s:type'] === 'generic') {
+            setGenericSize(tempclone, Number(this.getGenericHeight()));
+            const inPorts = Skin.getPortsWithPrefix(template, 'in');
+            const ingap = Number(inPorts[1][1]['s:y']) - Number(inPorts[0][1]['s:y']);
+            const instartY = Number(inPorts[0][1]['s:y']);
+            const outPorts = Skin.getPortsWithPrefix(template, 'out');
+            const outgap = Number(outPorts[1][1]['s:y']) - Number(outPorts[0][1]['s:y']);
+            const outstartY = Number(outPorts[0][1]['s:y']);
+            tempclone.pop();
+            tempclone.pop();
+            tempclone.pop();
+            tempclone.pop();
+            this.inputPorts.forEach((port, i) => {
+                const portClone = clone(inPorts[0]);
+                portClone[portClone.length - 1][2] = port.Key;
+                portClone[1].transform = 'translate(' + inPorts[1][1]['s:x'] + ','
+                    + (instartY + i * ingap) + ')';
+                portClone[1].id = 'port_' + port.parentNode.Key + '~' + port.Key;
+                tempclone.push(portClone);
+            });
+            this.outputPorts.forEach((port, i) => {
+                const portClone = clone(outPorts[0]);
+                portClone[portClone.length - 1][2] = port.Key;
+                portClone[1].transform = 'translate(' + outPorts[1][1]['s:x'] + ','
+                    + (outstartY + i * outgap) + ')';
+                portClone[1].id = 'port_' + port.parentNode.Key + '~' + port.Key;
+                tempclone.push(portClone);
+            });
+            // first child of generic must be a text node.
+            tempclone[2][2] = this.type;
+        }
+        setClass(tempclone, '$cell_id', 'cell_' + this.key);
+        return tempclone;
+    }
+
+    private addLabels(template, cell: ElkModel.Cell) {
+        onml.traverse(template, {
+            enter: (node) => {
+                if (node.name === 'text' && node.attr['s:attribute']) {
+                    const attrName = node.attr['s:attribute'];
+                    let newString;
+                    if (attrName === 'ref' || attrName === 'id') {
+                        if (this.type === '$_constant_' && this.key.length > 3) {
+                            const num: number = parseInt(this.key, 2);
+                            newString = '0x' + num.toString(16);
+                        } else {
+                            newString = this.key;
+                        }
+                        this.attributes[attrName] = this.key;
+                    } else if (attrName in this.attributes) {
+                        newString = this.attributes[attrName];
+                    } else {
+                        return;
+                    }
+                    cell.labels.push({
+                        id: this.key + '.label.' + attrName,
+                        text: newString,
+                        x: node.attr.x,
+                        y: node.attr.y - 6,
+                        height: 11,
+                        width: (6 * newString.length),
+                    });
+                }
+            },
+        });
+    }
+
+    private getGenericHeight() {
+        const template = this.getTemplate();
+        const inPorts = Skin.getPortsWithPrefix(template, 'in');
+        const outPorts = Skin.getPortsWithPrefix(template, 'out');
+        if (this.inputPorts.length > this.outputPorts.length) {
+            const gap = Number(inPorts[1][1]['s:y']) - Number(inPorts[0][1]['s:y']);
+            return Number(template[1]['s:height']) + gap * (this.inputPorts.length - 2);
+        }
+        if (outPorts.length > 1) {
+            const gap = Number(outPorts[1][1]['s:y']) - Number(outPorts[0][1]['s:y']);
+            return Number(template[1]['s:height']) + gap * (this.outputPorts.length - 2);
+        }
+        return Number(template[1]['s:height']);
+    }
+
+}
+
+function setGenericSize(tempclone, height) {
+    onml.traverse(tempclone, {
+        enter: (node) => {
+            if (node.name === 'rect' && node.attr['s:generic'] === 'body') {
+                node.attr.height = height;
+            }
+        },
+    });
+}
+
+function setTextAttribute(tempclone, attribute, value) {
+    onml.traverse(tempclone, {
+        enter: (node) => {
+            if (node.name === 'text' && node.attr['s:attribute'] === attribute) {
+                node.full[2] = value;
+            }
+        },
+    });
+}
+
+function setClass(tempclone, searchKey, className) {
+    onml.traverse(tempclone, {
+        enter: (node) => {
+            const currentClass: string = node.attr.class;
+            if (currentClass && currentClass.includes(searchKey)) {
+                node.attr.class = currentClass.replace(searchKey, className);
+            }
+        },
+    });
+}
+
+function getBits(signals: Yosys.Signals, indicesString: string): Yosys.Signals {
+    const index = indicesString.indexOf(':');
+    // is it the whole thing?
+    if (index === -1) {
+        return [signals[Number(indicesString)]];
+    } else {
+        const start = indicesString.slice(0, index);
+        const end = indicesString.slice(index + 1);
+        const slice = signals.slice(Number(start), Number(end) + 1);
+        return slice;
+    }
+}
+
+
+--------------------------------------------------
+File End
+--------------------------------------------------
+
+
+/mnt/dataset/dev/netlistsvg/lib/yosys.schema.json5
+File type: .json5
+{
+  "description": "JSON Schema for Yosys netlists in JSON format",
+  "type": "object",
+  "required": ["modules"],
+  "errorMessage": {
+    "type": "Netlist must be a JSON object",
+    "required": "Netlist must have a 'modules' property"
+  },
+  "properties": {
+    "modules": {
+      "type": "object",
+      "minProperties": 1,
+      "errorMessage": {
+        "type": "'modules' must be an object",
+        "minProperties": "Netlist must have at least one module defined in 'modules'"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "required": ["ports"],
+        "anyOf": [
+            { "required": ["ports"] },
+            { "required": ["cells"] }
+        ],
+        "errorMessage": {
+            "required": "Each module must have 'ports' defined.",
+            "anyOf": "Module must have either 'ports' or 'cells' defined."
+        },
+        "properties": {
+          "ports": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "required": ["direction", "bits"],
+              "errorMessage": {
+                "type": "Each port must be an object",
+                "required": "Each port must have 'direction' and 'bits' properties"
+              },
+              "properties": {
+                "direction": {
+                  "type": "string",
+                  "enum": ["input", "output", "inout"],
+                  "errorMessage": {
+                    "type": "Port 'direction' must be a string",
+                    "enum": "Port 'direction' must be one of: 'input', 'output', 'inout'"
+                  }
+                },
+                "bits": {
+                  "type": "array",
+                  "items": {
+                    "oneOf": [
+                      { "type": "integer", "minimum": 0 },
+                      { "type": "string", "enum": ["0", "1", "x", "z"] }
+                    ],
+                    "errorMessage": {
+                      "oneOf": "Each bit must be a non-negative integer or one of '0', '1', 'x', 'z'"
+                    }
+                  },
+                  "errorMessage": {
+                    "type": "Port 'bits' must be an array"
+                  }
+                }
+              }
+            }
+          },
+          "cells": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "required": ["type", "connections"],
+              "errorMessage": {
+                "type": "Each cell must be an object",
+                "required": "Each cell must have 'type' and 'connections' properties"
+              },
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "errorMessage": {
+                    "type": "Cell 'type' must be a string"
+                  }
+                },
+                "connections": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "array",
+                    "items": {
+                      "oneOf": [
+                        { "type": "integer", "minimum": 0 },
+                        { "type": "string", "enum": ["0", "1", "x", "z"] }
+                      ],
+                      "errorMessage": {
+                        "oneOf": "Each connection bit must be a non-negative integer or one of '0', '1', 'x', 'z'"
+                      }
+                    },
+                    "errorMessage": {
+                      "type": "Cell connections must be arrays",
+                      "items": "Invalid connection bit type"
+                    }
+                  },
+                  "errorMessage": {
+                    "type": "Cell 'connections' must be an object",
+                    "additionalProperties": "Invalid cell connection format"
+                  }
+                },
+                "port_directions": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string",
+                    "enum": ["input", "output", "inout"],
+                    "errorMessage": {
+                        "type": "Port directions must be strings",
+                        "enum": "'port_directions' values must be one of: 'input', 'output', 'inout'"
+                    }
+                  },
+                  "errorMessage": {
+                    "type": "'port_directions' must be an object"
+                  }
+                },
+                "hide_name": {
+                  "type": "integer",
+                  "enum": [0, 1],
+                  "errorMessage": {
+                    "type": "'hide_name' must be an integer",
+                    "enum": "'hide_name' must be 0 or 1"
+                  }
+                },
+                "parameters": {
+                  "type": "object",
+                    "errorMessage": {
+                      "type": "'parameters' must be a object"
+                    }
+                },
+                "attributes": {
+                  "type": "object",
+                  "errorMessage": {
+                    "type": "'attributes' must be an object"
+                  }
+                }
+              },
+               "additionalProperties": false
+            }
+          },
+          "netnames": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "required": ["bits"],
+              "properties": {
+                "bits": {
+                  "type": "array",
+                  "items": {
+                    "oneOf": [
+                      { "type": "integer", "minimum": 0 },
+                      { "type": "string", "enum": ["0", "1", "x", "z"] }
+                    ]
+                  }
+                },
+                "hide_name": {
+                  "type": "integer",
+                  "enum": [0, 1]
+                },
+                "attributes": {
+                  "type": "object"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "attributes": {
+            "type": "object",
+             "properties": {
+                "top": {
+                  "type": ["integer", "string"],
+                  "oneOf": [
+                    { "type": "integer", "enum": [0, 1]},
+                    { "type": "string", "enum": ["00000000000000000000000000000000", "00000000000000000000000000000001"]}
+                  ],
+                  "errorMessage":{
+                    "oneOf": "Top values must be either 0 or 1, or \"0000000000000000000000000000000{0,1}\""
+                  }
+
+                }
+              },
+              "additionalProperties": false
+          }
+        },
+        "additionalProperties": false,
+      }
+    }
+  },
+  "additionalProperties": false
+}
+
+--------------------------------------------------
+File End
+--------------------------------------------------
+
+
+/mnt/dataset/dev/netlistsvg/lib/Port.ts
+File type: .ts
+import Cell from './Cell';
+import { SigsByConstName } from './FlatModule';
+import Yosys from './YosysModel';
+import { ElkModel } from './elkGraph';
+
+export class Port {
+    public parentNode?: Cell;
+    private key: string;
+    private value: number[] | Yosys.Signals;
+
+    constructor(key: string, value: number[] | Yosys.Signals) {
+        this.key = key;
+        this.value = value;
+    }
+
+    public get Key() {
+        return this.key;
+    }
+
+    public keyIn(pids: string[]): boolean {
+        return pids.includes(this.key);
+    }
+
+    public maxVal(): number {
+        return Math.max(...this.value.map(Number)); // Simplified Number conversion
+    }
+
+    public valString(): string {
+        return ',' + this.value.join() + ',';
+    }
+
+    public findConstants(sigsByConstantName: SigsByConstName,
+                         maxNum: number,
+                         constantCollector: Cell[]): number {
+        let constName = '';
+        let constNums: number[] = [];
+
+        for (let i = 0; i < this.value.length; i++) {
+            const portSig = this.value[i];
+
+            if (portSig === '0' || portSig === '1') {
+                maxNum += 1;
+                constName += portSig;
+                this.value[i] = maxNum;
+                constNums.push(maxNum);
+            } else if (constName.length > 0) {
+                this.assignConstant(constName, constNums, sigsByConstantName, constantCollector);
+                constName = '';
+                constNums = [];
+            }
+        }
+
+        if (constName.length > 0) {
+            this.assignConstant(constName, constNums, sigsByConstantName, constantCollector);
+        }
+
+        return maxNum;
+    }
+
+    public getGenericElkPort(
+        index: number,
+        templatePorts: any[],
+        dir: string,
+    ): ElkModel.Port {
+        const { Key: nkey, getTemplate } = this.parentNode; // Destructure for brevity
+        const type = getTemplate()[1]['s:type'];
+
+        const x = Number(templatePorts[0][1]['s:x']);
+        const y = Number(templatePorts[0][1]['s:y']);
+        const ret: ElkModel.Port = {
+            id: `${nkey}.${this.key}`,
+            width: 1,
+            height: 1,
+            x,
+            y: index === 0 ? y : index * (Number(templatePorts[1][1]['s:y']) - y) + y,
+        };
+
+        const addLabel = (type === 'generic' || type === 'join') && dir === 'in' ||
+                         (type === 'generic' || type === 'split') && dir === 'out' ||
+                         type === 'generic';
+        
+        if (addLabel) {
+            ret.labels = [{
+                id: `${nkey}.${this.key}.label`,
+                text: this.key,
+                x: Number(templatePorts[0][2][1].x) - 10,
+                y: Number(templatePorts[0][2][1].y) - 6,
+                width: 6 * this.key.length,
+                height: 11,
+            }];
+        }
+
+        return ret;
+    }
+
+    private assignConstant(name: string,
+                           constants: number[],
+                           signalsByConstantName: SigsByConstName,
+                           constantCollector: Cell[]) {
+        const reversedName = name.split('').reverse().join('');
+
+        if (signalsByConstantName[reversedName]) {
+            // Directly use the reversed name as the key
+            const constSigs = signalsByConstantName[reversedName];
+            for (let i = 0; i < constSigs.length; i++) {
+                // Find index of first constant
+                const firstConstIndex = this.value.indexOf(constants[0]);
+                // Replace the constants with their corresponding signals
+                if(firstConstIndex >= 0){
+                    this.value[firstConstIndex + i] = constSigs[i];
+                }
+                
+            }
+        } else {
+            constantCollector.push(Cell.fromConstantInfo(reversedName, constants));
+            signalsByConstantName[reversedName] = constants;
+        }
+    }
+}
+
+--------------------------------------------------
+File End
+--------------------------------------------------
+
+
+/mnt/dataset/dev/netlistsvg/lib/@types/onml/index.d.ts
+File type: .ts
+declare module 'onml' {
+
+    export interface Attributes {
+        [attrName: string]: string | number | boolean; // More accurate attribute types
+    }
+
+    // Define the 'enter' and 'leave' callback types
+    export interface TraverseCallbacks {
+        enter?: (node: Element, parent?: Element) => void | boolean;
+        leave?: (node: Element, parent?: Element) => void;
+        text?: (text: string, parent?: Element) => void; // Add the 'text' callback
+    }
+     // Define a common interface for element and node.
+     export interface Node {
+        name: string;
+        attr: Attributes;
+        full: Element; // Use Element type here.
+    }
+
+    // Use a recursive type alias for Element
+    export type Element = [string, Attributes?, ...(string | Element)[]];
+    // Equivalent to:
+    // export type Element = [string, (Attributes | string | Element)?, ...(string | Element)[]];
+
+    export function parse(source: string): Element; // Changed parameter name to 'source'
+    export function p(source: string): Element;      // Changed parameter name to 'source'
+    export function stringify(data: Element): string; // Changed parameter name to 'data'
+    export function s(data: Element): string;        // Changed parameter name to 'data'
+    export function traverse(data: Element, callbacks: TraverseCallbacks): void; // Use the interface
+    // Deprecated in favor of traverse
+    // export function t(data: Element, callbacks: TraverseCallbacks): void;
+}
+
+--------------------------------------------------
+File End
+--------------------------------------------------
+
+
+/mnt/dataset/dev/netlistsvg/lib/@types/elkjs/index.d.ts
+File type: .ts
+declare module 'elkjs/lib/elk.bundled' { // Correct module path
+    export interface ElkLayoutOptions {
+      [key: string]: any; // More idiomatic index signature
+    }
+  
+    export interface ElkShape {
+      id: string;
+      x?: number;
+      y?: number;
+      width?: number;
+      height?: number;
+      layoutOptions?: ElkLayoutOptions;
+    }
+
+    export interface ElkLabel extends ElkShape {
+      text: string;
+    }
+  
+    export interface ElkPort extends ElkShape {
+      labels?: ElkLabel[];
+    }
+  
+    export interface ElkNode extends ElkShape {
+      children?: ElkNode[];
+      ports?: ElkPort[];
+      edges?: ElkExtendedEdge[];
+      labels?: ElkLabel[];
+    }
+  
+    export interface ElkEdge extends ElkShape {
+      sources: string[];
+      targets: string[];
+      labels?: ElkLabel[];
+      junctionPoints?: ElkPoint[];
+    }
+  
+      // Bend points are relative to the section they are in.
+    export interface ElkPoint {
+      x: number;
+      y: number;
+    }
+    export interface ElkEdgeSection {
+      startPoint: ElkPoint;
+      endPoint: ElkPoint;
+      bendPoints?: ElkPoint[];
+    }
+    export interface ElkExtendedEdge extends ElkEdge {
+      junctionPoints?: ElkPoint[]; // For consistency
+      sections?: ElkEdgeSection[];
+    }
+  
+    export interface ElkRoot extends ElkNode {
+      edges?: ElkExtendedEdge[]; // Top-level edges
+    }
+
+    export interface ElkLayoutArguments {
+      layoutOptions?: ElkLayoutOptions;
+    }
+  
+    export default class ELK {  // Use 'export default' for the class
+      constructor(options?: any); // Allow constructor options
+      public layout(graph: ElkRoot, options?: ElkLayoutArguments): Promise<ElkRoot>;
+    }
+  }
+
+--------------------------------------------------
+File End
+--------------------------------------------------

@@ -5,123 +5,113 @@ export namespace Skin {
 
     export let skin: onml.Element = null;
 
-    export function getPortsWithPrefix(template: any[], prefix: string) {
-        const ports = template.filter((e) => {
-            try {
-                // Check if 'e' is an array and its first element is 'g'
-                return Array.isArray(e) && e[0] === 'g' && e[1] &&
-                       typeof e[1]['s:pid'] === 'string' && e[1]['s:pid'].startsWith(prefix);
-            } catch (exception) {
-                // Do nothing if the SVG group doesn't have a pin id.
-                return false; // Ensure a boolean is returned in the catch block
-            }
-        });
-        return ports;
+    // Utility function to extract attributes safely
+    function getAttributes(element: any[]): { [key: string]: string } {
+        return (Array.isArray(element) && element[0] === 'g' && element[1]) ? element[1] : {};
     }
 
-    function filterPortPids(template: any[], filter: (attrs: any) => boolean): string[] {
-        const ports = template.filter((element: any[]) => {
-            if (Array.isArray(element) && element[0] === 'g') {
-                const attrs: any = element[1];
-                return filter(attrs);
-            }
-            return false;
-        });
-        return ports.map((port) => {
-            return port[1]['s:pid'];
-        });
+    // Generic function to filter ports based on a predicate
+    function filterPortPids(template: any[], predicate: (attrs: { [key: string]: string }) => boolean): string[] {
+        return template
+            .filter(element => {
+                const attrs = getAttributes(element);
+                return attrs['s:pid'] !== undefined && predicate(attrs);
+            })
+            .map(element => element[1]['s:pid']);
     }
 
-    // Simplified getInputPids, getOutputPids, getLateralPortPids
+    export function getPortsWithPrefix(template: any[], prefix: string): any[] {
+      return template.filter(element => {
+          const attrs = getAttributes(element);
+          return typeof attrs['s:pid'] === 'string' && attrs['s:pid'].startsWith(prefix);
+      });
+    }
+
     export function getInputPids(template: any[]): string[] {
-        return filterPortPids(template, (attrs) => attrs['s:dir'] === 'in'  || attrs['s:position'] === 'top');
+        return filterPortPids(template, attrs => attrs['s:dir'] === 'in' || attrs['s:position'] === 'top');
     }
 
     export function getOutputPids(template: any[]): string[] {
-        return filterPortPids(template, (attrs) => attrs['s:dir'] === 'out' || attrs['s:position'] === 'bottom');
+        return filterPortPids(template, attrs => attrs['s:dir'] === 'out' || attrs['s:position'] === 'bottom');
     }
 
     export function getLateralPortPids(template: any[]): string[] {
-      return filterPortPids(template, (attrs) => {
-            if (attrs['s:dir']) {
-                return attrs['s:dir'] === 'lateral';
-            }
-            // Placeholder: Keep position check IF s:dir is missing.
-            if (attrs['s:position']) {
-              return attrs['s:position'] === 'left' || attrs['s:position'] === 'right';
-            }
-            return false;
-        });
+        return filterPortPids(template, attrs =>
+            attrs['s:dir'] === 'lateral' || (attrs['s:position'] === 'left' || attrs['s:position'] === 'right')
+        );
     }
 
+    // Find a skin type, prioritizing aliases and falling back to generic
+    export function findSkinType(type: string): onml.Element | null {
+        let foundNode: onml.Element | null = null;
 
-    export function findSkinType(type: string) {
-        let ret = null;
         onml.traverse(skin, {
             enter: (node, parent) => {
                 if (node.name === 's:alias' && node.attr.val === type) {
-                    ret = parent;
+                    foundNode = parent;
+                    return true; // Stop traversal
                 }
             },
         });
-        if (ret == null) {
+
+        if (!foundNode) {
             onml.traverse(skin, {
                 enter: (node) => {
                     if (node.attr['s:type'] === 'generic') {
-                        ret = node;
+                        foundNode = node;
+                        return true; // Stop traversal
                     }
                 },
             });
         }
-        return ret ? ret.full : null; // Handle case where ret is null
+        return foundNode ? foundNode.full : null;
     }
 
+    // Get a list of low-priority aliases
     export function getLowPriorityAliases(): string[] {
-        const ret: string[] = []; // Explicitly type ret as string[]
-        onml.t(skin, {
+      const aliases: string[] = [];
+        onml.traverse(skin, { // Changed from onml.t for consistency and added type
             enter: (node) => {
                 if (node.name === 's:low_priority_alias' && typeof node.attr.value === 'string') {
-                    ret.push(node.attr.value);
+                    aliases.push(node.attr.value);
                 }
             },
         });
-        return ret;
-    }
-    interface SkinProperties {
-        [attr: string]: boolean | string | number | ElkModel.LayoutOptions;
+        return aliases;
     }
 
-    export function getProperties(): SkinProperties {
-      let vals: SkinProperties = {}; // Initialize vals
+    // Extract skin properties, converting string values to appropriate types
+    export function getProperties(): { [attr: string]: boolean | string | number | ElkModel.LayoutOptions } {
+        let properties: { [attr: string]: boolean | string | number | ElkModel.LayoutOptions } = {};
 
-      onml.t(skin, {
-        enter: (node) => {
-          if (node.name === 's:properties') {
-            // Use Object.entries and reduce for a more functional approach
-            vals = Object.entries(node.attr).reduce<SkinProperties>((acc, [key, val]) => {
-                const strVal = String(val); // Ensure val is a string
-                if (!isNaN(Number(strVal))) {
-                    acc[key] = Number(strVal);
-                } else if (strVal === 'true') {
-                    acc[key] = true;
-                } else if (strVal === 'false') {
-                    acc[key] = false;
-                } else {
-                    acc[key] = strVal;
+        onml.traverse(skin, { // Changed from onml.t
+            enter: (node) => {
+                if (node.name === 's:properties') {
+                    for (const [key, val] of Object.entries(node.attr)) {
+                        const strVal = String(val);
+                        if (!isNaN(Number(strVal))) {
+                            properties[key] = Number(strVal);
+                        } else if (strVal === 'true') {
+                            properties[key] = true;
+                        } else if (strVal === 'false') {
+                            properties[key] = false;
+                        } else {
+                            properties[key] = strVal;
+                        }
+                    }
+                } else if (node.name === 's:layoutEngine') {
+                    properties.layoutEngine = node.attr;
                 }
-                return acc;
-            }, {});
-          } else if (node.name === 's:layoutEngine') {
-              vals.layoutEngine = node.attr;
-          }
-        },
-      });
+            },
+        });
 
-      if (!vals.layoutEngine) {
-        vals.layoutEngine = {};
-      }
+        // Ensure layoutEngine exists
+        if (!properties.layoutEngine) {
+            properties.layoutEngine = {};
+        }
 
-      return vals;
+        return properties;
     }
 }
+
 export default Skin;

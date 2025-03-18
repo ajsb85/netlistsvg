@@ -1,38 +1,45 @@
-
 namespace Yosys {
-    enum ConstantVal {
+    // Use string enums for better readability and type safety
+    export enum ConstantVal {
         Zero = '0',
         One = '1',
         X = 'x',
+        Z = 'z', // Added Z for completeness
     }
 
-    export type Signals = (number | ConstantVal)[];
+    // More descriptive type alias
+    export type Signal = number | ConstantVal;
+    export type Signals = Signal[];
 
-    interface ModuleMap {
+    // Use generics for map types
+    export interface ModuleMap {
         [moduleName: string]: Module;
     }
 
+    // Use indexed access types for consistency
     export interface Netlist {
         modules: ModuleMap;
     }
 
-    interface ModuleAttributes {
-        top?: number|string;
-        [attrName: string]: any;
+    // More specific types for attributes
+    export interface ModuleAttributes {
+        top?: 0 | 1 | "00000000000000000000000000000000" | "00000000000000000000000000000001"; // Match schema
+        [attrName: string]: any; // Consider more specific types if possible
     }
 
-    interface NetAttributes {
-        [attrName: string]: any;
+    export interface NetAttributes {
+        [attrName: string]: any;  // Consider more specific types if possible
     }
 
     export interface CellAttributes {
-        value?: string;
-        [attrName: string]: any;
+        value?: string; // value is usually a string.
+        [attrName: string]: any;  // Consider more specific types if possible
     }
 
     export enum Direction {
         Input = 'input',
         Output = 'output',
+        Inout = 'inout', // Added Inout for completeness
     }
 
     export interface ExtPort {
@@ -40,63 +47,48 @@ namespace Yosys {
         bits: Signals;
     }
 
-    interface ExtPortMap {
-        [portName: string]: ExtPort;
-    }
-
-    export interface PortDirMap {
-        [portName: string]: Direction;
-    }
-
-    export interface PortConnectionMap {
-        [portName: string]: Signals;
-    }
+    // Use Record<string, T> for maps where the key is always a string
+    export type ExtPortMap = Record<string, ExtPort>;
+    export type PortDirMap = Record<string, Direction>;
+    export type PortConnectionMap = Record<string, Signals>;
 
     export interface Cell {
         type: string;
-        port_directions: PortDirMap;
+        port_directions?: PortDirMap; // Optional, as per your schema
         connections: PortConnectionMap;
         attributes?: CellAttributes;
         hide_name?: HideName;
-        parameters?: { [key: string]: any };
+        parameters?: Record<string, any>; // More concise than { [key: string]: any }
     }
 
-    export function getInputPortPids(cell: Cell): string[] {
-        if (cell.port_directions) {
-            return Object.keys(cell.port_directions).filter((k) => {
-                return cell.port_directions[k] === Direction.Input;
-            });
-        }
-        return [];
+
+    // Helper functions to get input/output port IDs (made more concise)
+    export const getInputPortPids = (cell: Cell): string[] =>
+        Object.entries(cell.port_directions || {}) // Safe access with || {}
+            .filter(([, direction]) => direction === Direction.Input)
+            .map(([portName]) => portName);
+
+    export const getOutputPortPids = (cell: Cell): string[] =>
+        Object.entries(cell.port_directions || {})
+            .filter(([, direction]) => direction === Direction.Output)
+            .map(([portName]) => portName);
+
+
+    export type CellMap = Record<string, Cell>;
+
+    // Use const enum for efficiency, if these values are only used at compile time
+    export const enum HideName {
+        Hide,  // Defaults to 0
+        NoHide, // Defaults to 1
     }
 
-    export function getOutputPortPids(cell: Cell): string[] {
-        if (cell.port_directions) {
-            return Object.keys(cell.port_directions).filter((k) => {
-                return cell.port_directions[k] === Direction.Output;
-            });
-        }
-        return [];
-    }
-
-    interface CellMap {
-        [cellName: string]: Cell;
-    }
-
-    enum HideName {
-        Hide,
-        NoHide,
-    }
-
-    interface Net {
+    export interface Net {
         bits: Signals;
         hide_name: HideName;
         attributes: NetAttributes;
     }
 
-    interface NetNameMap {
-        [netName: string]: Net;
-    }
+    export type NetNameMap = Record<string, Net>;
 
     export interface Module {
         ports: ExtPortMap;

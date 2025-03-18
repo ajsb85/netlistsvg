@@ -3,14 +3,14 @@ export declare namespace ElkModel {
     interface WireNameLookup {
         [edgeId: string]: string;
     }
-    export let wireNameLookup: WireNameLookup;
-    export let dummyNum: number;
-    export let edgeIndex: number;
-    export interface WirePoint {
+    let wireNameLookup: WireNameLookup;
+    let dummyNum: number;
+    let edgeIndex: number;
+    interface WirePoint {
         x: number;
         y: number;
     }
-    export interface Cell {
+    interface Cell {
         id: string;
         width: number;
         height: number;
@@ -20,14 +20,14 @@ export declare namespace ElkModel {
         x?: number;
         y?: number;
     }
-    export interface Graph {
+    interface Graph {
         id: string;
         children: Cell[];
         edges: (Edge | ExtendedEdge)[];
         width?: number;
         height?: number;
     }
-    export interface Port {
+    interface Port {
         id: string;
         width: number;
         height: number;
@@ -35,35 +35,30 @@ export declare namespace ElkModel {
         y?: number;
         labels?: Label[];
     }
-    export interface Section {
+    interface Section {
         id?: string;
         startPoint: WirePoint;
         endPoint: WirePoint;
         bendPoints?: WirePoint[];
     }
-    export interface Edge {
+    interface Edge {
         id: string;
         labels?: Label[];
-        source: string;
-        sourcePort: string;
-        target: string;
-        targetPort: string;
+        source?: string;
+        sourcePort?: string;
+        target?: string;
+        targetPort?: string;
+        sources?: [string];
+        targets?: [string];
         layoutOptions?: LayoutOptions;
         junctionPoints?: WirePoint[];
         bendPoints?: WirePoint[];
         sections?: Section[];
     }
-    export interface ExtendedEdge {
-        id: string;
-        labels?: Label[];
-        sources: [string];
-        targets: [string];
-        layoutOptions?: LayoutOptions;
-    }
-    export interface LayoutOptions {
+    interface LayoutOptions {
         [option: string]: any;
     }
-    export interface Label {
+    interface Label {
         id: string;
         text: string;
         x: number;
@@ -72,7 +67,6 @@ export declare namespace ElkModel {
         width: number;
         layoutOptions?: LayoutOptions;
     }
-    export {};
 }
 export declare function buildElkGraph(module: FlatModule): ElkModel.Graph;
 //# sourceMappingURL=elkGraph.d.ts.map

@@ -17,92 +17,77 @@ class Port {
         return pids.includes(this.key);
     }
     maxVal() {
-        return Math.max(...this.value.map(v => Number(v)));
+        return Math.max(...this.value.map(Number)); // Simplified Number conversion
     }
     valString() {
         return ',' + this.value.join() + ',';
     }
     findConstants(sigsByConstantName, maxNum, constantCollector) {
-        let constNameCollector = '';
-        let constNumCollector = [];
-        const portSigs = this.value;
-        portSigs.forEach((portSig, portSigIndex) => {
+        let constName = '';
+        let constNums = [];
+        for (let i = 0; i < this.value.length; i++) {
+            const portSig = this.value[i];
             if (portSig === '0' || portSig === '1') {
                 maxNum += 1;
-                constNameCollector += portSig;
-                portSigs[portSigIndex] = maxNum;
-                constNumCollector.push(maxNum);
+                constName += portSig;
+                this.value[i] = maxNum;
+                constNums.push(maxNum);
             }
-            else if (constNumCollector.length > 0) {
-                this.assignConstant(constNameCollector, constNumCollector, portSigIndex, sigsByConstantName, constantCollector);
-                constNameCollector = '';
-                constNumCollector = [];
+            else if (constName.length > 0) {
+                this.assignConstant(constName, constNums, sigsByConstantName, constantCollector);
+                constName = '';
+                constNums = [];
             }
-        });
-        if (constNumCollector.length > 0) {
-            this.assignConstant(constNameCollector, constNumCollector, portSigs.length, sigsByConstantName, constantCollector);
+        }
+        if (constName.length > 0) {
+            this.assignConstant(constName, constNums, sigsByConstantName, constantCollector);
         }
         return maxNum;
     }
     getGenericElkPort(index, templatePorts, dir) {
-        const nkey = this.parentNode.Key;
-        const type = this.parentNode.getTemplate()[1]['s:type'];
-        if (index === 0) {
-            const ret = {
-                id: `${nkey}.${this.key}`,
-                width: 1,
-                height: 1,
-                x: Number(templatePorts[0][1]['s:x']),
-                y: Number(templatePorts[0][1]['s:y']),
-            };
-            if ((type === 'generic' || type === 'join') && dir === 'in' ||
-                (type === 'generic' || type === 'split') && dir === 'out') {
-                ret.labels = [{
-                        id: `${nkey}.${this.key}.label`,
-                        text: this.key,
-                        x: Number(templatePorts[0][2][1].x) - 10,
-                        y: Number(templatePorts[0][2][1].y) - 6,
-                        width: 6 * this.key.length,
-                        height: 11,
-                    }];
-            }
-            return ret;
+        const { Key: nkey, getTemplate } = this.parentNode; // Destructure for brevity
+        const type = getTemplate()[1]['s:type'];
+        const x = Number(templatePorts[0][1]['s:x']);
+        const y = Number(templatePorts[0][1]['s:y']);
+        const ret = {
+            id: `${nkey}.${this.key}`,
+            width: 1,
+            height: 1,
+            x,
+            y: index === 0 ? y : index * (Number(templatePorts[1][1]['s:y']) - y) + y,
+        };
+        const addLabel = (type === 'generic' || type === 'join') && dir === 'in' ||
+            (type === 'generic' || type === 'split') && dir === 'out' ||
+            type === 'generic';
+        if (addLabel) {
+            ret.labels = [{
+                    id: `${nkey}.${this.key}.label`,
+                    text: this.key,
+                    x: Number(templatePorts[0][2][1].x) - 10,
+                    y: Number(templatePorts[0][2][1].y) - 6,
+                    width: 6 * this.key.length,
+                    height: 11,
+                }];
         }
-        else {
-            const gap = Number(templatePorts[1][1]['s:y']) - Number(templatePorts[0][1]['s:y']);
-            const ret = {
-                id: `${nkey}.${this.key}`,
-                width: 1,
-                height: 1,
-                x: Number(templatePorts[0][1]['s:x']),
-                y: index * gap + Number(templatePorts[0][1]['s:y']),
-            };
-            if (type === 'generic') {
-                ret.labels = [{
-                        id: `${nkey}.${this.key}.label`,
-                        text: this.key,
-                        x: Number(templatePorts[0][2][1].x) - 10,
-                        y: Number(templatePorts[0][2][1].y) - 6,
-                        width: 6 * this.key.length,
-                        height: 11,
-                    }];
-            }
-            return ret;
-        }
+        return ret;
     }
-    assignConstant(nameCollector, constants, currIndex, signalsByConstantName, constantCollector) {
-        const constName = nameCollector.split('').reverse().join('');
-        if (signalsByConstantName.hasOwnProperty(constName)) {
-            const constSigs = signalsByConstantName[constName];
-            const constLength = constSigs.length;
-            constSigs.forEach((constSig, constIndex) => {
-                const i = currIndex - constLength + constIndex;
-                this.value[i] = constSig;
-            });
+    assignConstant(name, constants, signalsByConstantName, constantCollector) {
+        const reversedName = name.split('').reverse().join('');
+        if (signalsByConstantName[reversedName]) {
+            // Directly use the reversed name as the key
+            const constSigs = signalsByConstantName[reversedName];
+            for (let i = 0; i < constSigs.length; i++) {
+                // Find index of first constant
+                const firstConstIndex = this.value.indexOf(constants[0]);
+                // Replace the constants with their corresponding signals
+                if (firstConstIndex >= 0) {
+                    this.value[firstConstIndex + i] = constSigs[i];
+                }
+            }
         }
         else {
-            constantCollector.push(Cell_1.default.fromConstantInfo(constName, constants));
-            signalsByConstantName[constName] = constants;
+            constantCollector.push(Cell_1.default.fromConstantInfo(reversedName, constants));
+            signalsByConstantName[reversedName] = constants;
         }
     }
 }

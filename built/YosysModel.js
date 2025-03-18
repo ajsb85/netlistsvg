@@ -2,40 +2,27 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 var Yosys;
 (function (Yosys) {
+    // Use string enums for better readability and type safety
     let ConstantVal;
     (function (ConstantVal) {
         ConstantVal["Zero"] = "0";
         ConstantVal["One"] = "1";
         ConstantVal["X"] = "x";
-    })(ConstantVal || (ConstantVal = {}));
+        ConstantVal["Z"] = "z";
+    })(ConstantVal = Yosys.ConstantVal || (Yosys.ConstantVal = {}));
     let Direction;
     (function (Direction) {
         Direction["Input"] = "input";
         Direction["Output"] = "output";
+        Direction["Inout"] = "inout";
     })(Direction = Yosys.Direction || (Yosys.Direction = {}));
-    function getInputPortPids(cell) {
-        if (cell.port_directions) {
-            return Object.keys(cell.port_directions).filter((k) => {
-                return cell.port_directions[k] === Direction.Input;
-            });
-        }
-        return [];
-    }
-    Yosys.getInputPortPids = getInputPortPids;
-    function getOutputPortPids(cell) {
-        if (cell.port_directions) {
-            return Object.keys(cell.port_directions).filter((k) => {
-                return cell.port_directions[k] === Direction.Output;
-            });
-        }
-        return [];
-    }
-    Yosys.getOutputPortPids = getOutputPortPids;
-    let HideName;
-    (function (HideName) {
-        HideName[HideName["Hide"] = 0] = "Hide";
-        HideName[HideName["NoHide"] = 1] = "NoHide";
-    })(HideName || (HideName = {}));
+    // Helper functions to get input/output port IDs (made more concise)
+    Yosys.getInputPortPids = (cell) => Object.entries(cell.port_directions || {}) // Safe access with || {}
+        .filter(([, direction]) => direction === Direction.Input)
+        .map(([portName]) => portName);
+    Yosys.getOutputPortPids = (cell) => Object.entries(cell.port_directions || {})
+        .filter(([, direction]) => direction === Direction.Output)
+        .map(([portName]) => portName);
 })(Yosys || (Yosys = {}));
 exports.default = Yosys;
 //# sourceMappingURL=YosysModel.js.map

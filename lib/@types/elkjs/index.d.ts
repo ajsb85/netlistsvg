@@ -1,74 +1,64 @@
-declare module 'elkjs' {
-    interface Graph {
-        id: string;
-        children: Cell[];
-        edges: Edge[];
-        width?: number;
-        height?: number;
+declare module 'elkjs/lib/elk.bundled' { // Correct module path
+    export interface ElkLayoutOptions {
+      [key: string]: any; // More idiomatic index signature
+    }
+  
+    export interface ElkShape {
+      id: string;
+      x?: number;
+      y?: number;
+      width?: number;
+      height?: number;
+      layoutOptions?: ElkLayoutOptions;
     }
 
-    interface Port {
-        id: string;
-        width: number;
-        height: number;
-        x?: number;
-        y?: number;
-        labels?: Label[];
+    export interface ElkLabel extends ElkShape {
+      text: string;
+    }
+  
+    export interface ElkPort extends ElkShape {
+      labels?: ElkLabel[];
+    }
+  
+    export interface ElkNode extends ElkShape {
+      children?: ElkNode[];
+      ports?: ElkPort[];
+      edges?: ElkExtendedEdge[];
+      labels?: ElkLabel[];
+    }
+  
+    export interface ElkEdge extends ElkShape {
+      sources: string[];
+      targets: string[];
+      labels?: ElkLabel[];
+      junctionPoints?: ElkPoint[];
+    }
+  
+      // Bend points are relative to the section they are in.
+    export interface ElkPoint {
+      x: number;
+      y: number;
+    }
+    export interface ElkEdgeSection {
+      startPoint: ElkPoint;
+      endPoint: ElkPoint;
+      bendPoints?: ElkPoint[];
+    }
+    export interface ElkExtendedEdge extends ElkEdge {
+      junctionPoints?: ElkPoint[]; // For consistency
+      sections?: ElkEdgeSection[];
+    }
+  
+    export interface ElkRoot extends ElkNode {
+      edges?: ElkExtendedEdge[]; // Top-level edges
     }
 
-    interface Segment {
-        startPoint: WirePoint;
-        endPoint: WirePoint;
-        bendPoints: WirePoint[];
+    export interface ElkLayoutArguments {
+      layoutOptions?: ElkLayoutOptions;
     }
-
-    interface Edge {
-        id: string;
-        source: string;
-        sourcePort: string;
-        target: string;
-        targetPort: string;
-        layoutOptions?: ElkLayoutOptions;
-        junctionPoints?: WirePoint[];
-        bendPoints?: WirePoint[];
-        sections?: Segment[];
+  
+    export default class ELK {  // Use 'export default' for the class
+      constructor(options?: any); // Allow constructor options
+      public layout(graph: ElkRoot, options?: ElkLayoutArguments): Promise<ElkRoot>;
     }
-
-    interface ElkLayoutOptions {
-        [option: string]: any;
-    }
-
-    interface Cell {
-        id: string;
-        width: number;
-        height: number;
-        ports: Port[];
-        layoutOptions?: ElkLayoutOptions;
-        labels?: Label[];
-        x?: number;
-        y?: number;
-    }
-
-    interface Label {
-        id: string;
-        text: string;
-        x: number;
-        y: number;
-        height: number;
-        width: number;
-    }
-
-    interface WirePoint {
-        x: number;
-        y: number;
-    }
-
-    interface ElkOptions {
-        layoutOptions: ElkLayoutOptions;
-    }
-
-    class ELK {
-        public layout(Graph, ElkOptions): Promise<Graph>;
-    }
-    export = ELK;
-}
+  }

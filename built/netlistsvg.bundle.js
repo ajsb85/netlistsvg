@@ -413,144 +413,42 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FlatModule = void 0;
 exports.arrayToBitstring = arrayToBitstring;
+exports.arrayContains = arrayContains;
+exports.indexOfContains = indexOfContains;
 exports.addToDefaultDict = addToDefaultDict;
-exports.removeDups = removeDups;
+exports.getIndicesString = getIndicesString;
+exports.gather = gather;
 const Skin_1 = __importDefault(require("./Skin"));
 const Cell_1 = __importDefault(require("./Cell"));
-class FlatModule {
-    constructor(netlist) {
-        this.moduleName = null;
-        // Find top module
-        for (const name in netlist.modules) {
-            const mod = netlist.modules[name];
-            if (mod.attributes && Number(mod.attributes.top) === 1) {
-                this.moduleName = name;
-                break; // Exit loop once top module is found
-            }
-        }
-        // Default to the first module if no top module is marked
-        if (this.moduleName == null) {
-            this.moduleName = Object.keys(netlist.modules)[0];
-        }
-        const top = netlist.modules[this.moduleName];
-        const ports = Object.entries(top.ports).map(([key, portData]) => Cell_1.default.fromPort(portData, key));
-        const cells = Object.entries(top.cells).map(([key, cellData]) => Cell_1.default.fromYosysCell(cellData, key));
-        this.nodes = cells.concat(ports);
-        // populated by createWires
-        this.wires = [];
-    }
-    // converts input ports with constant assignments to constant nodes
-    addConstants() {
-        // find the maximum signal number
-        let maxNum = this.nodes.reduce(((acc, v) => v.maxOutVal(acc)), -1);
-        // add constants to nodes
-        const signalsByConstantName = {};
-        const cells = [];
-        this.nodes.forEach((n) => {
-            maxNum = n.findConstants(signalsByConstantName, maxNum, cells);
-        });
-        this.nodes = this.nodes.concat(cells);
-    }
-    // solves for minimal bus splits and joins and adds them to module
-    addSplitsJoins() {
-        const allInputs = this.nodes.flatMap((n) => n.inputPortVals());
-        const allOutputs = this.nodes.flatMap((n) => n.outputPortVals());
-        const allInputsCopy = allInputs.slice();
-        const splits = {};
-        const joins = {};
-        allInputs.forEach((input) => {
-            gather(allOutputs, allInputsCopy, input, 0, input.length, splits, joins);
-        });
-        const joinCells = Object.entries(joins).map(([joinInputs, joinOutput]) => {
-            return Cell_1.default.fromJoinInfo(joinInputs, joinOutput[0]); // joinOutput is an array
-        });
-        const splitCells = Object.entries(splits).map(([splitInput, splitOutputs]) => {
-            return Cell_1.default.fromSplitInfo(splitInput, splitOutputs);
-        });
-        this.nodes = this.nodes.concat(joinCells, splitCells);
-    }
-    // search through all the ports to find all of the wires
-    createWires() {
-        const layoutProps = Skin_1.default.getProperties();
-        const ridersByNet = {};
-        const driversByNet = {};
-        const lateralsByNet = {};
-        this.nodes.forEach((n) => {
-            n.collectPortsByDirection(ridersByNet, driversByNet, lateralsByNet, layoutProps.genericsLaterals);
-        });
-        // list of unique nets
-        const allKeys = Object.keys(ridersByNet).concat(Object.keys(driversByNet)).concat(Object.keys(lateralsByNet));
-        const nets = removeDups(allKeys);
-        const wires = nets.map((net) => {
-            const drivers = driversByNet[net] || [];
-            const riders = ridersByNet[net] || [];
-            const laterals = lateralsByNet[net] || [];
-            const wire = { netName: net, drivers, riders, laterals };
-            drivers.concat(riders).concat(laterals).forEach((port) => {
-                port.wire = wire;
-            });
-            return wire;
-        });
-        this.wires = wires;
-    }
-}
-exports.FlatModule = FlatModule;
-// returns a string that represents the values of the array of integers
-// [1, 2, 3] -> ',1,2,3,'
+// Helper functions (outside the class) -  These are now *exported*
 function arrayToBitstring(bitArray) {
-    return ',' + bitArray.join(',') + ',';
+    return `,${bitArray.join(',')},`;
 }
-// returns whether needle is a substring of haystack
 function arrayContains(needle, haystack) {
-    return (haystack.indexOf(needle) > -1);
+    return haystack.includes(needle);
 }
-// returns the index of the string that contains a substring
-// given arrhaystack, an array of strings
-function indexOfContains(needle, arrhaystack) {
-    return arrhaystack.findIndex((haystack) => {
-        return arrayContains(needle, haystack);
-    });
+function indexOfContains(needle, haystack) {
+    return haystack.findIndex(hay => hay.includes(needle));
 }
 function addToDefaultDict(dict, key, value) {
-    if (dict[key] === undefined) {
-        dict[key] = [value];
-    }
-    else {
-        dict[key].push(value);
-    }
+    var _a;
+    ((_a = dict[key]) !== null && _a !== void 0 ? _a : (dict[key] = [])).push(value);
 }
-// string (for labels), that represents an index
-// or range of indices.
 function getIndicesString(bitstring, query, start) {
     const splitStart = Math.max(bitstring.indexOf(query), start);
     const startIndex = bitstring.substring(0, splitStart).split(',').length - 1;
     const endIndex = startIndex + query.split(',').length - 3;
-    if (startIndex === endIndex) {
-        return String(startIndex);
-    }
-    else {
-        return String(startIndex) + ':' + String(endIndex);
-    }
+    return startIndex === endIndex ? String(startIndex) : `${startIndex}:${endIndex}`;
 }
-// gather splits and joins
-function gather(inputs, // all inputs
-outputs, // all outputs
-toSolve, // an input array we are trying to solve
-start, // index of toSolve to start from
-end, // index of toSolve to end at
-splits, // container collecting the splits
-joins) {
-    // remove myself from outputs list if present
+function gather(inputs, outputs, toSolve, start, end, splits, joins) {
     const outputIndex = outputs.indexOf(toSolve);
     if (outputIndex !== -1) {
         outputs.splice(outputIndex, 1);
     }
-    // This toSolve is compconste
     if (start >= toSolve.length || end - start < 2) {
         return;
     }
     const query = toSolve.slice(start, end);
-    // are there are perfect matches?
     if (arrayContains(query, inputs)) {
         if (query !== toSolve) {
             addToDefaultDict(joins, toSolve, getIndicesString(toSolve, query, start));
@@ -559,38 +457,77 @@ joins) {
         return;
     }
     const index = indexOfContains(query, inputs);
-    // are there any partial matches?
     if (index !== -1) {
         if (query !== toSolve) {
             addToDefaultDict(joins, toSolve, getIndicesString(toSolve, query, start));
         }
-        // found a split
         addToDefaultDict(splits, inputs[index], getIndicesString(inputs[index], query, 0));
-        // we can match to this now
-        inputs.push(query);
+        inputs.push(query); // We can now match to this split portion
         gather(inputs, outputs, toSolve, end - 1, toSolve.length, splits, joins);
         return;
     }
-    // are there any output matches?
     if (indexOfContains(query, outputs) !== -1) {
         if (query !== toSolve) {
-            // add to join
             addToDefaultDict(joins, toSolve, getIndicesString(toSolve, query, start));
         }
-        // gather without outputs
-        gather(inputs, [], query, 0, query.length, splits, joins);
-        inputs.push(query);
+        gather(inputs, [], query, 0, query.length, splits, joins); // Gather without outputs
+        inputs.push(query); // Add the matched output as a new input for further matching
         return;
     }
-    gather(inputs, outputs, toSolve, start, start + query.slice(0, -1).lastIndexOf(',') + 1, splits, joins);
+    gather(inputs, outputs, toSolve, start, toSolve.substring(0, end).lastIndexOf(',') + 1, splits, joins);
 }
-function removeDups(inStrs) {
-    const map = {};
-    inStrs.forEach((str) => {
-        map[str] = true;
-    });
-    return Object.keys(map);
+class FlatModule {
+    constructor(netlist) {
+        this.moduleName = Object.keys(netlist.modules).find(name => { var _a; return ((_a = netlist.modules[name].attributes) === null || _a === void 0 ? void 0 : _a.top) === 1; }) || Object.keys(netlist.modules)[0]; // Find top module or default
+        const top = netlist.modules[this.moduleName];
+        this.nodes = [
+            ...Object.entries(top.ports).map(([key, portData]) => Cell_1.default.fromPort(portData, key)),
+            ...Object.entries(top.cells).map(([key, cellData]) => Cell_1.default.fromYosysCell(cellData, key)),
+        ];
+        this.wires = []; // Populated by createWires
+    }
+    addConstants() {
+        let maxNum = this.nodes.reduce((acc, v) => v.maxOutVal(acc), -1);
+        const signalsByConstantName = {};
+        const newCells = [];
+        this.nodes.forEach(node => {
+            maxNum = node.findConstants(signalsByConstantName, maxNum, newCells);
+        });
+        this.nodes.push(...newCells);
+    }
+    addSplitsJoins() {
+        const allInputs = this.nodes.flatMap(node => node.inputPortVals());
+        const allOutputs = this.nodes.flatMap(node => node.outputPortVals());
+        const splits = {};
+        const joins = {};
+        const allInputsCopy = allInputs.slice();
+        for (const input of allInputs) {
+            gather(allOutputs, allInputsCopy, input, 0, input.length, splits, joins);
+        }
+        const joinCells = Object.entries(joins).map(([joinInputs, [joinOutput]]) => Cell_1.default.fromJoinInfo(joinInputs, joinOutput));
+        const splitCells = Object.entries(splits).map(([splitInput, splitOutputs]) => Cell_1.default.fromSplitInfo(splitInput, splitOutputs));
+        this.nodes.push(...joinCells, ...splitCells);
+    }
+    createWires() {
+        const layoutProps = Skin_1.default.getProperties();
+        const ridersByNet = {};
+        const driversByNet = {};
+        const lateralsByNet = {};
+        this.nodes.forEach(node => node.collectPortsByDirection(// Corrected call
+        ridersByNet, driversByNet, lateralsByNet, layoutProps.genericsLaterals));
+        const allKeys = [...Object.keys(ridersByNet), ...Object.keys(driversByNet), ...Object.keys(lateralsByNet)];
+        const nets = [...new Set(allKeys)]; // Use Set for unique nets
+        this.wires = nets.map(net => {
+            const drivers = driversByNet[net] || [];
+            const riders = ridersByNet[net] || [];
+            const laterals = lateralsByNet[net] || [];
+            const wire = { netName: net, drivers, riders, laterals };
+            [...drivers, ...riders, ...laterals].forEach(port => port.wire = wire);
+            return wire;
+        });
+    }
 }
+exports.FlatModule = FlatModule;
 
 },{"./Cell":1,"./Skin":4}],3:[function(require,module,exports){
 "use strict";
@@ -612,92 +549,77 @@ class Port {
         return pids.includes(this.key);
     }
     maxVal() {
-        return Math.max(...this.value.map(v => Number(v)));
+        return Math.max(...this.value.map(Number)); // Simplified Number conversion
     }
     valString() {
         return ',' + this.value.join() + ',';
     }
     findConstants(sigsByConstantName, maxNum, constantCollector) {
-        let constNameCollector = '';
-        let constNumCollector = [];
-        const portSigs = this.value;
-        portSigs.forEach((portSig, portSigIndex) => {
+        let constName = '';
+        let constNums = [];
+        for (let i = 0; i < this.value.length; i++) {
+            const portSig = this.value[i];
             if (portSig === '0' || portSig === '1') {
                 maxNum += 1;
-                constNameCollector += portSig;
-                portSigs[portSigIndex] = maxNum;
-                constNumCollector.push(maxNum);
+                constName += portSig;
+                this.value[i] = maxNum;
+                constNums.push(maxNum);
             }
-            else if (constNumCollector.length > 0) {
-                this.assignConstant(constNameCollector, constNumCollector, portSigIndex, sigsByConstantName, constantCollector);
-                constNameCollector = '';
-                constNumCollector = [];
+            else if (constName.length > 0) {
+                this.assignConstant(constName, constNums, sigsByConstantName, constantCollector);
+                constName = '';
+                constNums = [];
             }
-        });
-        if (constNumCollector.length > 0) {
-            this.assignConstant(constNameCollector, constNumCollector, portSigs.length, sigsByConstantName, constantCollector);
+        }
+        if (constName.length > 0) {
+            this.assignConstant(constName, constNums, sigsByConstantName, constantCollector);
         }
         return maxNum;
     }
     getGenericElkPort(index, templatePorts, dir) {
-        const nkey = this.parentNode.Key;
-        const type = this.parentNode.getTemplate()[1]['s:type'];
-        if (index === 0) {
-            const ret = {
-                id: `${nkey}.${this.key}`,
-                width: 1,
-                height: 1,
-                x: Number(templatePorts[0][1]['s:x']),
-                y: Number(templatePorts[0][1]['s:y']),
-            };
-            if ((type === 'generic' || type === 'join') && dir === 'in' ||
-                (type === 'generic' || type === 'split') && dir === 'out') {
-                ret.labels = [{
-                        id: `${nkey}.${this.key}.label`,
-                        text: this.key,
-                        x: Number(templatePorts[0][2][1].x) - 10,
-                        y: Number(templatePorts[0][2][1].y) - 6,
-                        width: 6 * this.key.length,
-                        height: 11,
-                    }];
-            }
-            return ret;
+        const { Key: nkey, getTemplate } = this.parentNode; // Destructure for brevity
+        const type = getTemplate()[1]['s:type'];
+        const x = Number(templatePorts[0][1]['s:x']);
+        const y = Number(templatePorts[0][1]['s:y']);
+        const ret = {
+            id: `${nkey}.${this.key}`,
+            width: 1,
+            height: 1,
+            x,
+            y: index === 0 ? y : index * (Number(templatePorts[1][1]['s:y']) - y) + y,
+        };
+        const addLabel = (type === 'generic' || type === 'join') && dir === 'in' ||
+            (type === 'generic' || type === 'split') && dir === 'out' ||
+            type === 'generic';
+        if (addLabel) {
+            ret.labels = [{
+                    id: `${nkey}.${this.key}.label`,
+                    text: this.key,
+                    x: Number(templatePorts[0][2][1].x) - 10,
+                    y: Number(templatePorts[0][2][1].y) - 6,
+                    width: 6 * this.key.length,
+                    height: 11,
+                }];
         }
-        else {
-            const gap = Number(templatePorts[1][1]['s:y']) - Number(templatePorts[0][1]['s:y']);
-            const ret = {
-                id: `${nkey}.${this.key}`,
-                width: 1,
-                height: 1,
-                x: Number(templatePorts[0][1]['s:x']),
-                y: index * gap + Number(templatePorts[0][1]['s:y']),
-            };
-            if (type === 'generic') {
-                ret.labels = [{
-                        id: `${nkey}.${this.key}.label`,
-                        text: this.key,
-                        x: Number(templatePorts[0][2][1].x) - 10,
-                        y: Number(templatePorts[0][2][1].y) - 6,
-                        width: 6 * this.key.length,
-                        height: 11,
-                    }];
-            }
-            return ret;
-        }
+        return ret;
     }
-    assignConstant(nameCollector, constants, currIndex, signalsByConstantName, constantCollector) {
-        const constName = nameCollector.split('').reverse().join('');
-        if (signalsByConstantName.hasOwnProperty(constName)) {
-            const constSigs = signalsByConstantName[constName];
-            const constLength = constSigs.length;
-            constSigs.forEach((constSig, constIndex) => {
-                const i = currIndex - constLength + constIndex;
-                this.value[i] = constSig;
-            });
+    assignConstant(name, constants, signalsByConstantName, constantCollector) {
+        const reversedName = name.split('').reverse().join('');
+        if (signalsByConstantName[reversedName]) {
+            // Directly use the reversed name as the key
+            const constSigs = signalsByConstantName[reversedName];
+            for (let i = 0; i < constSigs.length; i++) {
+                // Find index of first constant
+                const firstConstIndex = this.value.indexOf(constants[0]);
+                // Replace the constants with their corresponding signals
+                if (firstConstIndex >= 0) {
+                    this.value[firstConstIndex + i] = constSigs[i];
+                }
+            }
         }
         else {
-            constantCollector.push(Cell_1.default.fromConstantInfo(constName, constants));
-            signalsByConstantName[constName] = constants;
+            constantCollector.push(Cell_1.default.fromConstantInfo(reversedName, constants));
+            signalsByConstantName[reversedName] = constants;
         }
     }
 }
@@ -711,120 +633,107 @@ const onml = require("onml");
 var Skin;
 (function (Skin) {
     Skin.skin = null;
+    // Utility function to extract attributes safely
+    function getAttributes(element) {
+        return (Array.isArray(element) && element[0] === 'g' && element[1]) ? element[1] : {};
+    }
+    // Generic function to filter ports based on a predicate
+    function filterPortPids(template, predicate) {
+        return template
+            .filter(element => {
+            const attrs = getAttributes(element);
+            return attrs['s:pid'] !== undefined && predicate(attrs);
+        })
+            .map(element => element[1]['s:pid']);
+    }
     function getPortsWithPrefix(template, prefix) {
-        const ports = template.filter((e) => {
-            try {
-                // Check if 'e' is an array and its first element is 'g'
-                return Array.isArray(e) && e[0] === 'g' && e[1] &&
-                    typeof e[1]['s:pid'] === 'string' && e[1]['s:pid'].startsWith(prefix);
-            }
-            catch (exception) {
-                // Do nothing if the SVG group doesn't have a pin id.
-                return false; // Ensure a boolean is returned in the catch block
-            }
+        return template.filter(element => {
+            const attrs = getAttributes(element);
+            return typeof attrs['s:pid'] === 'string' && attrs['s:pid'].startsWith(prefix);
         });
-        return ports;
     }
     Skin.getPortsWithPrefix = getPortsWithPrefix;
-    function filterPortPids(template, filter) {
-        const ports = template.filter((element) => {
-            if (Array.isArray(element) && element[0] === 'g') {
-                const attrs = element[1];
-                return filter(attrs);
-            }
-            return false;
-        });
-        return ports.map((port) => {
-            return port[1]['s:pid'];
-        });
-    }
-    // Simplified getInputPids, getOutputPids, getLateralPortPids
     function getInputPids(template) {
-        return filterPortPids(template, (attrs) => attrs['s:dir'] === 'in' || attrs['s:position'] === 'top');
+        return filterPortPids(template, attrs => attrs['s:dir'] === 'in' || attrs['s:position'] === 'top');
     }
     Skin.getInputPids = getInputPids;
     function getOutputPids(template) {
-        return filterPortPids(template, (attrs) => attrs['s:dir'] === 'out' || attrs['s:position'] === 'bottom');
+        return filterPortPids(template, attrs => attrs['s:dir'] === 'out' || attrs['s:position'] === 'bottom');
     }
     Skin.getOutputPids = getOutputPids;
     function getLateralPortPids(template) {
-        return filterPortPids(template, (attrs) => {
-            if (attrs['s:dir']) {
-                return attrs['s:dir'] === 'lateral';
-            }
-            // Placeholder: Keep position check IF s:dir is missing.
-            if (attrs['s:position']) {
-                return attrs['s:position'] === 'left' || attrs['s:position'] === 'right';
-            }
-            return false;
-        });
+        return filterPortPids(template, attrs => attrs['s:dir'] === 'lateral' || (attrs['s:position'] === 'left' || attrs['s:position'] === 'right'));
     }
     Skin.getLateralPortPids = getLateralPortPids;
+    // Find a skin type, prioritizing aliases and falling back to generic
     function findSkinType(type) {
-        let ret = null;
+        let foundNode = null;
         onml.traverse(Skin.skin, {
             enter: (node, parent) => {
                 if (node.name === 's:alias' && node.attr.val === type) {
-                    ret = parent;
+                    foundNode = parent;
+                    return true; // Stop traversal
                 }
             },
         });
-        if (ret == null) {
+        if (!foundNode) {
             onml.traverse(Skin.skin, {
                 enter: (node) => {
                     if (node.attr['s:type'] === 'generic') {
-                        ret = node;
+                        foundNode = node;
+                        return true; // Stop traversal
                     }
                 },
             });
         }
-        return ret ? ret.full : null; // Handle case where ret is null
+        return foundNode ? foundNode.full : null;
     }
     Skin.findSkinType = findSkinType;
+    // Get a list of low-priority aliases
     function getLowPriorityAliases() {
-        const ret = []; // Explicitly type ret as string[]
-        onml.t(Skin.skin, {
+        const aliases = [];
+        onml.traverse(Skin.skin, {
             enter: (node) => {
                 if (node.name === 's:low_priority_alias' && typeof node.attr.value === 'string') {
-                    ret.push(node.attr.value);
+                    aliases.push(node.attr.value);
                 }
             },
         });
-        return ret;
+        return aliases;
     }
     Skin.getLowPriorityAliases = getLowPriorityAliases;
+    // Extract skin properties, converting string values to appropriate types
     function getProperties() {
-        let vals = {}; // Initialize vals
-        onml.t(Skin.skin, {
+        let properties = {};
+        onml.traverse(Skin.skin, {
             enter: (node) => {
                 if (node.name === 's:properties') {
-                    // Use Object.entries and reduce for a more functional approach
-                    vals = Object.entries(node.attr).reduce((acc, [key, val]) => {
-                        const strVal = String(val); // Ensure val is a string
+                    for (const [key, val] of Object.entries(node.attr)) {
+                        const strVal = String(val);
                         if (!isNaN(Number(strVal))) {
-                            acc[key] = Number(strVal);
+                            properties[key] = Number(strVal);
                         }
                         else if (strVal === 'true') {
-                            acc[key] = true;
+                            properties[key] = true;
                         }
                         else if (strVal === 'false') {
-                            acc[key] = false;
+                            properties[key] = false;
                         }
                         else {
-                            acc[key] = strVal;
+                            properties[key] = strVal;
                         }
-                        return acc;
-                    }, {});
+                    }
                 }
                 else if (node.name === 's:layoutEngine') {
-                    vals.layoutEngine = node.attr;
+                    properties.layoutEngine = node.attr;
                 }
             },
         });
-        if (!vals.layoutEngine) {
-            vals.layoutEngine = {};
+        // Ensure layoutEngine exists
+        if (!properties.layoutEngine) {
+            properties.layoutEngine = {};
         }
-        return vals;
+        return properties;
     }
     Skin.getProperties = getProperties;
 })(Skin || (exports.Skin = Skin = {}));
@@ -835,40 +744,27 @@ exports.default = Skin;
 Object.defineProperty(exports, "__esModule", { value: true });
 var Yosys;
 (function (Yosys) {
+    // Use string enums for better readability and type safety
     let ConstantVal;
     (function (ConstantVal) {
         ConstantVal["Zero"] = "0";
         ConstantVal["One"] = "1";
         ConstantVal["X"] = "x";
-    })(ConstantVal || (ConstantVal = {}));
+        ConstantVal["Z"] = "z";
+    })(ConstantVal = Yosys.ConstantVal || (Yosys.ConstantVal = {}));
     let Direction;
     (function (Direction) {
         Direction["Input"] = "input";
         Direction["Output"] = "output";
+        Direction["Inout"] = "inout";
     })(Direction = Yosys.Direction || (Yosys.Direction = {}));
-    function getInputPortPids(cell) {
-        if (cell.port_directions) {
-            return Object.keys(cell.port_directions).filter((k) => {
-                return cell.port_directions[k] === Direction.Input;
-            });
-        }
-        return [];
-    }
-    Yosys.getInputPortPids = getInputPortPids;
-    function getOutputPortPids(cell) {
-        if (cell.port_directions) {
-            return Object.keys(cell.port_directions).filter((k) => {
-                return cell.port_directions[k] === Direction.Output;
-            });
-        }
-        return [];
-    }
-    Yosys.getOutputPortPids = getOutputPortPids;
-    let HideName;
-    (function (HideName) {
-        HideName[HideName["Hide"] = 0] = "Hide";
-        HideName[HideName["NoHide"] = 1] = "NoHide";
-    })(HideName || (HideName = {}));
+    // Helper functions to get input/output port IDs (made more concise)
+    Yosys.getInputPortPids = (cell) => Object.entries(cell.port_directions || {}) // Safe access with || {}
+        .filter(([, direction]) => direction === Direction.Input)
+        .map(([portName]) => portName);
+    Yosys.getOutputPortPids = (cell) => Object.entries(cell.port_directions || {})
+        .filter(([, direction]) => direction === Direction.Output)
+        .map(([portName]) => portName);
 })(Yosys || (Yosys = {}));
 exports.default = Yosys;
 
@@ -878,8 +774,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.default = drawModule;
 exports.removeDummyEdges = removeDummyEdges;
+exports.default = drawModule;
 const elkGraph_1 = require("./elkGraph");
 const Skin_1 = __importDefault(require("./Skin"));
 const onml = require("onml");
@@ -890,24 +786,95 @@ var WireDirection;
     WireDirection[WireDirection["Left"] = 2] = "Left";
     WireDirection[WireDirection["Right"] = 3] = "Right";
 })(WireDirection || (WireDirection = {}));
-function drawModule(g, module) {
+// Helper function to determine wire direction (moved outside drawModule)
+function whichDir(start, end) {
+    if (end.x === start.x && end.y === start.y) {
+        throw new Error('start and end are the same');
+    }
+    if (end.x !== start.x && end.y !== start.y) {
+        throw new Error('start and end arent orthogonal');
+    }
+    return end.x > start.x ? WireDirection.Right
+        : end.x < start.x ? WireDirection.Left
+            : end.y > start.y ? WireDirection.Down
+                : WireDirection.Up; // Simplified conditional
+}
+// Helper to find the bend point nearest to a dummy node (moved outside drawModule)
+function findBendNearDummy(net, dummyIsSource, dummyLoc) {
+    const candidates = net.map((edge) => {
+        const bends = edge.sections[0].bendPoints || [];
+        return dummyIsSource ? bends[0] : bends[bends.length - 1];
+    }).filter((p) => p !== undefined); // Use type guard
+    if (candidates.length === 0) {
+        return undefined;
+    }
+    // Find closest bend point using Euclidean distance
+    return candidates.reduce((closest, current) => {
+        const closestDist = (closest.x - dummyLoc.x) ** 2 + (closest.y - dummyLoc.y) ** 2;
+        const currentDist = (current.x - dummyLoc.x) ** 2 + (current.y - dummyLoc.y) ** 2;
+        return currentDist < closestDist ? current : closest;
+    });
+}
+// Function to remove dummy edges (extracted and simplified)
+function removeDummyEdges(g) {
     var _a, _b;
+    while (true) {
+        const dummyId = `$d_${elkGraph_1.ElkModel.dummyNum}`;
+        const edgeGroup = g.edges.filter(e => e.source === dummyId || e.target === dummyId);
+        if (edgeGroup.length === 0) {
+            break; // No more dummy nodes
+        }
+        const firstEdge = edgeGroup[0];
+        const dummyIsSource = firstEdge.source === dummyId;
+        const dummyLoc = dummyIsSource ? firstEdge.sections[0].startPoint : firstEdge.sections[0].endPoint;
+        const newEnd = findBendNearDummy(edgeGroup, dummyIsSource, dummyLoc);
+        if (!newEnd) {
+            elkGraph_1.ElkModel.dummyNum += 1;
+            continue; // Skip if no bend point
+        }
+        for (const edge of edgeGroup) {
+            const section = edge.sections[0];
+            if (dummyIsSource) {
+                section.startPoint = newEnd;
+                (_a = section.bendPoints) === null || _a === void 0 ? void 0 : _a.shift(); // Use optional chaining
+            }
+            else {
+                section.endPoint = newEnd;
+                (_b = section.bendPoints) === null || _b === void 0 ? void 0 : _b.pop(); // Use optional chaining
+            }
+        }
+        const directions = new Set(edgeGroup.map(edge => {
+            var _a, _b;
+            const section = edge.sections[0];
+            const point = dummyIsSource
+                ? (((_a = section.bendPoints) === null || _a === void 0 ? void 0 : _a[0]) || section.endPoint)
+                : (((_b = section.bendPoints) === null || _b === void 0 ? void 0 : _b[section.bendPoints.length - 1]) || section.startPoint);
+            return whichDir(newEnd, point);
+        }));
+        if (directions.size < 3) {
+            for (const edge of edgeGroup) {
+                edge.junctionPoints = (edge.junctionPoints || []).filter(junct => !(junct.x === newEnd.x && junct.y === newEnd.y));
+            }
+        }
+        elkGraph_1.ElkModel.dummyNum += 1;
+    }
+}
+// Main drawModule function
+function drawModule(g, module) {
     const nodes = module.nodes.map((n) => {
         const kchild = g.children.find((c) => c.id === n.Key);
         return n.render(kchild);
     });
     removeDummyEdges(g);
-    let lines = [];
-    g.edges.forEach((e) => {
+    const lines = g.edges.flatMap((e) => {
         const netId = elkGraph_1.ElkModel.wireNameLookup[e.id];
         const numWires = netId.split(',').length - 2;
-        const lineStyle = 'stroke-width: ' + (numWires > 1 ? 2 : 1);
-        const netName = 'net_' + netId.slice(1, netId.length - 1) + ' width_' + numWires;
-        e.sections.forEach((s) => {
+        const lineStyle = `stroke-width: ${numWires > 1 ? 2 : 1}`;
+        const netName = `net_${netId.slice(1, -1)} width_${numWires}`;
+        return e.sections.flatMap((s) => {
             let startPoint = s.startPoint;
-            s.bendPoints = s.bendPoints || [];
-            let bends = s.bendPoints.map((b) => {
-                const l = ['line', {
+            const bends = (s.bendPoints || []).map((b) => {
+                const line = ['line', {
                         x1: startPoint.x,
                         x2: b.x,
                         y1: startPoint.y,
@@ -916,213 +883,67 @@ function drawModule(g, module) {
                         style: lineStyle,
                     }];
                 startPoint = b;
-                return l;
+                return line;
             });
-            if (e.junctionPoints) {
-                const circles = e.junctionPoints.map((j) => ['circle', {
-                        cx: j.x,
-                        cy: j.y,
-                        r: (numWires > 1 ? 3 : 2),
-                        style: 'fill:#000',
-                        class: netName,
-                    }]);
-                bends = bends.concat(circles);
-            }
-            const line = [['line', {
-                        x1: startPoint.x,
-                        x2: s.endPoint.x,
-                        y1: startPoint.y,
-                        y2: s.endPoint.y,
-                        class: netName,
-                        style: lineStyle,
-                    }]];
-            bends.push(...line); // Use push(...line) instead of concat
-            lines.push(...bends);
+            const circles = (e.junctionPoints || []).map((j) => ['circle', {
+                    cx: j.x,
+                    cy: j.y,
+                    r: numWires > 1 ? 3 : 2,
+                    style: 'fill:#000',
+                    class: netName,
+                }]);
+            const line = ['line', {
+                    x1: startPoint.x,
+                    x2: s.endPoint.x,
+                    y1: startPoint.y,
+                    y2: s.endPoint.y,
+                    class: netName,
+                    style: lineStyle,
+                }];
+            return [...bends, ...circles, line];
         });
     });
-    let labels = [];
-    for (const index in g.edges) {
-        if (g.edges.hasOwnProperty(index)) {
-            const e = g.edges[index];
-            const netId = elkGraph_1.ElkModel.wireNameLookup[e.id];
-            const numWires = netId.split(',').length - 2;
-            const netName = 'net_' + netId.slice(1, netId.length - 1) +
-                ' width_' + numWires +
-                ' busLabel_' + numWires;
-            if (((_b = (_a = e.labels) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.text) !== undefined) { // Use optional chaining
-                const label = [
-                    ['rect',
-                        {
-                            x: e.labels[0].x + 1,
-                            y: e.labels[0].y - 1,
-                            width: (e.labels[0].text.length + 2) * 6 - 2,
-                            height: 9,
-                            class: netName,
-                            style: 'fill: white; stroke: none',
-                        },
-                    ], ['text',
-                        {
-                            x: e.labels[0].x,
-                            y: e.labels[0].y + 7,
-                            class: netName,
-                        },
-                        '/' + e.labels[0].text + '/',
-                    ],
-                ];
-                labels.push(...label); // Use push(...label)
-            }
+    const labels = g.edges.flatMap((e) => {
+        var _a, _b;
+        const netId = elkGraph_1.ElkModel.wireNameLookup[e.id];
+        const numWires = netId.split(',').length - 2;
+        const netName = `net_${netId.slice(1, -1)} width_${numWires} busLabel_${numWires}`;
+        if ((_b = (_a = e.labels) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.text) {
+            const label = [
+                ['rect', {
+                        x: e.labels[0].x + 1,
+                        y: e.labels[0].y - 1,
+                        width: (e.labels[0].text.length + 2) * 6 - 2,
+                        height: 9,
+                        class: netName,
+                        style: 'fill: white; stroke: none',
+                    }],
+                ['text', {
+                        x: e.labels[0].x,
+                        y: e.labels[0].y + 7,
+                        class: netName,
+                    }, `/${e.labels[0].text}/`],
+            ];
+            return label;
         }
+        return []; // Return empty array if no label
+    });
+    if (labels.length > 0) {
+        lines.push(...labels);
     }
-    if (labels !== undefined && labels.length > 0) {
-        lines.push(...labels); // Use push(...labels)
-    }
-    const svgAttrs = Skin_1.default.skin[1];
-    svgAttrs.width = g.width.toString();
-    svgAttrs.height = g.height.toString();
+    const svgAttrs = Object.assign({}, Skin_1.default.skin[1]); // Clone attributes
+    svgAttrs.width = String(g.width); // Use String() for conversion
+    svgAttrs.height = String(g.height);
     const styles = ['style', {}, ''];
-    onml.t(Skin_1.default.skin, {
+    onml.traverse(Skin_1.default.skin, {
         enter: (node) => {
             if (node.name === 'style') {
                 styles[2] += node.full[2];
             }
         },
     });
-    const elements = [styles, ...nodes, ...lines];
-    const ret = ['svg', svgAttrs];
-    elements.forEach(element => {
-        ret.push(element);
-    });
+    const ret = ['svg', svgAttrs, styles, ...nodes, ...lines];
     return onml.s(ret);
-}
-function which_dir(start, end) {
-    if (end.x === start.x && end.y === start.y) {
-        throw new Error('start and end are the same');
-    }
-    if (end.x !== start.x && end.y !== start.y) {
-        throw new Error('start and end arent orthogonal');
-    }
-    if (end.x > start.x) {
-        return WireDirection.Right;
-    }
-    if (end.x < start.x) {
-        return WireDirection.Left;
-    }
-    if (end.y > start.y) {
-        return WireDirection.Down;
-    }
-    if (end.y < start.y) {
-        return WireDirection.Up;
-    }
-    throw new Error('unexpected direction');
-}
-function findBendNearDummy(net, dummyIsSource, dummyLoc) {
-    const candidates = net.map((edge) => {
-        const bends = edge.sections[0].bendPoints || []; // Default to empty array
-        if (dummyIsSource) {
-            return bends[0]; // Safe access, first element
-        }
-        else {
-            return bends[bends.length - 1]; // Safe access, last element
-        }
-    }).filter((p) => p !== null && p !== undefined); // Filter out null and undefined
-    if (candidates.length === 0) {
-        return undefined; // No valid candidates
-    }
-    // Find the closest bend point using Euclidean distance
-    let closestBend = candidates[0];
-    let minDistance = Number.MAX_VALUE;
-    for (const pt of candidates) {
-        const distance = Math.sqrt((dummyLoc.x - pt.x) ** 2 + (dummyLoc.y - pt.y) ** 2); // Euclidean
-        if (distance < minDistance) {
-            minDistance = distance;
-            closestBend = pt;
-        }
-    }
-    return closestBend;
-}
-function removeDummyEdges(g) {
-    let dummyNum = 0;
-    while (dummyNum < 10000) {
-        const dummyId = '$d_' + String(dummyNum);
-        const edgeGroup = g.edges.filter((e) => {
-            return e.source === dummyId || e.target === dummyId;
-        });
-        if (edgeGroup.length === 0) {
-            break;
-        }
-        let dummyIsSource;
-        let dummyLoc;
-        const firstEdge = edgeGroup[0];
-        if (firstEdge.source === dummyId) {
-            dummyIsSource = true;
-            dummyLoc = firstEdge.sections[0].startPoint;
-        }
-        else {
-            dummyIsSource = false;
-            dummyLoc = firstEdge.sections[0].endPoint;
-        }
-        const newEnd = findBendNearDummy(edgeGroup, dummyIsSource, dummyLoc);
-        if (newEnd === undefined) { // Handle potential undefined return
-            dummyNum++;
-            continue; // Skip to the next dummy if no bend point is found
-        }
-        for (const edge of edgeGroup) {
-            const section = edge.sections[0];
-            if (dummyIsSource) {
-                section.startPoint = newEnd;
-                if (section.bendPoints) {
-                    section.bendPoints.shift();
-                }
-            }
-            else {
-                section.endPoint = newEnd;
-                if (section.bendPoints) {
-                    section.bendPoints.pop();
-                }
-            }
-        }
-        const directions = new Set(edgeGroup.flatMap((edge) => {
-            const section = edge.sections[0];
-            let point; // Extract the point to a variable
-            if (dummyIsSource) {
-                if (section.bendPoints && section.bendPoints.length > 0) {
-                    point = section.bendPoints[0];
-                }
-                else {
-                    point = section.endPoint;
-                }
-            }
-            else {
-                if (section.bendPoints && section.bendPoints.length > 0) {
-                    point = section.bendPoints[section.bendPoints.length - 1];
-                }
-                else {
-                    point = section.startPoint;
-                }
-            }
-            // Use the extracted point for direction calculation
-            if (point.x > newEnd.x) {
-                return WireDirection.Right;
-            }
-            if (point.x < newEnd.x) {
-                return WireDirection.Left;
-            }
-            if (point.y > newEnd.y) {
-                return WireDirection.Down;
-            }
-            return WireDirection.Up;
-        }));
-        if (directions.size < 3) {
-            edgeGroup.forEach((edge) => {
-                if (edge.junctionPoints) {
-                    edge.junctionPoints = edge.junctionPoints.filter((junct) => {
-                        return junct.x !== newEnd.x || junct.y !== newEnd.y; // Correct comparison
-                    });
-                }
-            });
-        }
-        dummyNum += 1;
-    }
 }
 
 },{"./Skin":4,"./elkGraph":7,"onml":89}],7:[function(require,module,exports){
@@ -1137,79 +958,50 @@ var ElkModel;
     ElkModel.edgeIndex = 0;
 })(ElkModel || (exports.ElkModel = ElkModel = {}));
 function buildElkGraph(module) {
-    const children = module.nodes.map((n) => {
-        return n.buildElkChild();
-    });
+    const children = module.nodes.map(n => n.buildElkChild());
     ElkModel.edgeIndex = 0;
     ElkModel.dummyNum = 0;
     const edges = [];
-    module.wires.forEach((w) => {
-        const numWires = w.netName.split(',').length - 2;
-        if (w.drivers.length > 0 && w.riders.length > 0 && w.laterals.length === 0) {
-            route(w.drivers, w.riders, edges, numWires);
+    module.wires.forEach(wire => {
+        const numWires = wire.netName.split(',').length - 2;
+        const addEdges = (sourcePorts, targetPorts) => {
+            route(sourcePorts, targetPorts, edges, numWires);
+        };
+        if (wire.drivers.length > 0 && wire.riders.length > 0 && wire.laterals.length === 0) {
+            addEdges(wire.drivers, wire.riders);
         }
-        else if (w.drivers.concat(w.riders).length > 0 && w.laterals.length > 0) {
-            route(w.drivers, w.laterals, edges, numWires);
-            route(w.laterals, w.riders, edges, numWires);
+        else if (wire.drivers.concat(wire.riders).length > 0 && wire.laterals.length > 0) {
+            addEdges(wire.drivers, wire.laterals);
+            addEdges(wire.laterals, wire.riders);
         }
-        else if (w.riders.length === 0 && w.drivers.length > 1) {
+        else if (wire.riders.length === 0 && wire.drivers.length > 1) {
             const dummyId = addDummy(children);
-            ElkModel.dummyNum += 1;
-            const dummyEdges = w.drivers.map((driver) => {
-                const sourceParentKey = driver.parentNode.Key;
-                const id = 'e' + String(ElkModel.edgeIndex);
-                ElkModel.edgeIndex += 1;
-                const d = {
-                    id,
-                    source: sourceParentKey,
-                    sourcePort: sourceParentKey + '.' + driver.key,
-                    target: dummyId,
-                    targetPort: dummyId + '.p',
-                };
-                ElkModel.wireNameLookup[id] = driver.wire.netName;
-                return d;
-            });
-            edges.push(...dummyEdges); // Append dummyEdges
+            const dummyEdges = wire.drivers.map(driver => createDummyEdge(driver, dummyId, 'source'));
+            edges.push(...dummyEdges);
         }
-        else if (w.riders.length > 1 && w.drivers.length === 0) {
+        else if (wire.riders.length > 1 && wire.drivers.length === 0) {
             const dummyId = addDummy(children);
-            ElkModel.dummyNum += 1;
-            const dummyEdges = w.riders.map((rider) => {
-                const sourceParentKey = rider.parentNode.Key;
-                const id = 'e' + String(ElkModel.edgeIndex);
-                ElkModel.edgeIndex += 1;
-                const edge = {
-                    id,
-                    source: dummyId,
-                    sourcePort: dummyId + '.p',
-                    target: sourceParentKey,
-                    targetPort: sourceParentKey + '.' + rider.key,
-                };
-                ElkModel.wireNameLookup[id] = rider.wire.netName;
-                return edge;
-            });
-            edges.push(...dummyEdges); //Append dummyEdges
+            const dummyEdges = wire.riders.map(rider => createDummyEdge(rider, dummyId, 'target'));
+            edges.push(...dummyEdges);
         }
-        else if (w.laterals.length > 1) {
-            const source = w.laterals[0];
+        else if (wire.laterals.length > 1) {
+            const [source, ...otherLaterals] = wire.laterals; // Destructure for clarity
             const sourceParentKey = source.parentNode.Key;
-            const lateralEdges = w.laterals.slice(1).map((lateral) => {
+            const lateralEdges = otherLaterals.map(lateral => {
                 const lateralParentKey = lateral.parentNode.Key;
-                const id = 'e' + String(ElkModel.edgeIndex);
-                ElkModel.edgeIndex += 1;
+                const id = `e${ElkModel.edgeIndex++}`;
                 const edge = {
                     id,
                     source: sourceParentKey,
-                    sourcePort: sourceParentKey + '.' + source.key,
+                    sourcePort: `${sourceParentKey}.${source.key}`,
                     target: lateralParentKey,
-                    targetPort: lateralParentKey + '.' + lateral.key,
+                    targetPort: `${lateralParentKey}.${lateral.key}`,
                 };
                 ElkModel.wireNameLookup[id] = lateral.wire.netName;
                 return edge;
             });
-            edges.push(...lateralEdges); // Append lateralEdges
+            edges.push(...lateralEdges);
         }
-        // No need to return anything for forEach
     });
     return {
         id: module.moduleName,
@@ -1217,75 +1009,76 @@ function buildElkGraph(module) {
         edges,
     };
 }
+// Helper function to create dummy edges (for drivers or riders)
+function createDummyEdge(port, dummyId, type) {
+    const sourceParentKey = port.parentNode.Key;
+    const id = `e${ElkModel.edgeIndex++}`;
+    const edge = {
+        id,
+        [type === 'source' ? 'source' : 'target']: sourceParentKey,
+        [(type === 'source' ? 'sourcePort' : 'targetPort')]: `${sourceParentKey}.${port.key}`,
+        [type === 'source' ? 'target' : 'source']: dummyId,
+        [(type === 'source' ? 'targetPort' : 'sourcePort')]: `${dummyId}.p`,
+    };
+    ElkModel.wireNameLookup[id] = port.wire.netName;
+    return edge;
+}
 function addDummy(children) {
-    const dummyId = '$d_' + String(ElkModel.dummyNum);
-    const child = {
+    const dummyId = `$d_${ElkModel.dummyNum++}`;
+    children.push({
         id: dummyId,
         width: 0,
         height: 0,
-        ports: [{
-                id: dummyId + '.p',
-                width: 0,
-                height: 0,
-            }],
+        ports: [{ id: `${dummyId}.p`, width: 0, height: 0 }],
         layoutOptions: { 'org.eclipse.elk.portConstraints': 'FIXED_SIDE' },
-    };
-    children.push(child);
+    });
     return dummyId;
 }
 function route(sourcePorts, targetPorts, edges, numWires) {
-    sourcePorts.forEach((sourcePort) => {
-        const sourceParentKey = sourcePort.parentNode.key;
-        const sourceKey = sourceParentKey + '.' + sourcePort.key;
-        let edgeLabel; // Allow undefined
-        if (numWires > 1) {
-            edgeLabel = [{
-                    id: '',
+    for (const sourcePort of sourcePorts) {
+        const sourceParentKey = sourcePort.parentNode.Key;
+        const sourceKey = `${sourceParentKey}.${sourcePort.key}`;
+        const edgeLabel = numWires > 1
+            ? [{
+                    id: `label_${ElkModel.edgeIndex}`, // Give label a unique ID
                     text: String(numWires),
                     width: 4,
                     height: 6,
                     x: 0,
                     y: 0,
-                    layoutOptions: {
-                        'org.eclipse.elk.edgeLabels.inline': true,
-                    },
-                }];
-        }
-        targetPorts.forEach((targetPort) => {
-            const targetParentKey = targetPort.parentNode.key;
-            const targetKey = targetParentKey + '.' + targetPort.key;
-            const id = 'e' + ElkModel.edgeIndex;
+                    layoutOptions: { 'org.eclipse.elk.edgeLabels.inline': true },
+                }]
+            : undefined;
+        for (const targetPort of targetPorts) {
+            const targetParentKey = targetPort.parentNode.Key;
+            const targetKey = `${targetParentKey}.${targetPort.key}`;
+            const id = `e${ElkModel.edgeIndex++}`;
             const edge = {
                 id,
-                labels: edgeLabel, // Use the potentially undefined edgeLabel
-                sources: [sourceKey],
+                labels: edgeLabel,
+                sources: [sourceKey], // Use sources/targets for consistency
                 targets: [targetKey],
+                layoutOptions: {
+                    'org.eclipse.elk.layered.priority.direction': sourcePort.parentNode.type !== '$dff' ? 10 : undefined,
+                    'org.eclipse.elk.edge.thickness': numWires > 1 ? 2 : 1,
+                },
             };
             ElkModel.wireNameLookup[id] = targetPort.wire.netName;
-            if (sourcePort.parentNode.type !== '$dff') {
-                edge.layoutOptions = {
-                    'org.eclipse.elk.layered.priority.direction': 10,
-                    'org.eclipse.elk.edge.thickness': (numWires > 1 ? 2 : 1)
-                };
-            }
-            else {
-                edge.layoutOptions = { 'org.eclipse.elk.edge.thickness': (numWires > 1 ? 2 : 1) };
-            }
-            ElkModel.edgeIndex += 1;
-            edges.push(edge); // Push the new edge
-        });
-    });
+            edges.push(edge);
+        }
+    }
 }
 
 },{}],8:[function(require,module,exports){
 (function (global){(function (){
-'use strict';
+"use strict";
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.dumpLayout = dumpLayout;
 exports.render = render;
+// No major structural changes, just minor cleanup and consistency.
 const ELK = (typeof window !== "undefined" ? window['ELK'] : typeof global !== "undefined" ? global['ELK'] : null);
 const onml = require("onml");
 const FlatModule_1 = require("./FlatModule");
@@ -1297,61 +1090,55 @@ function createFlatModule(skinData, yosysNetlist) {
     Skin_1.default.skin = onml.p(skinData);
     const layoutProps = Skin_1.default.getProperties();
     const flatModule = new FlatModule_1.FlatModule(yosysNetlist);
-    // this can be skipped if there are no 0's or 1's
     if (layoutProps.constants !== false) {
         flatModule.addConstants();
     }
-    // this can be skipped if there are no splits or joins
     if (layoutProps.splitsAndJoins !== false) {
         flatModule.addSplitsJoins();
     }
     flatModule.createWires();
     return flatModule;
 }
-function dumpLayout(skinData, yosysNetlist, prelayout, done) {
-    const flatModule = createFlatModule(skinData, yosysNetlist);
-    const kgraph = (0, elkGraph_1.buildElkGraph)(flatModule);
-    if (prelayout) {
-        done(null, JSON.stringify(kgraph, null, 2));
-        return;
-    }
-    const layoutProps = Skin_1.default.getProperties();
-    const promise = elk.layout(kgraph, { layoutOptions: layoutProps.layoutEngine });
-    promise.then((graph) => {
+async function dumpLayout(skinData, yosysNetlist, prelayout, done) {
+    try {
+        const flatModule = createFlatModule(skinData, yosysNetlist);
+        const kgraph = (0, elkGraph_1.buildElkGraph)(flatModule);
+        if (prelayout) {
+            done(null, JSON.stringify(kgraph, null, 2));
+            return;
+        }
+        const layoutProps = Skin_1.default.getProperties();
+        const graph = await elk.layout(kgraph, { layoutOptions: layoutProps.layoutEngine });
         done(null, JSON.stringify(graph, null, 2));
-    }).catch((reason) => {
-        throw Error(reason);
-    });
+    }
+    catch (error) {
+        done(error);
+    }
 }
 function render(skinData, yosysNetlist, done, elkData) {
     const flatModule = createFlatModule(skinData, yosysNetlist);
     const kgraph = (0, elkGraph_1.buildElkGraph)(flatModule);
     const layoutProps = Skin_1.default.getProperties();
-    let promise;
-    // if we already have a layout then use it
-    if (elkData) {
-        promise = new Promise((resolve) => {
-            (0, drawModule_1.default)(elkData, flatModule);
-            resolve();
-        });
+    const renderPromise = (async () => {
+        if (elkData) {
+            return (0, drawModule_1.default)(elkData, flatModule);
+        }
+        else {
+            try {
+                const graph = await elk.layout(kgraph, { layoutOptions: layoutProps.layoutEngine });
+                return (0, drawModule_1.default)(graph, flatModule);
+            }
+            catch (error) {
+                // tslint:disable-next-line:no-console
+                console.error(error); // Consistent error handling, even with async/await
+                throw error; // Re-throw to propagate to the caller if needed
+            }
+        }
+    })();
+    if (done) {
+        renderPromise.then((output) => done(null, output), (error) => done(error));
     }
-    else {
-        // otherwise use ELK to generate the layout
-        promise = elk.layout(kgraph, { layoutOptions: layoutProps.layoutEngine })
-            .then((g) => (0, drawModule_1.default)(g, flatModule))
-            // tslint:disable-next-line:no-console
-            .catch((e) => { console.error(e); });
-    }
-    // support legacy callback style
-    if (typeof done === 'function') {
-        promise.then((output) => {
-            done(null, output);
-            return output;
-        }).catch((reason) => {
-            throw Error(reason);
-        });
-    }
-    return promise;
+    return renderPromise;
 }
 
 }).call(this)}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
@@ -1368,7 +1155,7 @@ const digital = "<svg  xmlns=\"http://www.w3.org/2000/svg\"\n  xmlns:xlink=\"htt
 const analog = "<svg  xmlns=\"http://www.w3.org/2000/svg\"\n  xmlns:xlink=\"http://www.w3.org/1999/xlink\"\n  xmlns:s=\"https://github.com/nturley/netlistsvg\"\n  width=\"800\" height=\"500\">\n  <s:properties>\n    <s:layoutEngine\n      org.eclipse.elk.layered.spacing.nodeNodeBetweenLayers=\"35\"\n      org.eclipse.elk.spacing.nodeNode= \"35\"\n      org.eclipse.elk.layered.layering.strategy= \"LONGEST_PATH\"\n    />\n    <s:low_priority_alias val=\"$dff\" />\n  </s:properties>\n<style>\nsvg {\n  stroke:#000;\n  fill:none;\n}\ntext {\n  fill:#000;\n  stroke:none;\n  font-size:10px;\n  font-weight: bold;\n  font-family: \"Courier New\", monospace;\n}\nline {\n    stroke-linecap: round;\n}\n.nodelabel {\n  text-anchor: middle;\n}\n.inputPortLabel {\n  text-anchor: end;\n}\n.splitjoinBody {\n  fill:#000;\n}\n</style>\n\n  <g s:type=\"mux\" transform=\"translate(50, 50)\" s:width=\"20\" s:height=\"40\">\n    <s:alias val=\"$pmux\"/>\n    <s:alias val=\"$mux\"/>\n    <s:alias val=\"$_MUX_\"/>\n\n    <path d=\"M0,0 L20,10 L20,30 L0,40 Z\" class=\"$cell_id\"/>\n\n    <text x=\"5\" y=\"32\" class=\"nodelabel $cell_id\" s:attribute=\"\">1</text>\n    <text x=\"5\" y=\"13\" class=\"nodelabel $cell_id\" s:attribute=\"\">0</text>\n    <g s:x=\"0\" s:y=\"10\" s:pid=\"A\"/>\n    <g s:x=\"0\" s:y=\"30\" s:pid=\"B\"/>\n    <g s:x=\"10\" s:y=\"35\" s:pid=\"S\"/>\n    <g s:x=\"20\" s:y=\"20\" s:pid=\"Y\"/>\n  </g>\n\n  <g s:type=\"mux-bus\" transform=\"translate(100, 50)\" s:width=\"24\" s:height=\"40\">\n    <s:alias val=\"$pmux-bus\"/>\n    <s:alias val=\"$mux-bus\"/>\n    <s:alias val=\"$_MUX_-bus\"/>\n\n    <path d=\"M0,0 L20,10 L20,30 L0,40 Z\" class=\"$cell_id\"/>\n    <path d=\"M4,2 L4,0 L22,9 L22,31 L4,40 L4,38\" class=\"$cell_id\"/>\n    <path d=\"M8,2 L8,0 L24,8 L24,32 L8,40 L8,38\" class=\"$cell_id\"/>\n\n    <text x=\"5\" y=\"32\" class=\"nodelabel $cell_id\" s:attribute=\"\">1</text>\n    <text x=\"5\" y=\"13\" class=\"nodelabel $cell_id\" s:attribute=\"\">0</text>\n    <g s:x=\"-1\" s:y=\"10\" s:pid=\"A\"/>\n    <g s:x=\"-1\" s:y=\"30\" s:pid=\"B\"/>\n    <g s:x=\"12\" s:y=\"38\" s:pid=\"S\"/>\n    <g s:x=\"24.5\" s:y=\"20\" s:pid=\"Y\"/>\n  </g>\n\n  <!-- and -->\n  <g s:type=\"and\" transform=\"translate(150,50)\" s:width=\"30\" s:height=\"25\">\n    <s:alias val=\"$and\"/>\n    <s:alias val=\"$logic_and\"/>\n    <s:alias val=\"$_AND_\"/>\n    <s:alias val=\"$reduce_and\"/>\n\n    <path d=\"M0,0 L0,25 L15,25 A15 12.5 0 0 0 15,0 Z\" class=\"$cell_id\"/>\n\n    <g s:x=\"0\" s:y=\"5\" s:pid=\"A\"/>\n    <g s:x=\"0\" s:y=\"20\" s:pid=\"B\"/>\n    <g s:x=\"30\" s:y=\"12.5\" s:pid=\"Y\"/>\n  </g>\n  <g s:type=\"nand\" transform=\"translate(150,100)\" s:width=\"30\" s:height=\"25\">\n    <s:alias val=\"$nand\"/>\n    <s:alias val=\"$logic_nand\"/>\n    <s:alias val=\"$_NAND_\"/>\n\n    <path d=\"M0,0 L0,25 L15,25 A15 12.5 0 0 0 15,0 Z\" class=\"$cell_id\"/>\n    <circle cx=\"34\" cy=\"12.5\" r=\"3\" class=\"$cell_id\"/>\n\n    <g s:x=\"0\" s:y=\"5\" s:pid=\"A\"/>\n    <g s:x=\"0\" s:y=\"20\" s:pid=\"B\"/>\n    <g s:x=\"36\" s:y=\"12.5\" s:pid=\"Y\"/>\n  </g>\n  <g s:type=\"andnot\" transform=\"translate(200,50)\" s:width=\"30\" s:height=\"25\">\n    <s:alias val=\"$_ANDNOT_\"/>\n\n    <path d=\"M0,0 L0,25 L15,25 A15 12.5 0 0 0 15,0 Z\" class=\"$cell_id\"/>\n    <circle cx=\"-3\" cy=\"20\" r=\"3\"/>\n\n    <g s:x=\"0\" s:y=\"5\" s:pid=\"A\"/>\n    <g s:x=\"-6\" s:y=\"20\" s:pid=\"B\"/>\n    <!-- <path d=\"M -10,20 L -6,20\"/> -->\n    <g s:x=\"30\" s:y=\"12.5\" s:pid=\"Y\"/>\n  </g>\n\n  <!-- or -->\n  <g s:type=\"or\" transform=\"translate(250,50)\" s:width=\"30\" s:height=\"25\">\n    <s:alias val=\"$or\"/>\n    <s:alias val=\"$logic_or\"/>\n    <s:alias val=\"$_OR_\"/>\n    <s:alias val=\"$reduce_or\"/>\n    <s:alias val=\"$reduce_bool\"/>\n\n    <path d=\"M0,0 A30 25 0 0 1 0,25 A30 25 0 0 0 30,12.5 A30 25 0 0 0 0,0\" class=\"$cell_id\"/>\n \n    <g s:x=\"2\" s:y=\"5\" s:pid=\"A\"/>\n    <g s:x=\"2\" s:y=\"20\" s:pid=\"B\"/>\n    <g s:x=\"30\" s:y=\"12.5\" s:pid=\"Y\"/>\n  </g>\n  <g s:type=\"reduce_nor\" transform=\"translate(250, 100)\" s:width=\"33\" s:height=\"25\">\n    <s:alias val=\"$nor\"/>\n    <s:alias val=\"$reduce_nor\"/>\n    <s:alias val=\"$_NOR_\"/>\n    <s:alias val=\"$_ORNOT_\"/>\n\n    <path d=\"M0,0 A30 25 0 0 1 0,25 A30 25 0 0 0 30,12.5 A30 25 0 0 0 0,0\" class=\"$cell_id\"/>\n    <circle cx=\"33\" cy=\"12.5\" r=\"3\" class=\"$cell_id\"/>\n\n    <g s:x=\"2\" s:y=\"5\" s:pid=\"A\"/>\n    <g s:x=\"2\" s:y=\"20\" s:pid=\"B\"/>\n    <g s:x=\"36\" s:y=\"12.5\" s:pid=\"Y\"/>\n  </g>\n  <g s:type=\"ornot\" transform=\"translate(300,50)\" s:width=\"30\" s:height=\"25\">\n    <s:alias val=\"$_ORNOT_\"/>\n\n    <path d=\"M0,0 A30 25 0 0 1 0,25 A30 25 0 0 0 30,12.5 A30 25 0 0 0 0,0\" class=\"$cell_id\"/>\n    <circle cx=\"-1\" cy=\"20\" r=\"3\"/>\n \n    <g s:x=\"2\" s:y=\"5\" s:pid=\"A\"/>\n    <g s:x=\"-4\" s:y=\"20\" s:pid=\"B\"/>\n    <!-- <path d=\"M -8,20 L -4,20\"/> -->\n    <g s:x=\"30\" s:y=\"12.5\" s:pid=\"Y\"/>\n  </g>\n\n  <!--xor -->\n  <g s:type=\"reduce_xor\" transform=\"translate(350, 50)\" s:width=\"33\" s:height=\"25\">\n    <s:alias val=\"$xor\"/>\n    <s:alias val=\"$reduce_xor\"/>\n    <s:alias val=\"$_XOR_\"/>\n\n    <path d=\"M3,0 A30 25 0 0 1 3,25 A30 25 0 0 0 33,12.5 A30 25 0 0 0 3,0\" class=\"$cell_id\"/>\n    <path d=\"M0,0 A30 25 0 0 1 0,25\" class=\"$cell_id\"/>\n\n    <g s:x=\"2\" s:y=\"5\" s:pid=\"A\"/>\n    <g s:x=\"2\" s:y=\"20\" s:pid=\"B\"/>\n    <g s:x=\"33\" s:y=\"12.5\" s:pid=\"Y\"/>\n  </g>\n\n  <g s:type=\"reduce_nxor\" transform=\"translate(350, 100)\" s:width=\"33\" s:height=\"25\">\n    <s:alias val=\"$xnor\"/>\n    <s:alias val=\"$reduce_xnor\"/>\n    <s:alias val=\"$_XNOR_\"/>\n\n    <path d=\"M3,0 A30 25 0 0 1 3,25 A30 25 0 0 0 33,12.5 A30 25 0 0 0 3,0\" class=\"$cell_id\"/>\n    <path d=\"M0,0 A30 25 0 0 1 0,25\" class=\"$cell_id\"/>\n    <circle cx=\"36\" cy=\"12.5\" r=\"3\" class=\"$cell_id\"/>\n\n    <g s:x=\"2\" s:y=\"5\" s:pid=\"A\"/>\n    <g s:x=\"2\" s:y=\"20\" s:pid=\"B\"/>\n    <g s:x=\"38\" s:y=\"12.5\" s:pid=\"Y\"/>\n  </g>\n\n  <g s:type=\"tribuf\" transform=\"translate(550, 50)\" s:width=\"15\" s:height=\"30\">\n    <s:alias val=\"$tribuf\"/>\n    <s:alias val=\"$_TRIBUF_\"/>\n\n    <s:alias val=\"tribuf-bus\"/>\n    <s:alias val=\"$tribuf-bus\"/>\n    <s:alias val=\"$_TRIBUF_-bus\"/>\n\n    <path d=\"M0,0 L25,15 L0,30 Z\" class=\"$cell_id\"/>\n\n    <g s:x=\"0\" s:y=\"15\" s:pid=\"A\"/>\n    <g s:x=\"11\" s:y=\"6\" s:pid=\"EN\"/>\n    <g s:x=\"25\" s:y=\"15\" s:pid=\"Y\"/>\n    <!-- <path d=\"M -5,15 L 0,15\" /> -->\n    <!-- <path d=\"M 11,0 L 11,6\" /> -->\n    <!-- <path d=\"M 30,15 L 25,15\" /> -->\n  </g>\n\n  <!--buffer -->\n  <g s:type=\"not\" transform=\"translate(450,100)\" s:width=\"30\" s:height=\"20\">\n    <s:alias val=\"$_NOT_\"/>\n    <s:alias val=\"$not\"/>\n    <s:alias val=\"$logic_not\"/>\n\n    <path d=\"M0,0 L0,20 L20,10 Z\" class=\"$cell_id\"/>\n    <circle cx=\"24\" cy=\"10\" r=\"3\" class=\"$cell_id\"/>\n\n    <g s:x=\"-1\" s:y=\"10\" s:pid=\"A\"/>\n    <g s:x=\"27\" s:y=\"10\" s:pid=\"Y\"/>\n  </g>\n  <g s:type=\"buf\" transform=\"translate(450,50)\" s:width=\"30\" s:height=\"20\">\n    <s:alias val=\"$_BUF_\"/>\n\n    <path d=\"M0,0 L0,20 L20,10 Z\" class=\"$cell_id\"/>\n\n    <g s:x=\"0\" s:y=\"10\" s:pid=\"A\"/>\n    <g s:x=\"20\" s:y=\"10\" s:pid=\"Y\"/>\n    <!-- <path d=\"M -5,10 L 0,10\"/> -->\n    <!-- <path d=\"M 25,10 L 20,10\"/> -->\n  </g>\n\n  <g s:type=\"add\" transform=\"translate(50, 150)\" s:width=\"25\" s:height=\"25\">\n    <s:alias val=\"$add\"/>\n\n    <circle r=\"12.5\" cx=\"12.5\" cy=\"12.5\" class=\"$cell_id\"/>\n    <line x1=\"7.5\" x2=\"17.5\" y1=\"12.5\" y2=\"12.5\" class=\"$cell_id\"/>\n    <line x1=\"12.5\" x2=\"12.5\" y1=\"7.5\" y2=\"17.5\" class=\"$cell_id\"/>\n\n    <g s:x=\"2\" s:y=\"5\" s:pid=\"A\"/>\n    <g s:x=\"2\" s:y=\"20\" s:pid=\"B\"/>\n    <g s:x=\"26\" s:y=\"12.5\" s:pid=\"Y\"/>\n  </g>\n\n  <g s:type=\"pos\" transform=\"translate(100, 150)\" s:width=\"25\" s:height=\"25\">\n    <s:alias val=\"$pos\"/>\n\n    <circle r=\"12.5\" cx=\"12.5\" cy=\"12.5\" class=\"$cell_id\"/>\n    <line x1=\"7.5\" x2=\"17.5\" y1=\"12.5\" y2=\"12.5\" class=\"$cell_id\"/>\n    <line x1=\"12.5\" x2=\"12.5\" y1=\"7.5\" y2=\"17.5\" class=\"$cell_id\"/>\n\n    <g s:x=\"-1\" s:y=\"12.5\" s:pid=\"A\"/>\n    <g s:x=\"26\" s:y=\"12.5\" s:pid=\"Y\"/>\n  </g>\n\n  <g s:type=\"sub\" transform=\"translate(150,150)\" s:width=\"25\" s:height=\"25\">\n    <s:alias val=\"$sub\"/>\n\n    <circle r=\"12.5\" cx=\"12.5\" cy=\"12.5\" class=\"$cell_id\"/>\n    <line x1=\"7.5\" x2=\"17.5\" y1=\"12.5\" y2=\"12.5\" class=\"$cell_id\"/>\n\n    <g s:x=\"2\" s:y=\"5\" s:pid=\"A\"/>\n    <g s:x=\"2\" s:y=\"20\" s:pid=\"B\"/>\n    <g s:x=\"25\" s:y=\"12.5\" s:pid=\"Y\"/>\n  </g>\n\n  <g s:type=\"neg\" transform=\"translate(200,150)\" s:width=\"25\" s:height=\"25\">\n    <s:alias val=\"$neg\"/>\n\n    <circle r=\"12.5\" cx=\"12.5\" cy=\"12.5\" class=\"$cell_id\"/>\n    <line x1=\"7.5\" x2=\"17.5\" y1=\"12.5\" y2=\"12.5\" class=\"$cell_id\"/>\n\n    <g s:x=\"0\" s:y=\"12.5\" s:pid=\"A\"/>\n    <g s:x=\"25\" s:y=\"12.5\" s:pid=\"Y\"/>\n  </g>\n\n  <g s:type=\"eq\" transform=\"translate(250,150)\" s:width=\"25\" s:height=\"25\">\n    <s:alias val=\"$eq\"/>\n    <s:alias val=\"$eqx\"/>\n\n    <circle r=\"12.5\" cx=\"12.5\" cy=\"12.5\" class=\"$cell_id\"/>\n    <line x1=\"7.5\" x2=\"17.5\" y1=\"10\" y2=\"10\" class=\"$cell_id\"/>\n    <line x1=\"7.5\" x2=\"17.5\" y1=\"15\" y2=\"15\" class=\"$cell_id\"/>\n\n    <g s:x=\"2\" s:y=\"5\" s:pid=\"A\"/>\n    <g s:x=\"2\" s:y=\"20\" s:pid=\"B\"/>\n    <g s:x=\"25\" s:y=\"12.5\" s:pid=\"Y\"/>\n  </g>\n\n  <g s:type=\"mul\" transform=\"translate(300, 150)\" s:width=\"25\" s:height=\"25\">\n    <s:alias val=\"$mul\"/>\n\n    <circle r=\"12.5\" cx=\"12.5\" cy=\"12.5\" class=\"$cell_id\"/>\n    <line x1=\"7.5\"  x2=\"17.5\" y1=\"7.5\" y2=\"17.5\" class=\"$cell_id\"/>\n    <line x1=\"17.5\" x2=\"7.5\"  y1=\"7.5\" y2=\"17.5\" class=\"$cell_id\"/>\n\n    <g s:x=\"2\" s:y=\"5\" s:pid=\"A\"/>\n    <g s:x=\"2\" s:y=\"20\" s:pid=\"B\"/>\n    <g s:x=\"26\" s:y=\"12.5\" s:pid=\"Y\"/>\n  </g>\n\n  <g s:type=\"div\" transform=\"translate(350, 150)\" s:width=\"25\" s:height=\"25\">\n    <s:alias val=\"$div\"/>\n\n    <circle r=\"12.5\" cx=\"12.5\" cy=\"12.5\" class=\"$cell_id\"/>\n    <line x1=\"15\" x2=\"10\"  y1=\"7.5\" y2=\"17.5\" class=\"$cell_id\"/>\n\n    <g s:x=\"2\" s:y=\"5\" s:pid=\"A\"/>\n    <g s:x=\"2\" s:y=\"20\" s:pid=\"B\"/>\n    <g s:x=\"26\" s:y=\"12.5\" s:pid=\"Y\"/>\n  </g>\n\n  <g s:type=\"mod\" transform=\"translate(400, 150)\" s:width=\"25\" s:height=\"25\">\n    <s:alias val=\"$mod\"/>\n\n    <circle r=\"12.5\" cx=\"12.5\" cy=\"12.5\" class=\"$cell_id\"/>\n    <line x1=\"15\" x2=\"10\"  y1=\"7.5\" y2=\"17.5\" class=\"$cell_id\"/>\n    <circle r=\"2\" cx=\"8\" cy=\"9\" class=\"$cell_id\"/>\n    <circle r=\"2\" cx=\"17\" cy=\"16\" class=\"$cell_id\"/>\n\n    <g s:x=\"2\" s:y=\"5\" s:pid=\"A\"/>\n    <g s:x=\"2\" s:y=\"20\" s:pid=\"B\"/>\n    <g s:x=\"26\" s:y=\"12.5\" s:pid=\"Y\"/>\n  </g>\n\n  <g s:type=\"pow\" transform=\"translate(450, 150)\" s:width=\"25\" s:height=\"25\">\n    <s:alias val=\"$pow\"/>\n\n    <circle r=\"12.5\" cx=\"12.5\" cy=\"12.5\" class=\"$cell_id\"/>\n    <line x1=\"10\" x2=\"12.5\"  y1=\"12\" y2=\"6\" class=\"$cell_id\"/>\n    <line x1=\"15\" x2=\"12.5\"  y1=\"12\" y2=\"6\" class=\"$cell_id\"/>\n\n    <g s:x=\"2\" s:y=\"5\" s:pid=\"A\"/>\n    <g s:x=\"2\" s:y=\"20\" s:pid=\"B\"/>\n    <g s:x=\"26\" s:y=\"12.5\" s:pid=\"Y\"/>\n  </g>\n\n  <g s:type=\"ne\" transform=\"translate(500,150)\" s:width=\"25\" s:height=\"25\">\n    <s:alias val=\"$ne\"/>\n    <s:alias val=\"$nex\"/>\n\n    <circle r=\"12.5\" cx=\"12.5\" cy=\"12.5\" class=\"$cell_id\"/>\n    <line x1=\"7.5\" x2=\"17.5\" y1=\"10\" y2=\"10\" class=\"$cell_id\"/>\n    <line x1=\"7.5\" x2=\"17.5\" y1=\"15\" y2=\"15\" class=\"$cell_id\"/>\n    <line x1=\"9\" x2=\"16\" y1=\"18\" y2=\"7\" class=\"$cell_id\"/>\n\n    <g s:x=\"2\" s:y=\"5\" s:pid=\"A\"/>\n    <g s:x=\"2\" s:y=\"20\" s:pid=\"B\"/>\n    <g s:x=\"25\" s:y=\"12.5\" s:pid=\"Y\"/>\n  </g>\n\n  <g s:type=\"lt\" transform=\"translate(50,200)\" s:width=\"25\" s:height=\"25\">\n    <s:alias val=\"$lt\"/>\n\n    <circle r=\"12.5\" cx=\"12.5\" cy=\"12.5\" class=\"$cell_id\"/>\n    <line x1=\"6\" x2=\"17\" y1=\"12\"  y2=\"7\" class=\"$cell_id\"/>\n    <line x1=\"6\" x2=\"17\" y1=\"12\" y2=\"17\" class=\"$cell_id\"/>\n\n    <g s:x=\"2\" s:y=\"5\" s:pid=\"A\"/>\n    <g s:x=\"2\" s:y=\"20\" s:pid=\"B\"/>\n    <g s:x=\"25\" s:y=\"12.5\" s:pid=\"Y\"/>\n  </g>\n\n  <g s:type=\"le\" transform=\"translate(100,200)\" s:width=\"25\" s:height=\"25\">\n    <s:alias val=\"$le\"/>\n\n    <circle r=\"12.5\" cx=\"12.5\" cy=\"12.5\" class=\"$cell_id\"/>\n    <line x1=\"6\" x2=\"17\" y1=\"11\"  y2=\"6\" class=\"$cell_id\"/>\n    <line x1=\"6\" x2=\"17\" y1=\"11\" y2=\"16\" class=\"$cell_id\"/>\n    <line x1=\"6\" x2=\"17\" y1=\"14\" y2=\"19\" class=\"$cell_id\"/>\n\n    <g s:x=\"2\" s:y=\"5\" s:pid=\"A\"/>\n    <g s:x=\"2\" s:y=\"20\" s:pid=\"B\"/>\n    <g s:x=\"25\" s:y=\"12.5\" s:pid=\"Y\"/>\n  </g>\n\n  <g s:type=\"ge\" transform=\"translate(150,200)\" s:width=\"25\" s:height=\"25\">\n    <s:alias val=\"$ge\"/>\n\n    <circle r=\"12\" cx=\"12\" cy=\"12\" class=\"$cell_id\"/>\n    <line x1=\"8\" x2=\"19\"  y1=\"6\" y2=\"11\" class=\"$cell_id\"/>\n    <line x1=\"8\" x2=\"19\" y1=\"16\" y2=\"11\" class=\"$cell_id\"/>\n    <line x1=\"8\" x2=\"19\" y1=\"19\" y2=\"14\" class=\"$cell_id\"/>\n\n    <g s:x=\"2\" s:y=\"5\" s:pid=\"A\"/>\n    <g s:x=\"2\" s:y=\"20\" s:pid=\"B\"/>\n    <g s:x=\"25\" s:y=\"12.5\" s:pid=\"Y\"/>\n  </g>\n\n  <g s:type=\"gt\" transform=\"translate(200,200)\" s:width=\"25\" s:height=\"25\">\n    <s:alias val=\"$gt\"/>\n\n    <circle r=\"12\" cx=\"12\" cy=\"12\" class=\"$cell_id\"/>\n    <line x1=\"8\" x2=\"19\"  y1=\"7\" y2=\"12\" class=\"$cell_id\"/>\n    <line x1=\"8\" x2=\"19\" y1=\"17\" y2=\"12\" class=\"$cell_id\"/>\n\n    <g s:x=\"2\" s:y=\"5\" s:pid=\"A\"/>\n    <g s:x=\"2\" s:y=\"20\" s:pid=\"B\"/>\n    <g s:x=\"25\" s:y=\"12.5\" s:pid=\"Y\"/>\n  </g>\n\n  <g s:type=\"shr\" transform=\"translate(250,200)\" s:width=\"25\" s:height=\"25\">\n    <s:alias val=\"$shr\"/>\n\n    <circle r=\"12\" cx=\"12\" cy=\"12\" class=\"$cell_id\"/>\n    <line x1=\"8\" x2=\"13\"  y1=\"7\"  y2=\"12\" class=\"$cell_id\"/>\n    <line x1=\"8\" x2=\"13\"  y1=\"17\" y2=\"12\" class=\"$cell_id\"/>\n    <line x1=\"14\" x2=\"19\" y1=\"7\"  y2=\"12\" class=\"$cell_id\"/>\n    <line x1=\"14\" x2=\"19\" y1=\"17\" y2=\"12\" class=\"$cell_id\"/>\n\n    <g s:x=\"2\" s:y=\"5\" s:pid=\"A\"/>\n    <g s:x=\"2\" s:y=\"20\" s:pid=\"B\"/>\n    <g s:x=\"25\" s:y=\"12.5\" s:pid=\"Y\"/>\n  </g>\n\n  <g s:type=\"shl\" transform=\"translate(300,200)\" s:width=\"25\" s:height=\"25\">\n    <s:alias val=\"$shl\"/>\n\n    <circle r=\"12\" cx=\"12\" cy=\"12\" class=\"$cell_id\"/>\n    <line x1=\"6\" x2=\"11\"  y1=\"12\" y2=\"7\"  class=\"$cell_id\"/>\n    <line x1=\"6\" x2=\"11\"  y1=\"12\" y2=\"17\" class=\"$cell_id\"/>\n    <line x1=\"12\" x2=\"17\" y1=\"12\" y2=\"7\"  class=\"$cell_id\"/>\n    <line x1=\"12\" x2=\"17\" y1=\"12\" y2=\"17\" class=\"$cell_id\"/>\n\n    <g s:x=\"2\" s:y=\"5\" s:pid=\"A\"/>\n    <g s:x=\"2\" s:y=\"20\" s:pid=\"B\"/>\n    <g s:x=\"25\" s:y=\"12.5\" s:pid=\"Y\"/>\n  </g>\n\n  <g s:type=\"sshr\" transform=\"translate(350,200)\" s:width=\"25\" s:height=\"25\">\n    <s:alias val=\"$sshr\"/>\n\n    <circle r=\"12\" cx=\"12\" cy=\"12\" class=\"$cell_id\"/>\n    <line x1=\"5\"  x2=\"10\" y1=\"7\"  y2=\"12\" class=\"$cell_id\"/>\n    <line x1=\"5\"  x2=\"10\" y1=\"17\" y2=\"12\" class=\"$cell_id\"/>\n    <line x1=\"11\" x2=\"16\" y1=\"7\"  y2=\"12\" class=\"$cell_id\"/>\n    <line x1=\"11\" x2=\"16\" y1=\"17\" y2=\"12\" class=\"$cell_id\"/>\n    <line x1=\"17\" x2=\"22\" y1=\"7\"  y2=\"12\" class=\"$cell_id\"/>\n    <line x1=\"17\" x2=\"22\" y1=\"17\" y2=\"12\" class=\"$cell_id\"/>\n\n    <g s:x=\"2\" s:y=\"5\" s:pid=\"A\"/>\n    <g s:x=\"2\" s:y=\"20\" s:pid=\"B\"/>\n    <g s:x=\"25\" s:y=\"12.5\" s:pid=\"Y\"/>\n  </g>\n\n  <g s:type=\"sshl\" transform=\"translate(400,200)\" s:width=\"25\" s:height=\"25\">\n    <s:alias val=\"$sshl\"/>\n\n    <circle r=\"12\" cx=\"12\" cy=\"12\" class=\"$cell_id\"/>\n    <line x1=\"3\"  x2=\"8\"   y1=\"12\" y2=\"7\"  class=\"$cell_id\"/>\n    <line x1=\"3\"  x2=\"8\"   y1=\"12\" y2=\"17\" class=\"$cell_id\"/>\n    <line x1=\"9\"  x2=\"14\" y1=\"12\" y2=\"7\"  class=\"$cell_id\"/>\n    <line x1=\"9\"  x2=\"14\" y1=\"12\" y2=\"17\" class=\"$cell_id\"/>\n    <line x1=\"15\" x2=\"20\" y1=\"12\" y2=\"7\"  class=\"$cell_id\"/>\n    <line x1=\"15\" x2=\"20\" y1=\"12\" y2=\"17\" class=\"$cell_id\"/>\n\n    <g s:x=\"2\" s:y=\"5\" s:pid=\"A\"/>\n    <g s:x=\"2\" s:y=\"20\" s:pid=\"B\"/>\n    <g s:x=\"25\" s:y=\"12.5\" s:pid=\"Y\"/>\n  </g>\n\n  <g s:type=\"inputExt\" transform=\"translate(50,250)\" s:width=\"30\" s:height=\"20\">\n    <text x=\"15\" y=\"-4\" class=\"nodelabel $cell_id\" s:attribute=\"ref\">input</text>\n    <s:alias val=\"$_inputExt_\"/>\n    <path d=\"M0,0 L0,20 L15,20 L30,10 L15,0 Z\" class=\"$cell_id\"/>\n    <g s:x=\"30\" s:y=\"10\" s:pid=\"Y\"/>\n  </g>\n\n  <g s:type=\"constant\" transform=\"translate(150,250)\" s:width=\"30\" s:height=\"20\">\n    <text x=\"15\" y=\"-4\" class=\"nodelabel $cell_id\" s:attribute=\"ref\">constant</text>\n\n    <s:alias val=\"$_constant_\"/>\n    <rect width=\"30\" height=\"20\" class=\"$cell_id\"/>\n\n    <g s:x=\"31\" s:y=\"10\" s:pid=\"Y\"/>\n  </g>\n\n  <g s:type=\"outputExt\" transform=\"translate(250,250)\" s:width=\"30\" s:height=\"20\">\n    <text x=\"15\" y=\"-4\" class=\"nodelabel $cell_id\" s:attribute=\"ref\">output</text>\n    <s:alias val=\"$_outputExt_\"/>\n    <path d=\"M30,0 L30,20 L15,20 L0,10 L15,0 Z\" class=\"$cell_id\"/>\n\n    <g s:x=\"0\" s:y=\"10\" s:pid=\"A\"/>\n  </g>\n\n  <g s:type=\"split\" transform=\"translate(350,250)\" s:width=\"5\" s:height=\"40\">\n    <rect width=\"5\" height=\"40\" class=\"splitjoinBody\" s:generic=\"body\"/>\n    <s:alias val=\"$_split_\"/>\n\n    <g s:x=\"0\" s:y=\"20\" s:pid=\"in\"/>\n    <g transform=\"translate(5, 10)\" s:x=\"4\" s:y=\"10\" s:pid=\"out0\">\n      <text x=\"5\" y=\"-4\">hi:lo</text>\n    </g>\n    <g transform=\"translate(5, 30)\" s:x=\"4\" s:y=\"30\" s:pid=\"out1\">\n      <text x=\"5\" y=\"-4\">hi:lo</text>\n    </g>\n  </g>\n\n  <g s:type=\"join\" transform=\"translate(450,250)\" s:width=\"4\" s:height=\"40\">\n    <rect width=\"5\" height=\"40\" class=\"splitjoinBody\" s:generic=\"body\"/>\n    <s:alias val=\"$_join_\"/>\n    <g s:x=\"5\" s:y=\"20\"  s:pid=\"out\"/>\n    <g transform=\"translate(0, 10)\" s:x=\"0\" s:y=\"10\" s:pid=\"in0\">\n      <text x=\"-3\" y=\"-4\" class=\"inputPortLabel\">hi:lo</text>\n    </g>\n    <g transform=\"translate(0, 30)\" s:x=\"0\" s:y=\"30\" s:pid=\"in1\">\n      <text x=\"-3\" y=\"-4\" class=\"inputPortLabel\">hi:lo</text>\n    </g>\n  </g>\n\n  <g s:type=\"dff\" transform=\"translate(50,300)\" s:width=\"30\" s:height=\"40\">\n    <s:alias val=\"$dff\"/>\n    <s:alias val=\"$_DFF_\"/>\n    <s:alias val=\"$_DFF_P_\"/>\n\n    <s:alias val=\"$adff\"/>\n    <s:alias val=\"$_DFF_\"/>\n    <s:alias val=\"$_DFF_P_\"/>\n\n    <s:alias val=\"$sdff\"/>\n    <s:alias val=\"$_DFF_\"/>\n    <s:alias val=\"$_DFF_P_\"/>\n\n    <rect width=\"30\" height=\"40\" x=\"0\" y=\"0\" class=\"$cell_id\"/>\n    <path d=\"M0,35 L5,30 L0,25\" class=\"$cell_id\"/>\n\n    <g s:x=\"31\" s:y=\"10\" s:pid=\"Q\"/>\n    <g s:x=\"-1\" s:y=\"30\" s:pid=\"CLK\"/>\n    <g s:x=\"-1\" s:y=\"30\" s:pid=\"C\"/>\n    <g s:x=\"-1\" s:y=\"10\" s:pid=\"D\"/>\n    <g s:x=\"15\" s:y=\"40\" s:pid=\"ARST\"/>\n    <g s:x=\"15\" s:y=\"40\" s:pid=\"SRST\"/>\n  </g>\n\n  <g s:type=\"dff-bus\" transform=\"translate(100,300)\" s:width=\"34\" s:height=\"44\">\n    <s:alias val=\"$dff-bus\"/>\n    <s:alias val=\"$_DFF_-bus\"/>\n    <s:alias val=\"$_DFF_P_-bus\"/>\n\n    <s:alias val=\"adff-bus\"/>\n    <s:alias val=\"$adff-bus\"/>\n    <s:alias val=\"$_DFF_-bus\"/>\n    <s:alias val=\"$_DFF_P_-bus\"/>\n\n    <s:alias val=\"sdff-bus\"/>\n    <s:alias val=\"$sdff-bus\"/>\n    <s:alias val=\"$_DFF_-bus\"/>\n    <s:alias val=\"$_DFF_P_-bus\"/>\n\n    <rect width=\"30\" height=\"40\" x=\"0\" y=\"0\" class=\"$cell_id\"/>\n    <path d=\"M0,35 L5,30 L0,25\" class=\"$cell_id\"/>\n    <path d=\"M30,2 L32,2 L32,42 L2,42 L2,40\" class=\"$cell_id\"/>\n    <path d=\"M32,4 L34,4 L34,44 L4,44 L4,42\" class=\"$cell_id\"/>\n\n    <g s:x=\"35\" s:y=\"10\" s:pid=\"Q\"/>\n    <g s:x=\"-1\" s:y=\"30\" s:pid=\"CLK\"/>\n    <g s:x=\"-1\" s:y=\"30\" s:pid=\"C\"/>\n    <g s:x=\"-1\" s:y=\"10\" s:pid=\"D\"/>\n    <g s:x=\"17\" s:y=\"44\" s:pid=\"ARST\"/>\n    <g s:x=\"17\" s:y=\"44\" s:pid=\"SRST\"/>\n  </g>\n\n  <g s:type=\"dffn\" transform=\"translate(150,300)\" s:width=\"30\" s:height=\"40\">\n    <s:alias val=\"$dffn\"/>\n    <s:alias val=\"$_DFF_N_\"/>\n\n    <rect width=\"30\" height=\"40\" x=\"0\" y=\"0\" class=\"$cell_id\"/>\n    <path d=\"M0,35 L5,30 L0,25\" class=\"$cell_id\"/>\n    <circle cx=\"-3\" cy=\"30\" r=\"3\" class=\"$cell_id\"/>\n\n    <g s:x=\"30\" s:y=\"10\" s:pid=\"Q\"/>\n    <g s:x=\"-6\" s:y=\"30\" s:pid=\"CLK\"/>\n    <g s:x=\"-6\" s:y=\"30\" s:pid=\"C\"/>\n    <g s:x=\"0\" s:y=\"10\" s:pid=\"D\"/>\n  </g>\n\n  <g s:type=\"dffn-bus\" transform=\"translate(200,300)\" s:width=\"30\" s:height=\"40\">\n    <s:alias val=\"$dffn-bus\"/>\n    <s:alias val=\"$_DFF_N_-bus\"/>\n\n    <rect width=\"30\" height=\"40\" x=\"0\" y=\"0\" class=\"$cell_id\"/>\n    <path d=\"M0,35 L5,30 L0,25\" class=\"$cell_id\"/>\n    <circle cx=\"-3\" cy=\"30\" r=\"3\" class=\"$cell_id\"/>\n    <path d=\"M30,2 L32,2 L32,42 L2,42 L2,40\" class=\"$cell_id\"/>\n    <path d=\"M32,4 L34,4 L34,44 L4,44 L4,42\" class=\"$cell_id\"/>\n\n    <g s:x=\"35\" s:y=\"10\" s:pid=\"Q\"/>\n    <g s:x=\"-6\" s:y=\"30\" s:pid=\"CLK\"/>\n    <g s:x=\"-6\" s:y=\"30\" s:pid=\"C\"/>\n    <g s:x=\"0\" s:y=\"10\" s:pid=\"D\"/>\n  </g>\n\n  <g s:type=\"dlatch\" transform=\"translate(250,300)\" s:width=\"30\" s:height=\"40\">\n    <s:alias val=\"$dlatch\"/>\n    <s:alias val=\"$_DLATCH_\"/>\n    <s:alias val=\"adlatch\"/>\n    <s:alias val=\"$adlatch\"/>\n\n    <rect width=\"30\" height=\"40\" x=\"0\" y=\"0\" class=\"$cell_id\"/>\n\n    <path d=\"M 1,35 H 4 V 25 h 5 v 10 h 3\" class=\"$cell_id\"/>\n\n    <g s:x=\"30\" s:y=\"10\" s:pid=\"Q\"/>\n    <g s:x=\"0\" s:y=\"10\" s:pid=\"D\"/>\n    <g s:x=\"-1\" s:y=\"30\" s:pid=\"EN\"/>\n    <g s:x=\"15\" s:y=\"40\" s:pid=\"ARST\"/>\n  </g>\n\n  <g s:type=\"dlatch-bus\" transform=\"translate(300,300)\" s:width=\"30\" s:height=\"40\">\n    <s:alias val=\"$dlatch-bus\"/>\n    <s:alias val=\"$_DLATCH_-bus\"/>\n    <s:alias val=\"adlatch-bus\"/>\n    <s:alias val=\"$adlatch-bus\"/>\n\n    <rect width=\"30\" height=\"40\" x=\"0\" y=\"0\" class=\"$cell_id\"/>\n\n    <path d=\"M 1,35 H 4 V 25 h 5 v 10 h 3\" class=\"$cell_id\"/>\n    <path d=\"M30,2 L32,2 L32,42 L2,42 L2,40\" class=\"$cell_id\"/>\n    <path d=\"M32,4 L34,4 L34,44 L4,44 L4,42\" class=\"$cell_id\"/>\n\n    <g s:x=\"35\" s:y=\"10\" s:pid=\"Q\"/>\n    <g s:x=\"0\" s:y=\"10\" s:pid=\"D\"/>\n    <g s:x=\"-1\" s:y=\"30\" s:pid=\"EN\"/>\n    <g s:x=\"17\" s:y=\"44\" s:pid=\"ARST\"/>\n  </g>\n\n  <g s:type=\"dlatchn\" transform=\"translate(350,300)\" s:width=\"30\" s:height=\"40\">\n    <s:alias val=\"$dlatchn\"/>\n    <s:alias val=\"$_DLATCH_N_\"/>\n\n    <rect width=\"30\" height=\"40\" x=\"0\" y=\"0\" class=\"$cell_id\"/>\n\n    <path d=\"M 1,25 H 4 V 35 H 9 V 25 h 3\" class=\"$cell_id\"/>\n\n    <g s:x=\"30\" s:y=\"10\" s:pid=\"Q\"/>\n    <g s:x=\"0\" s:y=\"10\" s:pid=\"D\"/>\n    <g s:x=\"-1\" s:y=\"30\" s:pid=\"EN\"/>\n  </g>\n\n  <g s:type=\"dlatchn-bus\" transform=\"translate(400,300)\" s:width=\"30\" s:height=\"40\">\n    <s:alias val=\"$dlatchn-bus\"/>\n    <s:alias val=\"$_DLATCH_N_-bus\"/>\n\n    <rect width=\"30\" height=\"40\" x=\"0\" y=\"0\" class=\"$cell_id\"/>\n\n    <path d=\"M 1,25 H 4 V 35 H 9 V 25 h 3\" class=\"$cell_id\"/>\n    <path d=\"M30,2 L32,2 L32,42 L2,42 L2,40\" class=\"$cell_id\"/>\n    <path d=\"M32,4 L34,4 L34,44 L4,44 L4,42\" class=\"$cell_id\"/>\n\n    <g s:x=\"35\" s:y=\"10\" s:pid=\"Q\"/>\n    <g s:x=\"0\" s:y=\"10\" s:pid=\"D\"/>\n    <g s:x=\"-1\" s:y=\"30\" s:pid=\"EN\"/>\n  </g>\n\n  <g s:type=\"_AOI3_\" transform=\"translate(50, 400)\" s:width=\"66\" s:height=\"40\">\n    <s:alias val=\"$_AOI3_\"/>\n\n    <path d=\"M0,0 L0,25 L15,25 A15 12.5 0 0 0 15,0 Z\" class=\"$cell_id\"/>\n    <path d=\"M30,13 A30 25 0 0 1 30,38 A30 25 0 0 0 60,25.5 A30 25 0 0 0 30,13\" class=\"$cell_id\"/>\n    <circle cx=\"63\" cy=\"25.5\" r=\"3\" class=\"$cell_id\"/>\n    <path d=\"M0,32 L33,32\" />\n    <g s:x=\"0\" s:y=\"5\"  s:pid=\"A\"/>\n    <g s:x=\"0\" s:y=\"20\"  s:pid=\"B\"/>\n    <g s:x=\"0\" s:y=\"32\"  s:pid=\"C\"/>\n    <g s:x=\"66\" s:y=\"25.5\" s:pid=\"Y\"/>\n    <!-- <path d=\"M-5,5 L0,5\"/> -->\n    <!-- <path d=\"M-5,20 L0,20\"/> -->\n    <!-- <path d=\"M-5,32 L0,32\"/> -->\n    <!-- <path d=\"M 70,25.5 L 66,25.5\"/> -->\n  </g>\n\n  <g s:type=\"_OAI3_\" transform=\"translate(150, 400)\" s:width=\"66\" s:height=\"40\">\n    <s:alias val=\"$_OAI3_\"/>\n\n    <path d=\"M30,13 L30,38 L45,38 A15 12.5 0 0 0 45,13 Z\" class=\"$cell_id\"/>\n    <path d=\"M0,0 A30 25 0 0 1 0,25 A30 25 0 0 0 30,12.5 A30 25 0 0 0 0,0\" class=\"$cell_id\"/>\n    <circle cx=\"63\" cy=\"25.5\" r=\"3\" class=\"$cell_id\"/>\n    <path d=\"M0,32 L30,32\" />\n\n    <g s:x=\"2\" s:y=\"5\"  s:pid=\"A\"/>\n    <g s:x=\"2\" s:y=\"20\"  s:pid=\"B\"/>\n    <g s:x=\"0\" s:y=\"32\"  s:pid=\"C\"/>\n    <g s:x=\"66\" s:y=\"25.5\" s:pid=\"Y\"/>\n    <!-- <path d=\"M-5,5 L2,5\"/> -->\n    <!-- <path d=\"M-5,20 L2,20\"/> -->\n    <!-- <path d=\"M-5,32 L0,32\"/> -->\n    <!-- <path d=\"M 70,25.5 L 66,25.5\"/> -->\n  </g>\n\n  <!-- AOI4 -->\n\n  <g s:type=\"_AOI4_\" transform=\"translate(250, 400)\" s:width=\"66\" s:height=\"40\">\n    <s:alias val=\"$_AOI4_\"/>\n\n    <path d=\"M0,0 L0,25 L15,25 A15 12.5 0 0 0 15,0 Z\" class=\"$cell_id\"/>\n    <path d=\"M0,25 L0,50 L15,50 A15 12.5 0 0 0 15,25 Z\" class=\"$cell_id\"/>\n    <path d=\"M30,12.5 A30 25 0 0 1 30,37.5 A30 25 0 0 0 60,25.5 A30 25 0 0 0 30,12.5\" class=\"$cell_id\"/>\n    <circle cx=\"63\" cy=\"25.5\" r=\"3\" class=\"$cell_id\"/>\n    <g s:x=\"0\" s:y=\"5\"  s:pid=\"A\"/>\n    <g s:x=\"0\" s:y=\"20\"  s:pid=\"B\"/>\n    <g s:x=\"0\" s:y=\"30\"  s:pid=\"C\"/>\n    <g s:x=\"0\" s:y=\"45\"  s:pid=\"D\"/>\n    <g s:x=\"66\" s:y=\"25.5\" s:pid=\"Y\"/>\n    <!-- <path d=\"M-5,5 L0,5\"/> -->\n    <!-- <path d=\"M-5,20 L0,20\"/> -->\n    <!-- <path d=\"M-5,30 L0,30\"/> -->\n    <!-- <path d=\"M-5,45 L0,45\"/> -->\n    <!-- <path d=\"M 70,25.5 L 66,25.5\"/> -->\n  </g>\n\n  <!-- OAI4 -->\n\n  <g s:type=\"_OAI4_\" transform=\"translate(350, 400)\" s:width=\"66\" s:height=\"40\">\n    <s:alias val=\"$_OAI4_\"/>\n\n    <path d=\"M30,13 L30,38 L45,38 A15 12.5 0 0 0 45,13 Z\" class=\"$cell_id\"/>\n    <path d=\"M0,0 A30 25 0 0 1 0,25 A30 25 0 0 0 30,12.5 A30 25 0 0 0 0,0\" class=\"$cell_id\"/>\n    <path d=\"M0,25 A30 25 0 0 1 0,50 A30 25 0 0 0 30,37.5 A30 25 0 0 0 0,25\" class=\"$cell_id\"/>\n    <circle cx=\"63\" cy=\"25.5\" r=\"3\" class=\"$cell_id\"/>\n\n    <g s:x=\"2\" s:y=\"5\"  s:pid=\"A\"/>\n    <g s:x=\"2\" s:y=\"20\"  s:pid=\"B\"/>\n    <g s:x=\"2\" s:y=\"30\"  s:pid=\"C\"/>\n    <g s:x=\"2\" s:y=\"45\"  s:pid=\"D\"/>\n    <g s:x=\"66\" s:y=\"25.5\" s:pid=\"Y\"/>\n    <!-- <path d=\"M-5,5 L2,5\"/> -->\n    <!-- <path d=\"M-5,20 L2,20\"/> -->\n    <!-- <path d=\"M-5,30 L2,30\"/> -->\n    <!-- <path d=\"M-5,45 L2,45\"/> -->\n    <!-- <path d=\"M 70,25.5 L 66,25.5\"/> -->\n  </g>\n\n  <g s:type=\"generic\" transform=\"translate(550,250)\" s:width=\"30\" s:height=\"40\">\n\n    <text x=\"15\" y=\"-4\" class=\"nodelabel $cell_id\" s:attribute=\"ref\">generic</text>\n    <rect width=\"30\" height=\"40\" s:generic=\"body\" class=\"$cell_id\"/>\n\n    <g transform=\"translate(30, 10)\" s:x=\"30\" s:y=\"10\" s:pid=\"out0\">\n      <text x=\"5\" y=\"-4\" style=\"fill:#000; stroke:none\" class=\"$cell_id\">out0</text>\n    </g>\n    <g transform=\"translate(30, 30)\" s:x=\"30\" s:y=\"30\" s:pid=\"out1\">\n      <text x=\"5\" y=\"-4\" style=\"fill:#000;stroke:none\" class=\"$cell_id\">out1</text>\n    </g>\n    <g transform=\"translate(0, 10)\" s:x=\"0\" s:y=\"10\" s:pid=\"in0\">\n      <text x=\"-3\" y=\"-4\" class=\"inputPortLabel $cell_id\">in0</text>\n    </g>\n    <g transform=\"translate(0, 30)\" s:x=\"0\" s:y=\"30\" s:pid=\"in1\">\n      <text x=\"-3\" y=\"-4\" class=\"inputPortLabel $cell_id\">in1</text>\n    </g>\n  </g>\n\n</svg>\n";
 const exampleDigital = Buffer("ewogICJjcmVhdG9yIjogIllvc3lzIDAuNSsyMjAgKGdpdCBzaGExIDk0ZmJhZmYsIGVtY2MgIC1PcykiLAogICJtb2R1bGVzIjogewogICAgInVwM2Rvd241IjogewogICAgICAicG9ydHMiOiB7CiAgICAgICAgImNsb2NrIjogewogICAgICAgICAgImRpcmVjdGlvbiI6ICJpbnB1dCIsCiAgICAgICAgICAiYml0cyI6IFsgMiBdCiAgICAgICAgfSwKICAgICAgICAiZGF0YV9pbiI6IHsKICAgICAgICAgICJkaXJlY3Rpb24iOiAiaW5wdXQiLAogICAgICAgICAgImJpdHMiOiBbIDMsIDQsIDUsIDYsIDcsIDgsIDksIDEwLCAxMSBdCiAgICAgICAgfSwKICAgICAgICAidXAiOiB7CiAgICAgICAgICAiZGlyZWN0aW9uIjogImlucHV0IiwKICAgICAgICAgICJiaXRzIjogWyAxMiBdCiAgICAgICAgfSwKICAgICAgICAiZG93biI6IHsKICAgICAgICAgICJkaXJlY3Rpb24iOiAiaW5wdXQiLAogICAgICAgICAgImJpdHMiOiBbIDEzIF0KICAgICAgICB9LAogICAgICAgICJjYXJyeV9vdXQiOiB7CiAgICAgICAgICAiZGlyZWN0aW9uIjogIm91dHB1dCIsCiAgICAgICAgICAiYml0cyI6IFsgMTQgXQogICAgICAgIH0sCiAgICAgICAgImJvcnJvd19vdXQiOiB7CiAgICAgICAgICAiZGlyZWN0aW9uIjogIm91dHB1dCIsCiAgICAgICAgICAiYml0cyI6IFsgMTUgXQogICAgICAgIH0sCiAgICAgICAgImNvdW50X291dCI6IHsKICAgICAgICAgICJkaXJlY3Rpb24iOiAib3V0cHV0IiwKICAgICAgICAgICJiaXRzIjogWyAxNiwgMTcsIDE4LCAxOSwgMjAsIDIxLCAyMiwgMjMsIDI0IF0KICAgICAgICB9LAogICAgICAgICJwYXJpdHlfb3V0IjogewogICAgICAgICAgImRpcmVjdGlvbiI6ICJvdXRwdXQiLAogICAgICAgICAgImJpdHMiOiBbIDI1IF0KICAgICAgICB9CiAgICAgIH0sCiAgICAgICJjZWxscyI6IHsKICAgICAgICAiJGFkZCRpbnB1dC52OjE3JDMiOiB7CiAgICAgICAgICAiaGlkZV9uYW1lIjogMSwKICAgICAgICAgICJ0eXBlIjogIiRhZGQiLAogICAgICAgICAgInBhcmFtZXRlcnMiOiB7CiAgICAgICAgICAgICJBX1NJR05FRCI6IDAsCiAgICAgICAgICAgICJBX1dJRFRIIjogOSwKICAgICAgICAgICAgIkJfU0lHTkVEIjogMCwKICAgICAgICAgICAgIkJfV0lEVEgiOiAyLAogICAgICAgICAgICAiWV9XSURUSCI6IDEwCiAgICAgICAgICB9LAogICAgICAgICAgImF0dHJpYnV0ZXMiOiB7CiAgICAgICAgICAgICJzcmMiOiAiaW5wdXQudjoxNyIKICAgICAgICAgIH0sCiAgICAgICAgICAicG9ydF9kaXJlY3Rpb25zIjogewogICAgICAgICAgICAiQSI6ICJpbnB1dCIsCiAgICAgICAgICAgICJCIjogImlucHV0IiwKICAgICAgICAgICAgIlkiOiAib3V0cHV0IgogICAgICAgICAgfSwKICAgICAgICAgICJjb25uZWN0aW9ucyI6IHsKICAgICAgICAgICAgIkEiOiBbIDE2LCAxNywgMTgsIDE5LCAyMCwgMjEsIDIyLCAyMywgMjQgXSwKICAgICAgICAgICAgIkIiOiBbICIxIiwgIjEiIF0sCiAgICAgICAgICAgICJZIjogWyAyNiwgMjcsIDI4LCAyOSwgMzAsIDMxLCAzMiwgMzMsIDM0LCAzNSBdCiAgICAgICAgICB9CiAgICAgICAgfSwKICAgICAgICAiJGFuZCRpbnB1dC52OjI4JDUiOiB7CiAgICAgICAgICAiaGlkZV9uYW1lIjogMSwKICAgICAgICAgICJ0eXBlIjogIiRhbmQiLAogICAgICAgICAgInBhcmFtZXRlcnMiOiB7CiAgICAgICAgICAgICJBX1NJR05FRCI6IDAsCiAgICAgICAgICAgICJBX1dJRFRIIjogMSwKICAgICAgICAgICAgIkJfU0lHTkVEIjogMCwKICAgICAgICAgICAgIkJfV0lEVEgiOiAxLAogICAgICAgICAgICAiWV9XSURUSCI6IDEKICAgICAgICAgIH0sCiAgICAgICAgICAiYXR0cmlidXRlcyI6IHsKICAgICAgICAgICAgInNyYyI6ICJpbnB1dC52OjI4IgogICAgICAgICAgfSwKICAgICAgICAgICJwb3J0X2RpcmVjdGlvbnMiOiB7CiAgICAgICAgICAgICJBIjogImlucHV0IiwKICAgICAgICAgICAgIkIiOiAiaW5wdXQiLAogICAgICAgICAgICAiWSI6ICJvdXRwdXQiCiAgICAgICAgICB9LAogICAgICAgICAgImNvbm5lY3Rpb25zIjogewogICAgICAgICAgICAiQSI6IFsgMTIgXSwKICAgICAgICAgICAgIkIiOiBbIDM1IF0sCiAgICAgICAgICAgICJZIjogWyAzNiBdCiAgICAgICAgICB9CiAgICAgICAgfSwKICAgICAgICAiJGFuZCRpbnB1dC52OjI5JDYiOiB7CiAgICAgICAgICAiaGlkZV9uYW1lIjogMSwKICAgICAgICAgICJ0eXBlIjogIiRhbmQiLAogICAgICAgICAgInBhcmFtZXRlcnMiOiB7CiAgICAgICAgICAgICJBX1NJR05FRCI6IDAsCiAgICAgICAgICAgICJBX1dJRFRIIjogMSwKICAgICAgICAgICAgIkJfU0lHTkVEIjogMCwKICAgICAgICAgICAgIkJfV0lEVEgiOiAxLAogICAgICAgICAgICAiWV9XSURUSCI6IDEKICAgICAgICAgIH0sCiAgICAgICAgICAiYXR0cmlidXRlcyI6IHsKICAgICAgICAgICAgInNyYyI6ICJpbnB1dC52OjI5IgogICAgICAgICAgfSwKICAgICAgICAgICJwb3J0X2RpcmVjdGlvbnMiOiB7CiAgICAgICAgICAgICJBIjogImlucHV0IiwKICAgICAgICAgICAgIkIiOiAiaW5wdXQiLAogICAgICAgICAgICAiWSI6ICJvdXRwdXQiCiAgICAgICAgICB9LAogICAgICAgICAgImNvbm5lY3Rpb25zIjogewogICAgICAgICAgICAiQSI6IFsgMTMgXSwKICAgICAgICAgICAgIkIiOiBbIDM3IF0sCiAgICAgICAgICAgICJZIjogWyAzOCBdCiAgICAgICAgICB9CiAgICAgICAgfSwKICAgICAgICAiJHByb2NkZmYkNDAiOiB7CiAgICAgICAgICAiaGlkZV9uYW1lIjogMSwKICAgICAgICAgICJ0eXBlIjogIiRkZmYiLAogICAgICAgICAgInBhcmFtZXRlcnMiOiB7CiAgICAgICAgICAgICJDTEtfUE9MQVJJVFkiOiAxLAogICAgICAgICAgICAiV0lEVEgiOiA5CiAgICAgICAgICB9LAogICAgICAgICAgImF0dHJpYnV0ZXMiOiB7CiAgICAgICAgICAgICJzcmMiOiAiaW5wdXQudjoxNCIKICAgICAgICAgIH0sCiAgICAgICAgICAicG9ydF9kaXJlY3Rpb25zIjogewogICAgICAgICAgICAiQ0xLIjogImlucHV0IiwKICAgICAgICAgICAgIkQiOiAiaW5wdXQiLAogICAgICAgICAgICAiUSI6ICJvdXRwdXQiCiAgICAgICAgICB9LAogICAgICAgICAgImNvbm5lY3Rpb25zIjogewogICAgICAgICAgICAiQ0xLIjogWyAyIF0sCiAgICAgICAgICAgICJEIjogWyAzOSwgNDAsIDQxLCA0MiwgNDMsIDQ0LCA0NSwgNDYsIDQ3IF0sCiAgICAgICAgICAgICJRIjogWyAxNiwgMTcsIDE4LCAxOSwgMjAsIDIxLCAyMiwgMjMsIDI0IF0KICAgICAgICAgIH0KICAgICAgICB9LAogICAgICAgICIkcHJvY2RmZiQ0MSI6IHsKICAgICAgICAgICJoaWRlX25hbWUiOiAxLAogICAgICAgICAgInR5cGUiOiAiJGRmZiIsCiAgICAgICAgICAicGFyYW1ldGVycyI6IHsKICAgICAgICAgICAgIkNMS19QT0xBUklUWSI6IDEsCiAgICAgICAgICAgICJXSURUSCI6IDEKICAgICAgICAgIH0sCiAgICAgICAgICAiYXR0cmlidXRlcyI6IHsKICAgICAgICAgICAgInNyYyI6ICJpbnB1dC52OjE0IgogICAgICAgICAgfSwKICAgICAgICAgICJwb3J0X2RpcmVjdGlvbnMiOiB7CiAgICAgICAgICAgICJDTEsiOiAiaW5wdXQiLAogICAgICAgICAgICAiRCI6ICJpbnB1dCIsCiAgICAgICAgICAgICJRIjogIm91dHB1dCIKICAgICAgICAgIH0sCiAgICAgICAgICAiY29ubmVjdGlvbnMiOiB7CiAgICAgICAgICAgICJDTEsiOiBbIDIgXSwKICAgICAgICAgICAgIkQiOiBbIDM2IF0sCiAgICAgICAgICAgICJRIjogWyAxNCBdCiAgICAgICAgICB9CiAgICAgICAgfSwKICAgICAgICAiJHByb2NkZmYkNDIiOiB7CiAgICAgICAgICAiaGlkZV9uYW1lIjogMSwKICAgICAgICAgICJ0eXBlIjogIiRkZmYiLAogICAgICAgICAgInBhcmFtZXRlcnMiOiB7CiAgICAgICAgICAgICJDTEtfUE9MQVJJVFkiOiAxLAogICAgICAgICAgICAiV0lEVEgiOiAxCiAgICAgICAgICB9LAogICAgICAgICAgImF0dHJpYnV0ZXMiOiB7CiAgICAgICAgICAgICJzcmMiOiAiaW5wdXQudjoxNCIKICAgICAgICAgIH0sCiAgICAgICAgICAicG9ydF9kaXJlY3Rpb25zIjogewogICAgICAgICAgICAiQ0xLIjogImlucHV0IiwKICAgICAgICAgICAgIkQiOiAiaW5wdXQiLAogICAgICAgICAgICAiUSI6ICJvdXRwdXQiCiAgICAgICAgICB9LAogICAgICAgICAgImNvbm5lY3Rpb25zIjogewogICAgICAgICAgICAiQ0xLIjogWyAyIF0sCiAgICAgICAgICAgICJEIjogWyAzOCBdLAogICAgICAgICAgICAiUSI6IFsgMTUgXQogICAgICAgICAgfQogICAgICAgIH0sCiAgICAgICAgIiRwcm9jZGZmJDQzIjogewogICAgICAgICAgImhpZGVfbmFtZSI6IDEsCiAgICAgICAgICAidHlwZSI6ICIkZGZmIiwKICAgICAgICAgICJwYXJhbWV0ZXJzIjogewogICAgICAgICAgICAiQ0xLX1BPTEFSSVRZIjogMSwKICAgICAgICAgICAgIldJRFRIIjogMQogICAgICAgICAgfSwKICAgICAgICAgICJhdHRyaWJ1dGVzIjogewogICAgICAgICAgICAic3JjIjogImlucHV0LnY6MTQiCiAgICAgICAgICB9LAogICAgICAgICAgInBvcnRfZGlyZWN0aW9ucyI6IHsKICAgICAgICAgICAgIkNMSyI6ICJpbnB1dCIsCiAgICAgICAgICAgICJEIjogImlucHV0IiwKICAgICAgICAgICAgIlEiOiAib3V0cHV0IgogICAgICAgICAgfSwKICAgICAgICAgICJjb25uZWN0aW9ucyI6IHsKICAgICAgICAgICAgIkNMSyI6IFsgMiBdLAogICAgICAgICAgICAiRCI6IFsgNDggXSwKICAgICAgICAgICAgIlEiOiBbIDI1IF0KICAgICAgICAgIH0KICAgICAgICB9LAogICAgICAgICIkcHJvY211eCQzNiI6IHsKICAgICAgICAgICJoaWRlX25hbWUiOiAxLAogICAgICAgICAgInR5cGUiOiAiJHBtdXgiLAogICAgICAgICAgInBhcmFtZXRlcnMiOiB7CiAgICAgICAgICAgICJTX1dJRFRIIjogMywKICAgICAgICAgICAgIldJRFRIIjogOQogICAgICAgICAgfSwKICAgICAgICAgICJhdHRyaWJ1dGVzIjogewogICAgICAgICAgfSwKICAgICAgICAgICJwb3J0X2RpcmVjdGlvbnMiOiB7CiAgICAgICAgICAgICJBIjogImlucHV0IiwKICAgICAgICAgICAgIkIiOiAiaW5wdXQiLAogICAgICAgICAgICAiUyI6ICJpbnB1dCIsCiAgICAgICAgICAgICJZIjogIm91dHB1dCIKICAgICAgICAgIH0sCiAgICAgICAgICAiY29ubmVjdGlvbnMiOiB7CiAgICAgICAgICAgICJBIjogWyAxNiwgMTcsIDE4LCAxOSwgMjAsIDIxLCAyMiwgMjMsIDI0IF0sCiAgICAgICAgICAgICJCIjogWyAyNiwgMjcsIDI4LCAyOSwgMzAsIDMxLCAzMiwgMzMsIDM0LCA0OSwgNTAsIDUxLCA1MiwgNTMsIDU0LCA1NSwgNTYsIDU3LCAzLCA0LCA1LCA2LCA3LCA4LCA5LCAxMCwgMTEgXSwKICAgICAgICAgICAgIlMiOiBbIDU4LCA1OSwgNjAgXSwKICAgICAgICAgICAgIlkiOiBbIDM5LCA0MCwgNDEsIDQyLCA0MywgNDQsIDQ1LCA0NiwgNDcgXQogICAgICAgICAgfQogICAgICAgIH0sCiAgICAgICAgIiRwcm9jbXV4JDM3X0NNUDAiOiB7CiAgICAgICAgICAiaGlkZV9uYW1lIjogMSwKICAgICAgICAgICJ0eXBlIjogIiRlcSIsCiAgICAgICAgICAicGFyYW1ldGVycyI6IHsKICAgICAgICAgICAgIkFfU0lHTkVEIjogMCwKICAgICAgICAgICAgIkFfV0lEVEgiOiAyLAogICAgICAgICAgICAiQl9TSUdORUQiOiAwLAogICAgICAgICAgICAiQl9XSURUSCI6IDIsCiAgICAgICAgICAgICJZX1dJRFRIIjogMQogICAgICAgICAgfSwKICAgICAgICAgICJhdHRyaWJ1dGVzIjogewogICAgICAgICAgfSwKICAgICAgICAgICJwb3J0X2RpcmVjdGlvbnMiOiB7CiAgICAgICAgICAgICJBIjogImlucHV0IiwKICAgICAgICAgICAgIkIiOiAiaW5wdXQiLAogICAgICAgICAgICAiWSI6ICJvdXRwdXQiCiAgICAgICAgICB9LAogICAgICAgICAgImNvbm5lY3Rpb25zIjogewogICAgICAgICAgICAiQSI6IFsgMTMsIDEyIF0sCiAgICAgICAgICAgICJCIjogWyAiMCIsICIxIiBdLAogICAgICAgICAgICAiWSI6IFsgNTggXQogICAgICAgICAgfQogICAgICAgIH0sCiAgICAgICAgIiRwcm9jbXV4JDM4X0NNUDAiOiB7CiAgICAgICAgICAiaGlkZV9uYW1lIjogMSwKICAgICAgICAgICJ0eXBlIjogIiRlcSIsCiAgICAgICAgICAicGFyYW1ldGVycyI6IHsKICAgICAgICAgICAgIkFfU0lHTkVEIjogMCwKICAgICAgICAgICAgIkFfV0lEVEgiOiAyLAogICAgICAgICAgICAiQl9TSUdORUQiOiAwLAogICAgICAgICAgICAiQl9XSURUSCI6IDIsCiAgICAgICAgICAgICJZX1dJRFRIIjogMQogICAgICAgICAgfSwKICAgICAgICAgICJhdHRyaWJ1dGVzIjogewogICAgICAgICAgfSwKICAgICAgICAgICJwb3J0X2RpcmVjdGlvbnMiOiB7CiAgICAgICAgICAgICJBIjogImlucHV0IiwKICAgICAgICAgICAgIkIiOiAiaW5wdXQiLAogICAgICAgICAgICAiWSI6ICJvdXRwdXQiCiAgICAgICAgICB9LAogICAgICAgICAgImNvbm5lY3Rpb25zIjogewogICAgICAgICAgICAiQSI6IFsgMTMsIDEyIF0sCiAgICAgICAgICAgICJCIjogWyAiMSIsICIwIiBdLAogICAgICAgICAgICAiWSI6IFsgNTkgXQogICAgICAgICAgfQogICAgICAgIH0sCiAgICAgICAgIiRwcm9jbXV4JDM5X0NNUDAiOiB7CiAgICAgICAgICAiaGlkZV9uYW1lIjogMSwKICAgICAgICAgICJ0eXBlIjogIiRlcSIsCiAgICAgICAgICAicGFyYW1ldGVycyI6IHsKICAgICAgICAgICAgIkFfU0lHTkVEIjogMCwKICAgICAgICAgICAgIkFfV0lEVEgiOiAyLAogICAgICAgICAgICAiQl9TSUdORUQiOiAwLAogICAgICAgICAgICAiQl9XSURUSCI6IDIsCiAgICAgICAgICAgICJZX1dJRFRIIjogMQogICAgICAgICAgfSwKICAgICAgICAgICJhdHRyaWJ1dGVzIjogewogICAgICAgICAgfSwKICAgICAgICAgICJwb3J0X2RpcmVjdGlvbnMiOiB7CiAgICAgICAgICAgICJBIjogImlucHV0IiwKICAgICAgICAgICAgIkIiOiAiaW5wdXQiLAogICAgICAgICAgICAiWSI6ICJvdXRwdXQiCiAgICAgICAgICB9LAogICAgICAgICAgImNvbm5lY3Rpb25zIjogewogICAgICAgICAgICAiQSI6IFsgMTMsIDEyIF0sCiAgICAgICAgICAgICJCIjogWyAiMCIsICIwIiBdLAogICAgICAgICAgICAiWSI6IFsgNjAgXQogICAgICAgICAgfQogICAgICAgIH0sCiAgICAgICAgIiRyZWR1Y2VfeG9yJGlucHV0LnY6MjckNCI6IHsKICAgICAgICAgICJoaWRlX25hbWUiOiAxLAogICAgICAgICAgInR5cGUiOiAiJHJlZHVjZV94b3IiLAogICAgICAgICAgInBhcmFtZXRlcnMiOiB7CiAgICAgICAgICAgICJBX1NJR05FRCI6IDAsCiAgICAgICAgICAgICJBX1dJRFRIIjogOSwKICAgICAgICAgICAgIllfV0lEVEgiOiAxCiAgICAgICAgICB9LAogICAgICAgICAgImF0dHJpYnV0ZXMiOiB7CiAgICAgICAgICAgICJzcmMiOiAiaW5wdXQudjoyNyIKICAgICAgICAgIH0sCiAgICAgICAgICAicG9ydF9kaXJlY3Rpb25zIjogewogICAgICAgICAgICAiQSI6ICJpbnB1dCIsCiAgICAgICAgICAgICJZIjogIm91dHB1dCIKICAgICAgICAgIH0sCiAgICAgICAgICAiY29ubmVjdGlvbnMiOiB7CiAgICAgICAgICAgICJBIjogWyAzOSwgNDAsIDQxLCA0MiwgNDMsIDQ0LCA0NSwgNDYsIDQ3IF0sCiAgICAgICAgICAgICJZIjogWyA0OCBdCiAgICAgICAgICB9CiAgICAgICAgfSwKICAgICAgICAiJHN1YiRpbnB1dC52OjE2JDIiOiB7CiAgICAgICAgICAiaGlkZV9uYW1lIjogMSwKICAgICAgICAgICJ0eXBlIjogIiRzdWIiLAogICAgICAgICAgInBhcmFtZXRlcnMiOiB7CiAgICAgICAgICAgICJBX1NJR05FRCI6IDAsCiAgICAgICAgICAgICJBX1dJRFRIIjogOSwKICAgICAgICAgICAgIkJfU0lHTkVEIjogMCwKICAgICAgICAgICAgIkJfV0lEVEgiOiAzLAogICAgICAgICAgICAiWV9XSURUSCI6IDEwCiAgICAgICAgICB9LAogICAgICAgICAgImF0dHJpYnV0ZXMiOiB7CiAgICAgICAgICAgICJzcmMiOiAiaW5wdXQudjoxNiIKICAgICAgICAgIH0sCiAgICAgICAgICAicG9ydF9kaXJlY3Rpb25zIjogewogICAgICAgICAgICAiQSI6ICJpbnB1dCIsCiAgICAgICAgICAgICJCIjogImlucHV0IiwKICAgICAgICAgICAgIlkiOiAib3V0cHV0IgogICAgICAgICAgfSwKICAgICAgICAgICJjb25uZWN0aW9ucyI6IHsKICAgICAgICAgICAgIkEiOiBbIDE2LCAxNywgMTgsIDE5LCAyMCwgMjEsIDIyLCAyMywgMjQgXSwKICAgICAgICAgICAgIkIiOiBbICIxIiwgIjAiLCAiMSIgXSwKICAgICAgICAgICAgIlkiOiBbIDQ5LCA1MCwgNTEsIDUyLCA1MywgNTQsIDU1LCA1NiwgNTcsIDM3IF0KICAgICAgICAgIH0KICAgICAgICB9CiAgICAgIH0sCiAgICAgICJuZXRuYW1lcyI6IHsKICAgICAgICAiJDBcXGJvcnJvd19vdXRbMDowXSI6IHsKICAgICAgICAgICJoaWRlX25hbWUiOiAxLAogICAgICAgICAgImJpdHMiOiBbIDM4IF0sCiAgICAgICAgICAiYXR0cmlidXRlcyI6IHsKICAgICAgICAgICAgInNyYyI6ICJpbnB1dC52OjE0IgogICAgICAgICAgfQogICAgICAgIH0sCiAgICAgICAgIiQwXFxjYXJyeV9vdXRbMDowXSI6IHsKICAgICAgICAgICJoaWRlX25hbWUiOiAxLAogICAgICAgICAgImJpdHMiOiBbIDM2IF0sCiAgICAgICAgICAiYXR0cmlidXRlcyI6IHsKICAgICAgICAgICAgInNyYyI6ICJpbnB1dC52OjE0IgogICAgICAgICAgfQogICAgICAgIH0sCiAgICAgICAgIiQwXFxjbnRfZG5bOTowXSI6IHsKICAgICAgICAgICJoaWRlX25hbWUiOiAxLAogICAgICAgICAgImJpdHMiOiBbIDQ5LCA1MCwgNTEsIDUyLCA1MywgNTQsIDU1LCA1NiwgNTcsIDM3IF0sCiAgICAgICAgICAiYXR0cmlidXRlcyI6IHsKICAgICAgICAgICAgInNyYyI6ICJpbnB1dC52OjE0IgogICAgICAgICAgfQogICAgICAgIH0sCiAgICAgICAgIiQwXFxjbnRfdXBbOTowXSI6IHsKICAgICAgICAgICJoaWRlX25hbWUiOiAxLAogICAgICAgICAgImJpdHMiOiBbIDI2LCAyNywgMjgsIDI5LCAzMCwgMzEsIDMyLCAzMywgMzQsIDM1IF0sCiAgICAgICAgICAiYXR0cmlidXRlcyI6IHsKICAgICAgICAgICAgInNyYyI6ICJpbnB1dC52OjE0IgogICAgICAgICAgfQogICAgICAgIH0sCiAgICAgICAgIiQwXFxjb3VudF9vdXRbODowXSI6IHsKICAgICAgICAgICJoaWRlX25hbWUiOiAxLAogICAgICAgICAgImJpdHMiOiBbIDM5LCA0MCwgNDEsIDQyLCA0MywgNDQsIDQ1LCA0NiwgNDcgXSwKICAgICAgICAgICJhdHRyaWJ1dGVzIjogewogICAgICAgICAgICAic3JjIjogImlucHV0LnY6MTQiCiAgICAgICAgICB9CiAgICAgICAgfSwKICAgICAgICAiJDBcXHBhcml0eV9vdXRbMDowXSI6IHsKICAgICAgICAgICJoaWRlX25hbWUiOiAxLAogICAgICAgICAgImJpdHMiOiBbIDQ4IF0sCiAgICAgICAgICAiYXR0cmlidXRlcyI6IHsKICAgICAgICAgICAgInNyYyI6ICJpbnB1dC52OjE0IgogICAgICAgICAgfQogICAgICAgIH0sCiAgICAgICAgIiRwcm9jbXV4JDM3X0NNUCI6IHsKICAgICAgICAgICJoaWRlX25hbWUiOiAxLAogICAgICAgICAgImJpdHMiOiBbIDU4IF0sCiAgICAgICAgICAiYXR0cmlidXRlcyI6IHsKICAgICAgICAgIH0KICAgICAgICB9LAogICAgICAgICIkcHJvY211eCQzOF9DTVAiOiB7CiAgICAgICAgICAiaGlkZV9uYW1lIjogMSwKICAgICAgICAgICJiaXRzIjogWyA1OSBdLAogICAgICAgICAgImF0dHJpYnV0ZXMiOiB7CiAgICAgICAgICB9CiAgICAgICAgfSwKICAgICAgICAiJHByb2NtdXgkMzlfQ01QIjogewogICAgICAgICAgImhpZGVfbmFtZSI6IDEsCiAgICAgICAgICAiYml0cyI6IFsgNjAgXSwKICAgICAgICAgICJhdHRyaWJ1dGVzIjogewogICAgICAgICAgfQogICAgICAgIH0sCiAgICAgICAgImJvcnJvd19vdXQiOiB7CiAgICAgICAgICAiaGlkZV9uYW1lIjogMCwKICAgICAgICAgICJiaXRzIjogWyAxNSBdLAogICAgICAgICAgImF0dHJpYnV0ZXMiOiB7CiAgICAgICAgICAgICJzcmMiOiAiaW5wdXQudjo5IgogICAgICAgICAgfQogICAgICAgIH0sCiAgICAgICAgImNhcnJ5X291dCI6IHsKICAgICAgICAgICJoaWRlX25hbWUiOiAwLAogICAgICAgICAgImJpdHMiOiBbIDE0IF0sCiAgICAgICAgICAiYXR0cmlidXRlcyI6IHsKICAgICAgICAgICAgInNyYyI6ICJpbnB1dC52OjkiCiAgICAgICAgICB9CiAgICAgICAgfSwKICAgICAgICAiY2xvY2siOiB7CiAgICAgICAgICAiaGlkZV9uYW1lIjogMCwKICAgICAgICAgICJiaXRzIjogWyAyIF0sCiAgICAgICAgICAiYXR0cmlidXRlcyI6IHsKICAgICAgICAgICAgInNyYyI6ICJpbnB1dC52OjYiCiAgICAgICAgICB9CiAgICAgICAgfSwKICAgICAgICAiY291bnRfb3V0IjogewogICAgICAgICAgImhpZGVfbmFtZSI6IDAsCiAgICAgICAgICAiYml0cyI6IFsgMTYsIDE3LCAxOCwgMTksIDIwLCAyMSwgMjIsIDIzLCAyNCBdLAogICAgICAgICAgImF0dHJpYnV0ZXMiOiB7CiAgICAgICAgICAgICJzcmMiOiAiaW5wdXQudjo4IgogICAgICAgICAgfQogICAgICAgIH0sCiAgICAgICAgImRhdGFfaW4iOiB7CiAgICAgICAgICAiaGlkZV9uYW1lIjogMCwKICAgICAgICAgICJiaXRzIjogWyAzLCA0LCA1LCA2LCA3LCA4LCA5LCAxMCwgMTEgXSwKICAgICAgICAgICJhdHRyaWJ1dGVzIjogewogICAgICAgICAgICAic3JjIjogImlucHV0LnY6NSIKICAgICAgICAgIH0KICAgICAgICB9LAogICAgICAgICJkb3duIjogewogICAgICAgICAgImhpZGVfbmFtZSI6IDAsCiAgICAgICAgICAiYml0cyI6IFsgMTMgXSwKICAgICAgICAgICJhdHRyaWJ1dGVzIjogewogICAgICAgICAgICAic3JjIjogImlucHV0LnY6NiIKICAgICAgICAgIH0KICAgICAgICB9LAogICAgICAgICJwYXJpdHlfb3V0IjogewogICAgICAgICAgImhpZGVfbmFtZSI6IDAsCiAgICAgICAgICAiYml0cyI6IFsgMjUgXSwKICAgICAgICAgICJhdHRyaWJ1dGVzIjogewogICAgICAgICAgICAic3JjIjogImlucHV0LnY6OSIKICAgICAgICAgIH0KICAgICAgICB9LAogICAgICAgICJ1cCI6IHsKICAgICAgICAgICJoaWRlX25hbWUiOiAwLAogICAgICAgICAgImJpdHMiOiBbIDEyIF0sCiAgICAgICAgICAiYXR0cmlidXRlcyI6IHsKICAgICAgICAgICAgInNyYyI6ICJpbnB1dC52OjYiCiAgICAgICAgICB9CiAgICAgICAgfQogICAgICB9CiAgICB9CiAgfQp9","base64");
 const exampleAnalog = Buffer("ewogICJtb2R1bGVzIjogewogICAgInJlc2lzdG9yX2RpdmlkZXIiOiB7CiAgICAgICJwb3J0cyI6IHsKICAgICAgICAiQSI6IHsKICAgICAgICAgICJkaXJlY3Rpb24iOiAiaW5wdXQiLAogICAgICAgICAgImJpdHMiOiBbMl0KICAgICAgICB9LAogICAgICAgICJCIjogewogICAgICAgICAgImRpcmVjdGlvbiI6ICJpbnB1dCIsCiAgICAgICAgICAiYml0cyI6IFszXQogICAgICAgIH0sCiAgICAgICAgIkEgQU5EIEIiOiB7CiAgICAgICAgICAiZGlyZWN0aW9uIjogIm91dHB1dCIsCiAgICAgICAgICAiYml0cyI6IFs0XQogICAgICAgIH0KICAgICAgfSwKICAgICAgImNlbGxzIjogewogICAgICAgICJSMSI6IHsKICAgICAgICAgICJ0eXBlIjogInJfdiIsCiAgICAgICAgICAiY29ubmVjdGlvbnMiOiB7CiAgICAgICAgICAgICJBIjogWzJdLAogICAgICAgICAgICAiQiI6IFs1XQogICAgICAgICAgfSwKICAgICAgICAgICJhdHRyaWJ1dGVzIjogewogICAgICAgICAgICAidmFsdWUiOiIxMGsiCiAgICAgICAgICB9CiAgICAgICAgfSwKICAgICAgICAiUjIiOiB7CiAgICAgICAgICAidHlwZSI6ICJyX3YiLAogICAgICAgICAgImNvbm5lY3Rpb25zIjogewogICAgICAgICAgICAiQSI6IFszXSwKICAgICAgICAgICAgIkIiOiBbNV0KICAgICAgICAgIH0sCiAgICAgICAgICAiYXR0cmlidXRlcyI6IHsKICAgICAgICAgICAgInZhbHVlIjoiMTBrIgogICAgICAgICAgfQogICAgICAgIH0sCiAgICAgICAgIlExIjogewogICAgICAgICAgInR5cGUiOiAicV9wbnAiLAogICAgICAgICAgInBvcnRfZGlyZWN0aW9ucyI6IHsKICAgICAgICAgICAgIkMiOiAiaW5wdXQiLAogICAgICAgICAgICAiQiI6ICJpbnB1dCIsCiAgICAgICAgICAgICJFIjogIm91dHB1dCIKICAgICAgICAgIH0sCiAgICAgICAgICAiY29ubmVjdGlvbnMiOiB7CiAgICAgICAgICAgICJDIjogWzZdLAogICAgICAgICAgICAiQiI6IFs1XSwKICAgICAgICAgICAgIkUiOiBbN10KICAgICAgICAgIH0KICAgICAgICB9LAogICAgICAgICJSMyI6IHsKICAgICAgICAgICJ0eXBlIjogInJfdiIsCiAgICAgICAgICAiY29ubmVjdGlvbnMiOiB7CiAgICAgICAgICAgICJBIjogWzddLAogICAgICAgICAgICAiQiI6IFs4XQogICAgICAgICAgfSwKICAgICAgICAgICJhdHRyaWJ1dGVzIjogewogICAgICAgICAgICAidmFsdWUiOiIxMGsiCiAgICAgICAgICB9CiAgICAgICAgfSwKICAgICAgICAiUjQiOiB7CiAgICAgICAgICAidHlwZSI6ICJyX3YiLAogICAgICAgICAgImNvbm5lY3Rpb25zIjogewogICAgICAgICAgICAiQSI6IFs3XSwKICAgICAgICAgICAgIkIiOiBbOV0KICAgICAgICAgIH0sCiAgICAgICAgICAiYXR0cmlidXRlcyI6IHsKICAgICAgICAgICAgInZhbHVlIjoiMTBrIgogICAgICAgICAgfQogICAgICAgIH0sCiAgICAgICAgIlI1IjogewogICAgICAgICAgInR5cGUiOiAicl92IiwKICAgICAgICAgICJjb25uZWN0aW9ucyI6IHsKICAgICAgICAgICAgIkEiOiBbNF0sCiAgICAgICAgICAgICJCIjogWzEyXQogICAgICAgICAgfSwKICAgICAgICAgICJhdHRyaWJ1dGVzIjogewogICAgICAgICAgICAidmFsdWUiOiIxMGsiCiAgICAgICAgICB9CiAgICAgICAgfSwKICAgICAgICAiUTIiOiB7CiAgICAgICAgICAidHlwZSI6ICJxX3BucCIsCiAgICAgICAgICAicG9ydF9kaXJlY3Rpb25zIjogewogICAgICAgICAgICAiQyI6ICJpbnB1dCIsCiAgICAgICAgICAgICJCIjogImlucHV0IiwKICAgICAgICAgICAgIkUiOiAib3V0cHV0IgogICAgICAgICAgfSwKICAgICAgICAgICJjb25uZWN0aW9ucyI6IHsKICAgICAgICAgICAgIkMiOiBbMTBdLAogICAgICAgICAgICAiQiI6IFs5XSwKICAgICAgICAgICAgIkUiOiBbNF0KICAgICAgICAgIH0KICAgICAgICB9LAogICAgICAgICJ2Y2MiOiB7CiAgICAgICAgICAidHlwZSI6ICJ2Y2MiLAogICAgICAgICAgImNvbm5lY3Rpb25zIjogewogICAgICAgICAgICAiQSI6IFs2XQogICAgICAgICAgfSwKICAgICAgICAgICJhdHRyaWJ1dGVzIjogewogICAgICAgICAgICAibmFtZSI6IlZDQyIKICAgICAgICAgIH0KICAgICAgICB9LAogICAgICAgICJ2Y2MyIjogewogICAgICAgICAgInR5cGUiOiAidmNjIiwKICAgICAgICAgICJjb25uZWN0aW9ucyI6IHsKICAgICAgICAgICAgIkEiOiBbMTBdCiAgICAgICAgICB9LAogICAgICAgICAgImF0dHJpYnV0ZXMiOiB7CiAgICAgICAgICAgICJuYW1lIjoiVkNDIgogICAgICAgICAgfQogICAgICAgIH0sCiAgICAgICAgImduZCI6IHsKICAgICAgICAgICJ0eXBlIjogImduZCIsCiAgICAgICAgICAicG9ydF9kaXJlY3Rpb25zIjogewogICAgICAgICAgICAiQSI6ICJpbnB1dCIKICAgICAgICAgIH0sCiAgICAgICAgICAiY29ubmVjdGlvbnMiOiB7CiAgICAgICAgICAgICJBIjogWzhdCiAgICAgICAgICB9LAogICAgICAgICAgImF0dHJpYnV0ZXMiOiB7CiAgICAgICAgICAgICJuYW1lIjoiREdORCIKICAgICAgICAgIH0KICAgICAgICB9LAogICAgICAgICJnbmQyIjogewogICAgICAgICAgInR5cGUiOiAiZ25kIiwKICAgICAgICAgICJwb3J0X2RpcmVjdGlvbnMiOiB7CiAgICAgICAgICAgICJBIjogImlucHV0IgogICAgICAgICAgfSwKICAgICAgICAgICJjb25uZWN0aW9ucyI6IHsKICAgICAgICAgICAgIkEiOiBbMTJdCiAgICAgICAgICB9LAogICAgICAgICAgImF0dHJpYnV0ZXMiOiB7CiAgICAgICAgICAgICJuYW1lIjoiREdORCIKICAgICAgICAgIH0KICAgICAgICB9CiAgICAgIH0KICAgIH0KICB9Cn0K","base64");
-const schema = Buffer("ewogICJkZXNjcmlwdGlvbiI6ICJKU09OIFNjaGVtYSBZb3N5cyBuZXRsaXN0cyBKU09OIGZvcm1hdCIsCiAgInR5cGUiOiAib2JqZWN0IiwKICAvLyBhbiBlbXB0eSBvYmplY3QgaXMgaW52YWxpZAogICJyZXF1aXJlZCI6IFsibW9kdWxlcyJdLAogICJlcnJvck1lc3NhZ2UiOiB7CiAgICAidHlwZSI6ICJuZXRsaXN0IG11c3QgYmUgYSBKU09OIG9iamVjdCIsCiAgICAicmVxdWlyZWQiOiAibmV0bGlzdCBtdXN0IGhhdmUgYSBtb2R1bGVzIHByb3BlcnR5IiwKICB9LAogICJwcm9wZXJ0aWVzIjogewogICAgIm1vZHVsZXMiOiB7CiAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgIC8vIHRoZXJlIG11c3QgYmUgYXQgbGVhc3Qgb25lIG1vZHVsZQogICAgICAibWluUHJvcGVydGllcyI6IDEsCiAgICAgICAgImVycm9yTWVzc2FnZSI6IHsKICAgICAgICAgICJ0eXBlIjogIm5ldGxpc3QgbW9kdWxlcyBtdXN0IGJlIG9iamVjdHMiLAogICAgICAgICAgIm1pblByb3BlcnRpZXMiOiAibmV0bGlzdCBtdXN0IGhhdmUgYXQgbGVhc3Qgb25lIG1vZHVsZSIsCiAgICAgICAgfSwKICAgICAgImFkZGl0aW9uYWxQcm9wZXJ0aWVzIjogewogICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAicG9ydHMiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICJhZGRpdGlvbmFsUHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAgIC8vIGFsbCBwb3J0cyBtdXN0IGhhdmUgYml0cyBhbmQgYSBkaXJlY3Rpb24KICAgICAgICAgICAgICAicmVxdWlyZWQiOiBbImRpcmVjdGlvbiIsICJiaXRzIl0sCiAgICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAiZGlyZWN0aW9uIjogewogICAgICAgICAgICAgICAgICAiZW51bSI6IFsiaW5wdXQiLCAib3V0cHV0IiwgImlub3V0Il0KICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAiYml0cyI6IHsKICAgICAgICAgICAgICAgICAgInR5cGUiOiAiYXJyYXkiLAogICAgICAgICAgICAgICAgICAvLyBiaXRzIGNhbiBiZSB0aGUgc3RyaW5nICIwIiwgIjEiLCAieCIsICJ6Iiwgb3IgYSBudW1iZXIuCiAgICAgICAgICAgICAgICAgICJpdGVtcyI6IHsKICAgICAgICAgICAgICAgICAgICAib25lT2YiOlt7InR5cGUiOiJudW1iZXIifSwgeyJlbnVtIjpbIjAiLCIxIiwieCIsInoiXX1dCiAgICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgICB9CiAgICAgICAgICAgIH0KICAgICAgICAgIH0sCiAgICAgICAgICAiY2VsbHMiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICJhZGRpdGlvbmFsUHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAgIC8vIGFsbCBjZWxscyBtdXN0IGhhdmUgYSB0eXBlIGFuZCBjb25uZWN0aW9ucwogICAgICAgICAgICAgICJyZXF1aXJlZCI6IFsKICAgICAgICAgICAgICAgICJ0eXBlIiwKICAgICAgICAgICAgICAgICJjb25uZWN0aW9ucyIKICAgICAgICAgICAgICBdLAogICAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAgInR5cGUiOnsidHlwZSI6InN0cmluZyJ9LAogICAgICAgICAgICAgICAgImNvbm5lY3Rpb25zIjogewogICAgICAgICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAgICAgICAiYWRkaXRpb25hbFByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiJhcnJheSIsCiAgICAgICAgICAgICAgICAgICAgIml0ZW1zIjogewogICAgICAgICAgICAgICAgICAgICAgIm9uZU9mIjpbeyJ0eXBlIjoibnVtYmVyIn0sIHsiZW51bSI6WyIwIiwiMSIsIngiLCJ6Il19XQogICAgICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgIC8vIHBvcnQgZGlyZWN0aW9ucyBhcmUgb3B0aW9uYWwKICAgICAgICAgICAgICAgICJwb3J0X2RpcmVjdGlvbnMiOnsKICAgICAgICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgICAgICAgImFkZGl0aW9uYWxQcm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAgICAgICJlbnVtIjogWyJpbnB1dCIsICJvdXRwdXQiLCAiaW5vdXQiXQogICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgLy8gbmV0bGlzdHN2ZyBkb2Vzbid0IHVzZSB0aGVzZSB5ZXQKICAgICAgICAgICAgICAgICJoaWRlX25hbWUiOiB7ImVudW0iOlswLCAxXX0sCiAgICAgICAgICAgICAgICAicGFyYW1ldGVycyI6IHsidHlwZSI6ICJvYmplY3QifSwKICAgICAgICAgICAgICAgICJhdHRyaWJ1dGVzIjogeyJ0eXBlIjogIm9iamVjdCJ9CiAgICAgICAgICAgICAgfQogICAgICAgICAgICB9CiAgICAgICAgICB9LAogICAgICAgICAgLy8gbm90IHlldCB1c2VkIGJ5IG5ldGxpc3RzdmcKICAgICAgICAgICJuZXRuYW1lcyI6IHsKICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgImFkZGl0aW9uYWxQcm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAiYml0cyI6IHsKICAgICAgICAgICAgICAgICAgInR5cGUiOiAiYXJyYXkiLAogICAgICAgICAgICAgICAgICAvLyBiaXRzIGNhbiBiZSB0aGUgc3RyaW5nICIwIiwgIjEiLCAieCIsICJ6Iiwgb3IgYSBudW1iZXIuCiAgICAgICAgICAgICAgICAgICJpdGVtcyI6IHsKICAgICAgICAgICAgICAgICAgICAib25lT2YiOiBbeyJ0eXBlIjogIm51bWJlciJ9LCB7ImVudW0iOiBbIjAiLCAiMSIsICJ4IiwgInoiXX1dCiAgICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAiaGlkZV9uYW1lIjogeyJlbnVtIjogWzAsIDFdfSwKICAgICAgICAgICAgICAgICJhdHRyaWJ1dGVzIjogeyJ0eXBlIjogIm9iamVjdCJ9CiAgICAgICAgICAgICAgfQogICAgICAgICAgICB9CiAgICAgICAgICB9LAogICAgICAgICAgImF0dHJpYnV0ZXMiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICJ0b3AiOiB7ImVudW0iOiBbMCwgMSwgIjAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwIiwgIjAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAxIl19CiAgICAgICAgICAgIH0KICAgICAgICAgIH0KICAgICAgICB9LAogICAgICAgIC8vIHRoZXJlIG11c3QgZWl0aGVyIGJlIHBvcnRzIG9yIGNlbGxzIGF0dHJpYnV0ZQogICAgICAgICJhbnlPZiI6IFt7InJlcXVpcmVkIjogWyJwb3J0cyJdfSx7InJlcXVpcmVkIjogWyJjZWxscyJdfV0KICAgICAgfQogICAgfQogIH0KfQo=","base64");
+const schema = Buffer("ewogICJkZXNjcmlwdGlvbiI6ICJKU09OIFNjaGVtYSBmb3IgWW9zeXMgbmV0bGlzdHMgaW4gSlNPTiBmb3JtYXQiLAogICJ0eXBlIjogIm9iamVjdCIsCiAgInJlcXVpcmVkIjogWyJtb2R1bGVzIl0sCiAgImVycm9yTWVzc2FnZSI6IHsKICAgICJ0eXBlIjogIk5ldGxpc3QgbXVzdCBiZSBhIEpTT04gb2JqZWN0IiwKICAgICJyZXF1aXJlZCI6ICJOZXRsaXN0IG11c3QgaGF2ZSBhICdtb2R1bGVzJyBwcm9wZXJ0eSIKICB9LAogICJwcm9wZXJ0aWVzIjogewogICAgIm1vZHVsZXMiOiB7CiAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICJtaW5Qcm9wZXJ0aWVzIjogMSwKICAgICAgImVycm9yTWVzc2FnZSI6IHsKICAgICAgICAidHlwZSI6ICInbW9kdWxlcycgbXVzdCBiZSBhbiBvYmplY3QiLAogICAgICAgICJtaW5Qcm9wZXJ0aWVzIjogIk5ldGxpc3QgbXVzdCBoYXZlIGF0IGxlYXN0IG9uZSBtb2R1bGUgZGVmaW5lZCBpbiAnbW9kdWxlcyciCiAgICAgIH0sCiAgICAgICJhZGRpdGlvbmFsUHJvcGVydGllcyI6IHsKICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICJyZXF1aXJlZCI6IFsicG9ydHMiXSwKICAgICAgICAiYW55T2YiOiBbCiAgICAgICAgICAgIHsgInJlcXVpcmVkIjogWyJwb3J0cyJdIH0sCiAgICAgICAgICAgIHsgInJlcXVpcmVkIjogWyJjZWxscyJdIH0KICAgICAgICBdLAogICAgICAgICJlcnJvck1lc3NhZ2UiOiB7CiAgICAgICAgICAgICJyZXF1aXJlZCI6ICJFYWNoIG1vZHVsZSBtdXN0IGhhdmUgJ3BvcnRzJyBkZWZpbmVkLiIsCiAgICAgICAgICAgICJhbnlPZiI6ICJNb2R1bGUgbXVzdCBoYXZlIGVpdGhlciAncG9ydHMnIG9yICdjZWxscycgZGVmaW5lZC4iCiAgICAgICAgfSwKICAgICAgICAicHJvcGVydGllcyI6IHsKICAgICAgICAgICJwb3J0cyI6IHsKICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgImFkZGl0aW9uYWxQcm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICAgInJlcXVpcmVkIjogWyJkaXJlY3Rpb24iLCAiYml0cyJdLAogICAgICAgICAgICAgICJlcnJvck1lc3NhZ2UiOiB7CiAgICAgICAgICAgICAgICAidHlwZSI6ICJFYWNoIHBvcnQgbXVzdCBiZSBhbiBvYmplY3QiLAogICAgICAgICAgICAgICAgInJlcXVpcmVkIjogIkVhY2ggcG9ydCBtdXN0IGhhdmUgJ2RpcmVjdGlvbicgYW5kICdiaXRzJyBwcm9wZXJ0aWVzIgogICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAiZGlyZWN0aW9uIjogewogICAgICAgICAgICAgICAgICAidHlwZSI6ICJzdHJpbmciLAogICAgICAgICAgICAgICAgICAiZW51bSI6IFsiaW5wdXQiLCAib3V0cHV0IiwgImlub3V0Il0sCiAgICAgICAgICAgICAgICAgICJlcnJvck1lc3NhZ2UiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAiUG9ydCAnZGlyZWN0aW9uJyBtdXN0IGJlIGEgc3RyaW5nIiwKICAgICAgICAgICAgICAgICAgICAiZW51bSI6ICJQb3J0ICdkaXJlY3Rpb24nIG11c3QgYmUgb25lIG9mOiAnaW5wdXQnLCAnb3V0cHV0JywgJ2lub3V0JyIKICAgICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJiaXRzIjogewogICAgICAgICAgICAgICAgICAidHlwZSI6ICJhcnJheSIsCiAgICAgICAgICAgICAgICAgICJpdGVtcyI6IHsKICAgICAgICAgICAgICAgICAgICAib25lT2YiOiBbCiAgICAgICAgICAgICAgICAgICAgICB7ICJ0eXBlIjogImludGVnZXIiLCAibWluaW11bSI6IDAgfSwKICAgICAgICAgICAgICAgICAgICAgIHsgInR5cGUiOiAic3RyaW5nIiwgImVudW0iOiBbIjAiLCAiMSIsICJ4IiwgInoiXSB9CiAgICAgICAgICAgICAgICAgICAgXSwKICAgICAgICAgICAgICAgICAgICAiZXJyb3JNZXNzYWdlIjogewogICAgICAgICAgICAgICAgICAgICAgIm9uZU9mIjogIkVhY2ggYml0IG11c3QgYmUgYSBub24tbmVnYXRpdmUgaW50ZWdlciBvciBvbmUgb2YgJzAnLCAnMScsICd4JywgJ3onIgogICAgICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgImVycm9yTWVzc2FnZSI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJQb3J0ICdiaXRzJyBtdXN0IGJlIGFuIGFycmF5IgogICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgfQogICAgICAgICAgICB9CiAgICAgICAgICB9LAogICAgICAgICAgImNlbGxzIjogewogICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAiYWRkaXRpb25hbFByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgICAicmVxdWlyZWQiOiBbInR5cGUiLCAiY29ubmVjdGlvbnMiXSwKICAgICAgICAgICAgICAiZXJyb3JNZXNzYWdlIjogewogICAgICAgICAgICAgICAgInR5cGUiOiAiRWFjaCBjZWxsIG11c3QgYmUgYW4gb2JqZWN0IiwKICAgICAgICAgICAgICAgICJyZXF1aXJlZCI6ICJFYWNoIGNlbGwgbXVzdCBoYXZlICd0eXBlJyBhbmQgJ2Nvbm5lY3Rpb25zJyBwcm9wZXJ0aWVzIgogICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAidHlwZSI6IHsKICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIiwKICAgICAgICAgICAgICAgICAgImVycm9yTWVzc2FnZSI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJDZWxsICd0eXBlJyBtdXN0IGJlIGEgc3RyaW5nIgogICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImNvbm5lY3Rpb25zIjogewogICAgICAgICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAgICAgICAiYWRkaXRpb25hbFByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAiYXJyYXkiLAogICAgICAgICAgICAgICAgICAgICJpdGVtcyI6IHsKICAgICAgICAgICAgICAgICAgICAgICJvbmVPZiI6IFsKICAgICAgICAgICAgICAgICAgICAgICAgeyAidHlwZSI6ICJpbnRlZ2VyIiwgIm1pbmltdW0iOiAwIH0sCiAgICAgICAgICAgICAgICAgICAgICAgIHsgInR5cGUiOiAic3RyaW5nIiwgImVudW0iOiBbIjAiLCAiMSIsICJ4IiwgInoiXSB9CiAgICAgICAgICAgICAgICAgICAgICBdLAogICAgICAgICAgICAgICAgICAgICAgImVycm9yTWVzc2FnZSI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgIm9uZU9mIjogIkVhY2ggY29ubmVjdGlvbiBiaXQgbXVzdCBiZSBhIG5vbi1uZWdhdGl2ZSBpbnRlZ2VyIG9yIG9uZSBvZiAnMCcsICcxJywgJ3gnLCAneiciCiAgICAgICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgICAiZXJyb3JNZXNzYWdlIjogewogICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAiQ2VsbCBjb25uZWN0aW9ucyBtdXN0IGJlIGFycmF5cyIsCiAgICAgICAgICAgICAgICAgICAgICAiaXRlbXMiOiAiSW52YWxpZCBjb25uZWN0aW9uIGJpdCB0eXBlIgogICAgICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICAgImVycm9yTWVzc2FnZSI6IHsKICAgICAgICAgICAgICAgICAgICAidHlwZSI6ICJDZWxsICdjb25uZWN0aW9ucycgbXVzdCBiZSBhbiBvYmplY3QiLAogICAgICAgICAgICAgICAgICAgICJhZGRpdGlvbmFsUHJvcGVydGllcyI6ICJJbnZhbGlkIGNlbGwgY29ubmVjdGlvbiBmb3JtYXQiCiAgICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAicG9ydF9kaXJlY3Rpb25zIjogewogICAgICAgICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAgICAgICAiYWRkaXRpb25hbFByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAic3RyaW5nIiwKICAgICAgICAgICAgICAgICAgICAiZW51bSI6IFsiaW5wdXQiLCAib3V0cHV0IiwgImlub3V0Il0sCiAgICAgICAgICAgICAgICAgICAgImVycm9yTWVzc2FnZSI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAiUG9ydCBkaXJlY3Rpb25zIG11c3QgYmUgc3RyaW5ncyIsCiAgICAgICAgICAgICAgICAgICAgICAgICJlbnVtIjogIidwb3J0X2RpcmVjdGlvbnMnIHZhbHVlcyBtdXN0IGJlIG9uZSBvZjogJ2lucHV0JywgJ291dHB1dCcsICdpbm91dCciCiAgICAgICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgICAiZXJyb3JNZXNzYWdlIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogIidwb3J0X2RpcmVjdGlvbnMnIG11c3QgYmUgYW4gb2JqZWN0IgogICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgImhpZGVfbmFtZSI6IHsKICAgICAgICAgICAgICAgICAgInR5cGUiOiAiaW50ZWdlciIsCiAgICAgICAgICAgICAgICAgICJlbnVtIjogWzAsIDFdLAogICAgICAgICAgICAgICAgICAiZXJyb3JNZXNzYWdlIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogIidoaWRlX25hbWUnIG11c3QgYmUgYW4gaW50ZWdlciIsCiAgICAgICAgICAgICAgICAgICAgImVudW0iOiAiJ2hpZGVfbmFtZScgbXVzdCBiZSAwIG9yIDEiCiAgICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAicGFyYW1ldGVycyI6IHsKICAgICAgICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgICAgICAgICAiZXJyb3JNZXNzYWdlIjogewogICAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAiJ3BhcmFtZXRlcnMnIG11c3QgYmUgYSBvYmplY3QiCiAgICAgICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJhdHRyaWJ1dGVzIjogewogICAgICAgICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAgICAgICAiZXJyb3JNZXNzYWdlIjogewogICAgICAgICAgICAgICAgICAgICJ0eXBlIjogIidhdHRyaWJ1dGVzJyBtdXN0IGJlIGFuIG9iamVjdCIKICAgICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICJhZGRpdGlvbmFsUHJvcGVydGllcyI6IGZhbHNlCiAgICAgICAgICAgIH0KICAgICAgICAgIH0sCiAgICAgICAgICAibmV0bmFtZXMiOiB7CiAgICAgICAgICAgICJ0eXBlIjogIm9iamVjdCIsCiAgICAgICAgICAgICJhZGRpdGlvbmFsUHJvcGVydGllcyI6IHsKICAgICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAgICJyZXF1aXJlZCI6IFsiYml0cyJdLAogICAgICAgICAgICAgICJwcm9wZXJ0aWVzIjogewogICAgICAgICAgICAgICAgImJpdHMiOiB7CiAgICAgICAgICAgICAgICAgICJ0eXBlIjogImFycmF5IiwKICAgICAgICAgICAgICAgICAgIml0ZW1zIjogewogICAgICAgICAgICAgICAgICAgICJvbmVPZiI6IFsKICAgICAgICAgICAgICAgICAgICAgIHsgInR5cGUiOiAiaW50ZWdlciIsICJtaW5pbXVtIjogMCB9LAogICAgICAgICAgICAgICAgICAgICAgeyAidHlwZSI6ICJzdHJpbmciLCAiZW51bSI6IFsiMCIsICIxIiwgIngiLCAieiJdIH0KICAgICAgICAgICAgICAgICAgICBdCiAgICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAiaGlkZV9uYW1lIjogewogICAgICAgICAgICAgICAgICAidHlwZSI6ICJpbnRlZ2VyIiwKICAgICAgICAgICAgICAgICAgImVudW0iOiBbMCwgMV0KICAgICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgICAiYXR0cmlidXRlcyI6IHsKICAgICAgICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0IgogICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgImFkZGl0aW9uYWxQcm9wZXJ0aWVzIjogZmFsc2UKICAgICAgICAgICAgfQogICAgICAgICAgfSwKICAgICAgICAgICJhdHRyaWJ1dGVzIjogewogICAgICAgICAgICAidHlwZSI6ICJvYmplY3QiLAogICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgICAgICAgICAidG9wIjogewogICAgICAgICAgICAgICAgICAidHlwZSI6IFsiaW50ZWdlciIsICJzdHJpbmciXSwKICAgICAgICAgICAgICAgICAgIm9uZU9mIjogWwogICAgICAgICAgICAgICAgICAgIHsgInR5cGUiOiAiaW50ZWdlciIsICJlbnVtIjogWzAsIDFdfSwKICAgICAgICAgICAgICAgICAgICB7ICJ0eXBlIjogInN0cmluZyIsICJlbnVtIjogWyIwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMCIsICIwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMSJdfQogICAgICAgICAgICAgICAgICBdLAogICAgICAgICAgICAgICAgICAiZXJyb3JNZXNzYWdlIjp7CiAgICAgICAgICAgICAgICAgICAgIm9uZU9mIjogIlRvcCB2YWx1ZXMgbXVzdCBiZSBlaXRoZXIgMCBvciAxLCBvciBcIjAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDB7MCwxfVwiIgogICAgICAgICAgICAgICAgICB9CgogICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgIH0sCiAgICAgICAgICAgICAgImFkZGl0aW9uYWxQcm9wZXJ0aWVzIjogZmFsc2UKICAgICAgICAgIH0KICAgICAgICB9LAogICAgICAgICJhZGRpdGlvbmFsUHJvcGVydGllcyI6IGZhbHNlLAogICAgICB9CiAgICB9CiAgfSwKICAiYWRkaXRpb25hbFByb3BlcnRpZXMiOiBmYWxzZQp9","base64");
 const exampleDigitalJson = json5.parse(exampleDigital);
 const exampleAnalogJson = json5.parse(exampleAnalog);
 
