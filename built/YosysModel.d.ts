@@ -7,62 +7,46 @@ declare namespace Yosys {
     }
     type Signal = number | ConstantVal;
     type Signals = Signal[];
-    interface ModuleMap {
-        [moduleName: string]: Module;
-    }
-    interface Netlist {
-        modules: ModuleMap;
-    }
-    interface ModuleAttributes {
-        top?: 0 | 1 | "00000000000000000000000000000000" | "00000000000000000000000000000001";
-        [attrName: string]: any;
-    }
-    interface NetAttributes {
-        [attrName: string]: any;
-    }
-    interface CellAttributes {
-        value?: string;
-        [attrName: string]: any;
-    }
     enum Direction {
         Input = "input",
         Output = "output",
         Inout = "inout"
     }
+    enum HideName {
+        Hide = 0,
+        NoHide = 1
+    }
     interface ExtPort {
         direction: Direction;
         bits: Signals;
     }
-    type ExtPortMap = Record<string, ExtPort>;
-    type PortDirMap = Record<string, Direction>;
-    type PortConnectionMap = Record<string, Signals>;
     interface Cell {
         type: string;
-        port_directions?: PortDirMap;
-        connections: PortConnectionMap;
-        attributes?: CellAttributes;
+        port_directions?: Record<string, Direction>;
+        connections: Record<string, Signals>;
+        attributes?: Record<string, any>;
         hide_name?: HideName;
         parameters?: Record<string, any>;
-    }
-    const getInputPortPids: (cell: Cell) => string[];
-    const getOutputPortPids: (cell: Cell) => string[];
-    type CellMap = Record<string, Cell>;
-    const enum HideName {
-        Hide = 0,// Defaults to 0
-        NoHide = 1
     }
     interface Net {
         bits: Signals;
         hide_name: HideName;
-        attributes: NetAttributes;
+        attributes: Record<string, any>;
     }
-    type NetNameMap = Record<string, Net>;
     interface Module {
-        ports: ExtPortMap;
-        cells: CellMap;
-        netNames: NetNameMap;
-        attributes?: ModuleAttributes;
+        ports: Record<string, ExtPort>;
+        cells: Record<string, Cell>;
+        netNames: Record<string, Net>;
+        attributes?: {
+            top?: 0 | 1 | "00000000000000000000000000000000" | "00000000000000000000000000000001";
+            [attrName: string]: any;
+        };
     }
+    interface Netlist {
+        modules: Record<string, Module>;
+    }
+    const getInputPortPids: (cell: Cell) => string[];
+    const getOutputPortPids: (cell: Cell) => string[];
 }
 export default Yosys;
 //# sourceMappingURL=YosysModel.d.ts.map

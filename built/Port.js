@@ -17,7 +17,7 @@ class Port {
         return pids.includes(this.key);
     }
     maxVal() {
-        return Math.max(...this.value.map(Number)); // Simplified Number conversion
+        return Math.max(...this.value.map(Number));
     }
     valString() {
         return ',' + this.value.join() + ',';
@@ -45,23 +45,26 @@ class Port {
         return maxNum;
     }
     getGenericElkPort(index, templatePorts, dir) {
-        const { Key: nkey, getTemplate } = this.parentNode; // Destructure for brevity
+        const { Key: nodeKey, getTemplate } = this.parentNode;
         const type = getTemplate()[1]['s:type'];
         const x = Number(templatePorts[0][1]['s:x']);
         const y = Number(templatePorts[0][1]['s:y']);
-        const ret = {
-            id: `${nkey}.${this.key}`,
+        const portId = `${nodeKey}.${this.key}`;
+        const portY = index === 0 ? y :
+            index * (Number(templatePorts[1][1]['s:y']) - y) + y;
+        const elkPort = {
+            id: portId,
             width: 1,
             height: 1,
             x,
-            y: index === 0 ? y : index * (Number(templatePorts[1][1]['s:y']) - y) + y,
+            y: portY,
         };
-        const addLabel = (type === 'generic' || type === 'join') && dir === 'in' ||
-            (type === 'generic' || type === 'split') && dir === 'out' ||
-            type === 'generic';
-        if (addLabel) {
-            ret.labels = [{
-                    id: `${nkey}.${this.key}.label`,
+        const needsLabel = (type === 'generic' ||
+            (type === 'join' && dir === 'in') ||
+            (type === 'split' && dir === 'out'));
+        if (needsLabel) {
+            elkPort.labels = [{
+                    id: `${portId}.label`,
                     text: this.key,
                     x: Number(templatePorts[0][2][1].x) - 10,
                     y: Number(templatePorts[0][2][1].y) - 6,
@@ -69,18 +72,15 @@ class Port {
                     height: 11,
                 }];
         }
-        return ret;
+        return elkPort;
     }
     assignConstant(name, constants, signalsByConstantName, constantCollector) {
         const reversedName = name.split('').reverse().join('');
         if (signalsByConstantName[reversedName]) {
-            // Directly use the reversed name as the key
             const constSigs = signalsByConstantName[reversedName];
-            for (let i = 0; i < constSigs.length; i++) {
-                // Find index of first constant
-                const firstConstIndex = this.value.indexOf(constants[0]);
-                // Replace the constants with their corresponding signals
-                if (firstConstIndex >= 0) {
+            const firstConstIndex = this.value.indexOf(constants[0]);
+            if (firstConstIndex >= 0) {
+                for (let i = 0; i < constSigs.length; i++) {
                     this.value[firstConstIndex + i] = constSigs[i];
                 }
             }

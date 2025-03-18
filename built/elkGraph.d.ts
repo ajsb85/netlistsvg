@@ -1,14 +1,28 @@
 import { FlatModule } from './FlatModule';
 export declare namespace ElkModel {
-    interface WireNameLookup {
-        [edgeId: string]: string;
-    }
-    let wireNameLookup: WireNameLookup;
-    let dummyNum: number;
-    let edgeIndex: number;
     interface WirePoint {
         x: number;
         y: number;
+    }
+    interface LayoutOptions {
+        [option: string]: any;
+    }
+    interface Label {
+        id: string;
+        text: string;
+        x: number;
+        y: number;
+        height: number;
+        width: number;
+        layoutOptions?: LayoutOptions;
+    }
+    interface Port {
+        id: string;
+        width: number;
+        height: number;
+        x?: number;
+        y?: number;
+        labels?: Label[];
     }
     interface Cell {
         id: string;
@@ -19,21 +33,6 @@ export declare namespace ElkModel {
         labels?: Label[];
         x?: number;
         y?: number;
-    }
-    interface Graph {
-        id: string;
-        children: Cell[];
-        edges: (Edge | ExtendedEdge)[];
-        width?: number;
-        height?: number;
-    }
-    interface Port {
-        id: string;
-        width: number;
-        height: number;
-        x?: number;
-        y?: number;
-        labels?: Label[];
     }
     interface Section {
         id?: string;
@@ -48,25 +47,26 @@ export declare namespace ElkModel {
         sourcePort?: string;
         target?: string;
         targetPort?: string;
-        sources?: [string];
-        targets?: [string];
+        sources?: string[];
+        targets?: string[];
         layoutOptions?: LayoutOptions;
         junctionPoints?: WirePoint[];
         bendPoints?: WirePoint[];
         sections?: Section[];
     }
-    interface LayoutOptions {
-        [option: string]: any;
-    }
-    interface Label {
+    interface Graph {
         id: string;
-        text: string;
-        x: number;
-        y: number;
-        height: number;
-        width: number;
-        layoutOptions?: LayoutOptions;
+        children: Cell[];
+        edges: Edge[];
+        width?: number;
+        height?: number;
     }
+    interface WireNameLookup {
+        [edgeId: string]: string;
+    }
+    let wireNameLookup: WireNameLookup;
+    let dummyNum: number;
+    let edgeIndex: number;
 }
 export declare function buildElkGraph(module: FlatModule): ElkModel.Graph;
 //# sourceMappingURL=elkGraph.d.ts.map

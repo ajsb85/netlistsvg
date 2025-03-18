@@ -134,19 +134,19 @@ class Cell {
         this.inputPorts.forEach((port) => {
             const isLateral = port.keyIn(lateralPids);
             if (isLateral || (template[1]['s:type'] === 'generic' && genericsLaterals)) {
-                (0, FlatModule_1.addToDefaultDict)(lateralsByNet, port.valString(), port);
+                (0, FlatModule_1.addToCollection)(lateralsByNet, port.valString(), port);
             }
             else {
-                (0, FlatModule_1.addToDefaultDict)(ridersByNet, port.valString(), port);
+                (0, FlatModule_1.addToCollection)(ridersByNet, port.valString(), port);
             }
         });
         this.outputPorts.forEach((port) => {
             const isLateral = port.keyIn(lateralPids);
             if (isLateral || (template[1]['s:type'] === 'generic' && genericsLaterals)) {
-                (0, FlatModule_1.addToDefaultDict)(lateralsByNet, port.valString(), port);
+                (0, FlatModule_1.addToCollection)(lateralsByNet, port.valString(), port);
             }
             else {
-                (0, FlatModule_1.addToDefaultDict)(driversByNet, port.valString(), port);
+                (0, FlatModule_1.addToCollection)(driversByNet, port.valString(), port);
             }
         });
     }

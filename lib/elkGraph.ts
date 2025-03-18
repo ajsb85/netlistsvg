@@ -1,68 +1,10 @@
 import { FlatModule } from './FlatModule';
 
 export namespace ElkModel {
-    // Using interfaces is generally preferred over type aliases for object shapes
-    export interface WireNameLookup {
-        [edgeId: string]: string;
-    }
-    export let wireNameLookup: WireNameLookup = {};
-    export let dummyNum: number = 0;
-    export let edgeIndex: number = 0;
-
+    // Core interfaces for graph elements
     export interface WirePoint {
         x: number;
         y: number;
-    }
-
-    export interface Cell {
-        id: string;
-        width: number;
-        height: number;
-        ports: Port[];
-        layoutOptions?: LayoutOptions;
-        labels?: Label[];
-        x?: number;
-        y?: number;
-    }
-
-    export interface Graph {
-        id: string;
-        children: Cell[];
-        edges: (Edge | ExtendedEdge)[]; // Use union type directly
-        width?: number;
-        height?: number;
-    }
-
-    export interface Port {
-        id: string;
-        width: number;
-        height: number;
-        x?: number;
-        y?: number;
-        labels?: Label[];
-    }
-
-    export interface Section {
-        id?: string;
-        startPoint: WirePoint;
-        endPoint: WirePoint;
-        bendPoints?: WirePoint[];
-    }
-
-    // Combined Edge and ExtendedEdge using optional properties
-    export interface Edge {
-        id: string;
-        labels?: Label[];
-        source?: string; // Optional for ExtendedEdge
-        sourcePort?: string; // Optional for ExtendedEdge
-        target?: string; // Optional for ExtendedEdge
-        targetPort?: string; // Optional for ExtendedEdge
-        sources?: [string]; // Optional for standard Edge
-        targets?: [string]; // Optional for standard Edge
-        layoutOptions?: LayoutOptions;
-        junctionPoints?: WirePoint[]; // Only in standard Edge
-        bendPoints?: WirePoint[];   // Only in standard Edge
-        sections?: Section[];        // Only in standard Edge
     }
 
     export interface LayoutOptions {
@@ -78,76 +20,170 @@ export namespace ElkModel {
         width: number;
         layoutOptions?: LayoutOptions;
     }
+
+    export interface Port {
+        id: string;
+        width: number;
+        height: number;
+        x?: number;
+        y?: number;
+        labels?: Label[];
+    }
+
+    export interface Cell {
+        id: string;
+        width: number;
+        height: number;
+        ports: Port[];
+        layoutOptions?: LayoutOptions;
+        labels?: Label[];
+        x?: number;
+        y?: number;
+    }
+
+    export interface Section {
+        id?: string;
+        startPoint: WirePoint;
+        endPoint: WirePoint;
+        bendPoints?: WirePoint[];
+    }
+
+    export interface Edge {
+        id: string;
+        labels?: Label[];
+        // Connection points - either source/target or sources/targets
+        source?: string;
+        sourcePort?: string;
+        target?: string;
+        targetPort?: string;
+        sources?: string[];
+        targets?: string[];
+        // Layout properties
+        layoutOptions?: LayoutOptions;
+        junctionPoints?: WirePoint[];
+        bendPoints?: WirePoint[];
+        sections?: Section[];
+    }
+
+    export interface Graph {
+        id: string;
+        children: Cell[];
+        edges: Edge[];
+        width?: number;
+        height?: number;
+    }
+
+    // Utility type for wire name tracking
+    export interface WireNameLookup {
+        [edgeId: string]: string;
+    }
+
+    // Module state
+    export let wireNameLookup: WireNameLookup = {};
+    export let dummyNum: number = 0;
+    export let edgeIndex: number = 0;
 }
 
 export function buildElkGraph(module: FlatModule): ElkModel.Graph {
+    // Initialize state
     const children: ElkModel.Cell[] = module.nodes.map(n => n.buildElkChild());
     ElkModel.edgeIndex = 0;
     ElkModel.dummyNum = 0;
     const edges: ElkModel.Edge[] = [];
 
+    // Process each wire in the module
     module.wires.forEach(wire => {
         const numWires = wire.netName.split(',').length - 2;
+        const { drivers, riders, laterals } = wire;
 
-        const addEdges = (sourcePorts, targetPorts) => {
-            route(sourcePorts, targetPorts, edges, numWires);
-        };
-
-        if (wire.drivers.length > 0 && wire.riders.length > 0 && wire.laterals.length === 0) {
-            addEdges(wire.drivers, wire.riders);
-        } else if (wire.drivers.concat(wire.riders).length > 0 && wire.laterals.length > 0) {
-            addEdges(wire.drivers, wire.laterals);
-            addEdges(wire.laterals, wire.riders);
-        } else if (wire.riders.length === 0 && wire.drivers.length > 1) {
+        // Handle different wire connection patterns
+        if (drivers.length > 0 && riders.length > 0 && laterals.length === 0) {
+            // Direct connections from drivers to riders
+            createEdges(drivers, riders, edges, numWires);
+        } 
+        else if (drivers.concat(riders).length > 0 && laterals.length > 0) {
+            // Connections through laterals
+            createEdges(drivers, laterals, edges, numWires);
+            createEdges(laterals, riders, edges, numWires);
+        } 
+        else if (riders.length === 0 && drivers.length > 1) {
+            // Multiple drivers with no riders - create dummy junction
             const dummyId = addDummy(children);
-            const dummyEdges = wire.drivers.map(driver => createDummyEdge(driver, dummyId, 'source'));
-            edges.push(...dummyEdges);
-        } else if (wire.riders.length > 1 && wire.drivers.length === 0) {
-            const dummyId = addDummy(children);
-            const dummyEdges = wire.riders.map(rider => createDummyEdge(rider, dummyId, 'target'));
-            edges.push(...dummyEdges);
-        } else if (wire.laterals.length > 1) {
-            const [source, ...otherLaterals] = wire.laterals; // Destructure for clarity
-            const sourceParentKey = source.parentNode.Key;
-            const lateralEdges = otherLaterals.map(lateral => {
-                const lateralParentKey = lateral.parentNode.Key;
-                const id = `e${ElkModel.edgeIndex++}`;
-                const edge: ElkModel.Edge = {
-                    id,
-                    source: sourceParentKey,
-                    sourcePort: `${sourceParentKey}.${source.key}`,
-                    target: lateralParentKey,
-                    targetPort: `${lateralParentKey}.${lateral.key}`,
-                };
-                ElkModel.wireNameLookup[id] = lateral.wire.netName;
-                return edge;
+            drivers.forEach(driver => {
+                edges.push(createDummyEdge(driver, dummyId, 'source', driver.wire.netName));
             });
-            edges.push(...lateralEdges);
+        } 
+        else if (riders.length > 1 && drivers.length === 0) {
+            // Multiple riders with no drivers - create dummy junction
+            const dummyId = addDummy(children);
+            riders.forEach(rider => {
+                edges.push(createDummyEdge(rider, dummyId, 'target', rider.wire.netName));
+            });
+        } 
+        else if (laterals.length > 1) {
+            // Connect laterals to each other
+            const [source, ...otherLaterals] = laterals;
+            otherLaterals.forEach(lateral => {
+                const id = `e${ElkModel.edgeIndex++}`;
+                edges.push({
+                    id,
+                    source: source.parentNode.Key,
+                    sourcePort: `${source.parentNode.Key}.${source.key}`,
+                    target: lateral.parentNode.Key,
+                    targetPort: `${lateral.parentNode.Key}.${lateral.key}`
+                });
+                ElkModel.wireNameLookup[id] = lateral.wire.netName;
+            });
         }
     });
 
     return {
         id: module.moduleName,
         children,
-        edges,
+        edges
     };
 }
 
-// Helper function to create dummy edges (for drivers or riders)
-function createDummyEdge(port, dummyId: string, type: 'source' | 'target'): ElkModel.Edge {
-    const sourceParentKey = port.parentNode.Key;
-    const id = `e${ElkModel.edgeIndex++}`;
-    const edge: ElkModel.Edge = {
-        id,
-        [type === 'source' ? 'source' : 'target']: sourceParentKey,
-        [(type === 'source' ? 'sourcePort' : 'targetPort')]: `${sourceParentKey}.${port.key}`,
-        [type === 'source' ? 'target' : 'source']: dummyId,
-        [(type === 'source' ? 'targetPort' : 'sourcePort')]: `${dummyId}.p`,
-    };
-    ElkModel.wireNameLookup[id] = port.wire.netName;
-    return edge;
+// Helper function to create edges between port collections
+function createEdges(sourcePorts, targetPorts, edges: ElkModel.Edge[], numWires: number) {
+    for (const sourcePort of sourcePorts) {
+        const sourceParentKey = sourcePort.parentNode.Key;
+        const sourceKey = `${sourceParentKey}.${sourcePort.key}`;
+        
+        // Create edge label if needed
+        const edgeLabel = numWires > 1 ? [{
+            id: `label_${ElkModel.edgeIndex}`,
+            text: String(numWires),
+            width: 4,
+            height: 6,
+            x: 0,
+            y: 0,
+            layoutOptions: { 'org.eclipse.elk.edgeLabels.inline': true }
+        }] : undefined;
+
+        for (const targetPort of targetPorts) {
+            const targetParentKey = targetPort.parentNode.Key;
+            const targetKey = `${targetParentKey}.${targetPort.key}`;
+            const id = `e${ElkModel.edgeIndex++}`;
+            
+            edges.push({
+                id,
+                labels: edgeLabel,
+                sources: [sourceKey],
+                targets: [targetKey],
+                layoutOptions: {
+                    'org.eclipse.elk.layered.priority.direction': 
+                        sourcePort.parentNode.type !== '$dff' ? 10 : undefined,
+                    'org.eclipse.elk.edge.thickness': numWires > 1 ? 2 : 1
+                }
+            });
+            
+            ElkModel.wireNameLookup[id] = targetPort.wire.netName;
+        }
+    }
 }
 
+// Helper function to create dummy junction nodes
 function addDummy(children: ElkModel.Cell[]): string {
     const dummyId = `$d_${ElkModel.dummyNum++}`;
     children.push({
@@ -155,43 +191,29 @@ function addDummy(children: ElkModel.Cell[]): string {
         width: 0,
         height: 0,
         ports: [{ id: `${dummyId}.p`, width: 0, height: 0 }],
-        layoutOptions: { 'org.eclipse.elk.portConstraints': 'FIXED_SIDE' },
+        layoutOptions: { 'org.eclipse.elk.portConstraints': 'FIXED_SIDE' }
     });
     return dummyId;
 }
 
-function route(sourcePorts, targetPorts, edges: ElkModel.Edge[], numWires: number) {
-    for (const sourcePort of sourcePorts) {
-        const sourceParentKey = sourcePort.parentNode.Key;
-        const sourceKey = `${sourceParentKey}.${sourcePort.key}`;
-        const edgeLabel: ElkModel.Label[] | undefined = numWires > 1
-            ? [{
-                id: `label_${ElkModel.edgeIndex}`, // Give label a unique ID
-                text: String(numWires),
-                width: 4,
-                height: 6,
-                x: 0,
-                y: 0,
-                layoutOptions: { 'org.eclipse.elk.edgeLabels.inline': true },
-            }]
-            : undefined;
-
-        for (const targetPort of targetPorts) {
-            const targetParentKey = targetPort.parentNode.Key;
-            const targetKey = `${targetParentKey}.${targetPort.key}`;
-            const id = `e${ElkModel.edgeIndex++}`;
-            const edge: ElkModel.Edge = {
-                id,
-                labels: edgeLabel,
-                sources: [sourceKey], // Use sources/targets for consistency
-                targets: [targetKey],
-                layoutOptions: {
-                    'org.eclipse.elk.layered.priority.direction': sourcePort.parentNode.type !== '$dff' ? 10 : undefined,
-                    'org.eclipse.elk.edge.thickness': numWires > 1 ? 2 : 1,
-                },
-            };
-            ElkModel.wireNameLookup[id] = targetPort.wire.netName;
-            edges.push(edge);
-        }
-    }
+// Helper function to create edges to/from dummy nodes
+function createDummyEdge(
+    port, 
+    dummyId: string, 
+    type: 'source' | 'target', 
+    netName: string
+): ElkModel.Edge {
+    const parentKey = port.parentNode.Key;
+    const id = `e${ElkModel.edgeIndex++}`;
+    
+    const edge: ElkModel.Edge = {
+        id,
+        [type === 'source' ? 'source' : 'target']: parentKey,
+        [type === 'source' ? 'sourcePort' : 'targetPort']: `${parentKey}.${port.key}`,
+        [type === 'source' ? 'target' : 'source']: dummyId,
+        [type === 'source' ? 'targetPort' : 'sourcePort']: `${dummyId}.p`
+    };
+    
+    ElkModel.wireNameLookup[id] = netName;
+    return edge;
 }

@@ -8,6 +8,7 @@ exports.default = drawModule;
 const elkGraph_1 = require("./elkGraph");
 const Skin_1 = __importDefault(require("./Skin"));
 const onml = require("onml");
+// Wire direction enum
 var WireDirection;
 (function (WireDirection) {
     WireDirection[WireDirection["Up"] = 0] = "Up";
@@ -15,163 +16,188 @@ var WireDirection;
     WireDirection[WireDirection["Left"] = 2] = "Left";
     WireDirection[WireDirection["Right"] = 3] = "Right";
 })(WireDirection || (WireDirection = {}));
-// Helper function to determine wire direction (moved outside drawModule)
-function whichDir(start, end) {
+// Determine direction between two points
+function getWireDirection(start, end) {
     if (end.x === start.x && end.y === start.y) {
-        throw new Error('start and end are the same');
+        throw new Error('Points cannot be identical');
     }
     if (end.x !== start.x && end.y !== start.y) {
-        throw new Error('start and end arent orthogonal');
+        throw new Error('Points must be orthogonal');
     }
-    return end.x > start.x ? WireDirection.Right
-        : end.x < start.x ? WireDirection.Left
-            : end.y > start.y ? WireDirection.Down
-                : WireDirection.Up; // Simplified conditional
+    if (end.x > start.x)
+        return WireDirection.Right;
+    if (end.x < start.x)
+        return WireDirection.Left;
+    if (end.y > start.y)
+        return WireDirection.Down;
+    return WireDirection.Up;
 }
-// Helper to find the bend point nearest to a dummy node (moved outside drawModule)
-function findBendNearDummy(net, dummyIsSource, dummyLoc) {
-    const candidates = net.map((edge) => {
+// Find bend point nearest to a dummy node
+function findNearestBend(edges, dummyIsSource, dummyLocation) {
+    // Get candidate bend points
+    const candidates = edges
+        .map(edge => {
         const bends = edge.sections[0].bendPoints || [];
         return dummyIsSource ? bends[0] : bends[bends.length - 1];
-    }).filter((p) => p !== undefined); // Use type guard
-    if (candidates.length === 0) {
+    })
+        .filter((p) => p !== undefined);
+    if (candidates.length === 0)
         return undefined;
-    }
-    // Find closest bend point using Euclidean distance
+    // Return closest point by Euclidean distance
     return candidates.reduce((closest, current) => {
-        const closestDist = (closest.x - dummyLoc.x) ** 2 + (closest.y - dummyLoc.y) ** 2;
-        const currentDist = (current.x - dummyLoc.x) ** 2 + (current.y - dummyLoc.y) ** 2;
+        const closestDist = (closest.x - dummyLocation.x) ** 2 + (closest.y - dummyLocation.y) ** 2;
+        const currentDist = (current.x - dummyLocation.x) ** 2 + (current.y - dummyLocation.y) ** 2;
         return currentDist < closestDist ? current : closest;
     });
 }
-// Function to remove dummy edges (extracted and simplified)
-function removeDummyEdges(g) {
+// Clean up dummy edges in the graph
+function removeDummyEdges(graph) {
     var _a, _b;
     while (true) {
         const dummyId = `$d_${elkGraph_1.ElkModel.dummyNum}`;
-        const edgeGroup = g.edges.filter(e => e.source === dummyId || e.target === dummyId);
-        if (edgeGroup.length === 0) {
-            break; // No more dummy nodes
-        }
-        const firstEdge = edgeGroup[0];
+        const edgesWithDummy = graph.edges.filter(e => e.source === dummyId || e.target === dummyId);
+        // Exit if no more dummy edges found
+        if (edgesWithDummy.length === 0)
+            break;
+        const firstEdge = edgesWithDummy[0];
         const dummyIsSource = firstEdge.source === dummyId;
-        const dummyLoc = dummyIsSource ? firstEdge.sections[0].startPoint : firstEdge.sections[0].endPoint;
-        const newEnd = findBendNearDummy(edgeGroup, dummyIsSource, dummyLoc);
-        if (!newEnd) {
+        const dummyLocation = dummyIsSource
+            ? firstEdge.sections[0].startPoint
+            : firstEdge.sections[0].endPoint;
+        // Find replacement endpoint
+        const newEndpoint = findNearestBend(edgesWithDummy, dummyIsSource, dummyLocation);
+        if (!newEndpoint) {
             elkGraph_1.ElkModel.dummyNum += 1;
-            continue; // Skip if no bend point
+            continue;
         }
-        for (const edge of edgeGroup) {
+        // Update edge endpoints
+        for (const edge of edgesWithDummy) {
             const section = edge.sections[0];
             if (dummyIsSource) {
-                section.startPoint = newEnd;
-                (_a = section.bendPoints) === null || _a === void 0 ? void 0 : _a.shift(); // Use optional chaining
+                section.startPoint = newEndpoint;
+                (_a = section.bendPoints) === null || _a === void 0 ? void 0 : _a.shift();
             }
             else {
-                section.endPoint = newEnd;
-                (_b = section.bendPoints) === null || _b === void 0 ? void 0 : _b.pop(); // Use optional chaining
+                section.endPoint = newEndpoint;
+                (_b = section.bendPoints) === null || _b === void 0 ? void 0 : _b.pop();
             }
         }
-        const directions = new Set(edgeGroup.map(edge => {
+        // Check if junction is needed
+        const directions = new Set(edgesWithDummy.map(edge => {
             var _a, _b;
             const section = edge.sections[0];
             const point = dummyIsSource
                 ? (((_a = section.bendPoints) === null || _a === void 0 ? void 0 : _a[0]) || section.endPoint)
                 : (((_b = section.bendPoints) === null || _b === void 0 ? void 0 : _b[section.bendPoints.length - 1]) || section.startPoint);
-            return whichDir(newEnd, point);
+            return getWireDirection(newEndpoint, point);
         }));
+        // Remove junction points if fewer than 3 directions
         if (directions.size < 3) {
-            for (const edge of edgeGroup) {
-                edge.junctionPoints = (edge.junctionPoints || []).filter(junct => !(junct.x === newEnd.x && junct.y === newEnd.y));
+            for (const edge of edgesWithDummy) {
+                edge.junctionPoints = (edge.junctionPoints || []).filter(junction => !(junction.x === newEndpoint.x && junction.y === newEndpoint.y));
             }
         }
         elkGraph_1.ElkModel.dummyNum += 1;
     }
 }
-// Main drawModule function
-function drawModule(g, module) {
-    const nodes = module.nodes.map((n) => {
-        const kchild = g.children.find((c) => c.id === n.Key);
-        return n.render(kchild);
+// Main function to generate SVG from module
+function drawModule(graph, module) {
+    // Render all nodes
+    const nodes = module.nodes.map(node => {
+        const matchedChild = graph.children.find(child => child.id === node.Key);
+        return node.render(matchedChild);
     });
-    removeDummyEdges(g);
-    const lines = g.edges.flatMap((e) => {
-        const netId = elkGraph_1.ElkModel.wireNameLookup[e.id];
+    // Clean up the graph structure
+    removeDummyEdges(graph);
+    // Create wire lines
+    const lines = graph.edges.flatMap(edge => {
+        const netId = elkGraph_1.ElkModel.wireNameLookup[edge.id];
         const numWires = netId.split(',').length - 2;
-        const lineStyle = `stroke-width: ${numWires > 1 ? 2 : 1}`;
-        const netName = `net_${netId.slice(1, -1)} width_${numWires}`;
-        return e.sections.flatMap((s) => {
-            let startPoint = s.startPoint;
-            const bends = (s.bendPoints || []).map((b) => {
-                const line = ['line', {
-                        x1: startPoint.x,
-                        x2: b.x,
-                        y1: startPoint.y,
-                        y2: b.y,
-                        class: netName,
-                        style: lineStyle,
-                    }];
-                startPoint = b;
-                return line;
+        const lineWidth = numWires > 1 ? 2 : 1;
+        const netClass = `net_${netId.slice(1, -1)} width_${numWires}`;
+        return edge.sections.flatMap(section => {
+            let currentPoint = section.startPoint;
+            const wireSegments = [];
+            // Create line segments for each bend
+            const bendPoints = section.bendPoints || [];
+            bendPoints.forEach(bendPoint => {
+                wireSegments.push(['line', {
+                        x1: currentPoint.x,
+                        y1: currentPoint.y,
+                        x2: bendPoint.x,
+                        y2: bendPoint.y,
+                        class: netClass,
+                        style: `stroke-width: ${lineWidth}`
+                    }]);
+                currentPoint = bendPoint;
             });
-            const circles = (e.junctionPoints || []).map((j) => ['circle', {
-                    cx: j.x,
-                    cy: j.y,
+            // Create junction points
+            const junctions = (edge.junctionPoints || []).map(junction => ['circle', {
+                    cx: junction.x,
+                    cy: junction.y,
                     r: numWires > 1 ? 3 : 2,
                     style: 'fill:#000',
-                    class: netName,
+                    class: netClass
                 }]);
-            const line = ['line', {
-                    x1: startPoint.x,
-                    x2: s.endPoint.x,
-                    y1: startPoint.y,
-                    y2: s.endPoint.y,
-                    class: netName,
-                    style: lineStyle,
-                }];
-            return [...bends, ...circles, line];
+            // Add final line segment
+            wireSegments.push(['line', {
+                    x1: currentPoint.x,
+                    y1: currentPoint.y,
+                    x2: section.endPoint.x,
+                    y2: section.endPoint.y,
+                    class: netClass,
+                    style: `stroke-width: ${lineWidth}`
+                }]);
+            return [...wireSegments, ...junctions];
         });
     });
-    const labels = g.edges.flatMap((e) => {
+    // Create wire labels
+    const labels = graph.edges.flatMap(edge => {
         var _a, _b;
-        const netId = elkGraph_1.ElkModel.wireNameLookup[e.id];
+        // Skip if no label
+        if (!((_b = (_a = edge.labels) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.text))
+            return [];
+        const label = edge.labels[0];
+        const netId = elkGraph_1.ElkModel.wireNameLookup[edge.id];
         const numWires = netId.split(',').length - 2;
-        const netName = `net_${netId.slice(1, -1)} width_${numWires} busLabel_${numWires}`;
-        if ((_b = (_a = e.labels) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.text) {
-            const label = [
-                ['rect', {
-                        x: e.labels[0].x + 1,
-                        y: e.labels[0].y - 1,
-                        width: (e.labels[0].text.length + 2) * 6 - 2,
-                        height: 9,
-                        class: netName,
-                        style: 'fill: white; stroke: none',
-                    }],
-                ['text', {
-                        x: e.labels[0].x,
-                        y: e.labels[0].y + 7,
-                        class: netName,
-                    }, `/${e.labels[0].text}/`],
-            ];
-            return label;
-        }
-        return []; // Return empty array if no label
+        const labelClass = `net_${netId.slice(1, -1)} width_${numWires} busLabel_${numWires}`;
+        return [
+            // Label background
+            ['rect', {
+                    x: label.x + 1,
+                    y: label.y - 1,
+                    width: (label.text.length + 2) * 6 - 2,
+                    height: 9,
+                    class: labelClass,
+                    style: 'fill: white; stroke: none'
+                }],
+            // Label text
+            ['text', {
+                    x: label.x,
+                    y: label.y + 7,
+                    class: labelClass
+                }, `/${label.text}/`]
+        ];
     });
+    // Add labels to lines if present
     if (labels.length > 0) {
         lines.push(...labels);
     }
-    const svgAttrs = Object.assign({}, Skin_1.default.skin[1]); // Clone attributes
-    svgAttrs.width = String(g.width); // Use String() for conversion
-    svgAttrs.height = String(g.height);
+    // Set up SVG attributes
+    const svgAttributes = Object.assign({}, Skin_1.default.skin[1]);
+    svgAttributes.width = String(graph.width);
+    svgAttributes.height = String(graph.height);
+    // Extract and combine styles
     const styles = ['style', {}, ''];
     onml.traverse(Skin_1.default.skin, {
         enter: (node) => {
             if (node.name === 'style') {
                 styles[2] += node.full[2];
             }
-        },
+        }
     });
-    const ret = ['svg', svgAttrs, styles, ...nodes, ...lines];
-    return onml.s(ret);
+    // Build final SVG
+    const svgElement = ['svg', svgAttributes, styles, ...nodes, ...lines];
+    return onml.s(svgElement);
 }
 //# sourceMappingURL=drawModule.js.map

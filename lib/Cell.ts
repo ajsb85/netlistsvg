@@ -1,4 +1,4 @@
-import { SigsByConstName, NameToPorts, addToDefaultDict } from './FlatModule';
+import { SigsByConstName, NameToPorts, addToCollection } from './FlatModule';
 import Yosys from './YosysModel';
 import Skin from './Skin';
 import {Port} from './Port';
@@ -163,17 +163,17 @@ export default class Cell {
         this.inputPorts.forEach((port) => {
             const isLateral = port.keyIn(lateralPids);
             if (isLateral || (template[1]['s:type'] === 'generic' && genericsLaterals)) {
-                addToDefaultDict(lateralsByNet, port.valString(), port);
+                addToCollection(lateralsByNet, port.valString(), port);
             } else {
-                addToDefaultDict(ridersByNet, port.valString(), port);
+                addToCollection(ridersByNet, port.valString(), port);
             }
         });
         this.outputPorts.forEach((port) => {
             const isLateral = port.keyIn(lateralPids);
             if (isLateral || (template[1]['s:type'] === 'generic' && genericsLaterals)) {
-                addToDefaultDict(lateralsByNet, port.valString(), port);
+                addToCollection(lateralsByNet, port.valString(), port);
             } else {
-                addToDefaultDict(driversByNet, port.valString(), port);
+                addToCollection(driversByNet, port.valString(), port);
             }
         });
     }
