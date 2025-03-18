@@ -17,7 +17,7 @@ endif
 endif
 
 NETLISTSVG = ../bin/netlistsvg
-NETLISTSVG_SKIN ?= ../lib/default.svg
+NETLISTSVG_SKIN ?= ../skin/default.svg
 NETLISTSVG_DPI  ?= 300
 
 # Simple files are the same flattened as not

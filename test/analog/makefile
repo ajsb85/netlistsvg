@@ -1,6 +1,6 @@
 JSON=$(wildcard *.json)
 SVGS=$(JSON:.json=.svg)
-SKIN=../../lib/analog.svg
+SKIN=../../skin/default.svg
 
 all: $(SVGS)
 

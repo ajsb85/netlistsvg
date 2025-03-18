@@ -32,16 +32,13 @@ var Skin;
             return port[1]['s:pid'];
         });
     }
+    // Simplified getInputPids, getOutputPids, getLateralPortPids
     function getInputPids(template) {
-        return filterPortPids(template, (attrs) => {
-            return attrs['s:position'] === 'top';
-        });
+        return filterPortPids(template, (attrs) => attrs['s:dir'] === 'in' || attrs['s:position'] === 'top');
     }
     Skin.getInputPids = getInputPids;
     function getOutputPids(template) {
-        return filterPortPids(template, (attrs) => {
-            return attrs['s:position'] === 'bottom';
-        });
+        return filterPortPids(template, (attrs) => attrs['s:dir'] === 'out' || attrs['s:position'] === 'bottom');
     }
     Skin.getOutputPids = getOutputPids;
     function getLateralPortPids(template) {
@@ -49,6 +46,7 @@ var Skin;
             if (attrs['s:dir']) {
                 return attrs['s:dir'] === 'lateral';
             }
+            // Placeholder: Keep position check IF s:dir is missing.
             if (attrs['s:position']) {
                 return attrs['s:position'] === 'left' || attrs['s:position'] === 'right';
             }

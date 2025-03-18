@@ -31,29 +31,30 @@ export namespace Skin {
             return port[1]['s:pid'];
         });
     }
+
+    // Simplified getInputPids, getOutputPids, getLateralPortPids
     export function getInputPids(template: any[]): string[] {
-        return filterPortPids(template, (attrs) => {
-            return attrs['s:position'] === 'top';
-        });
+        return filterPortPids(template, (attrs) => attrs['s:dir'] === 'in'  || attrs['s:position'] === 'top');
     }
 
     export function getOutputPids(template: any[]): string[] {
-        return filterPortPids(template, (attrs) => {
-            return attrs['s:position'] === 'bottom';
-        });
+        return filterPortPids(template, (attrs) => attrs['s:dir'] === 'out' || attrs['s:position'] === 'bottom');
     }
 
     export function getLateralPortPids(template: any[]): string[] {
-        return filterPortPids(template, (attrs) => {
+      return filterPortPids(template, (attrs) => {
             if (attrs['s:dir']) {
                 return attrs['s:dir'] === 'lateral';
             }
+            // Placeholder: Keep position check IF s:dir is missing.
             if (attrs['s:position']) {
               return attrs['s:position'] === 'left' || attrs['s:position'] === 'right';
             }
             return false;
         });
     }
+
+
     export function findSkinType(type: string) {
         let ret = null;
         onml.traverse(skin, {
@@ -74,6 +75,7 @@ export namespace Skin {
         }
         return ret ? ret.full : null; // Handle case where ret is null
     }
+
     export function getLowPriorityAliases(): string[] {
         const ret: string[] = []; // Explicitly type ret as string[]
         onml.t(skin, {

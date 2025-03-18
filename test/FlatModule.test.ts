@@ -14,7 +14,7 @@ import Skin from '../lib/Skin';
  */
 function createFlatModule(testFile: string): FlatModule {
     const testPath = path.join(__dirname,'digital', testFile + '.json');
-    const defaultSkin = path.join(__dirname, '../lib/default.svg');
+    const defaultSkin = path.join(__dirname, '../skin/default.svg');
     const testStr = fs.readFileSync(testPath).toString();
     const netlist: Yosys.Netlist = json5.parse(testStr);
     const skin = onml.parse(fs.readFileSync(defaultSkin).toString());

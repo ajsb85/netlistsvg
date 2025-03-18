@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NetlistSVG Demo</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px; /* Consistent padding */
+            display: flex; /* Use flexbox for overall layout */
+            flex-direction: column; /* Stack content vertically */
+            align-items: center; /* Center content horizontally */
+            min-height: 100vh; /* Ensure the body takes at least the full viewport height */
+            background-color: #f0f0f0; /* Light background color */
+        }
+
+        .container {
+            display: flex;
+            flex-wrap: wrap; /* Allow wrapping on smaller screens */
+            gap: 20px; /* Space between items */
+            max-width: 1200px; /* Limit maximum width */
+            width: 100%; /* Use full available width */
+            justify-content: center; /* Center content horizontally */
+        }
+
+        .input-area, .output-area {
+            flex: 1 1 500px; /* Grow and shrink equally, minimum 500px width */
+            max-width: 600px; /* Limit maximum width for each section */
+            margin: 10px; /* Add some margin for spacing */
+        }
+
+        textarea {
+            font-family: monospace;
+            width: 100%; /* Take up full width of container */
+            height: 500px;
+            resize: vertical; /* Allow vertical resizing */
+            border: 1px solid #ccc; /* Add a border */
+            padding: 10px; /* Add padding inside the textarea */
+            box-sizing: border-box; /* Include padding and border in element's total width and height */
+        }
+
+        #svgArea {
+            width: 100%; /* Make image responsive */
+            height: auto; /* Maintain aspect ratio */
+            border: 1px solid #ccc; /* Add a border */
+            display: block;  /* Remove extra space below inline elements*/
+            object-fit: contain; /* Ensure the SVG scales to fit within the container */
+        }
+
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center; /* Vertically align items */
+            margin-bottom: 10px; /* Space below controls */
+            width: 100%; /* Ensure it takes the full width */
+        }
+
+        .controls label {
+            margin-right: 10px; /* Space between label and select */
+        }
+
+        button {
+            padding: 10px 15px;
+            background-color: #4CAF50; /* Green background */
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        button:hover {
+            background-color: #367c39; /* Darker green on hover */
+        }
+
+        #skinSelect {
+            margin-right: 10px; /* Space between select and button */
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+
+        a {
+            color: #0366d6;  /* Standard link color */
+            text-decoration: none; /* Remove underline by default */
+        }
+
+        a:hover {
+            text-decoration: underline; /* Add underline on hover */
+        }
+
+        /* Responsive adjustments for smaller screens */
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column; /* Stack input and output vertically */
+            }
+            .input-area, .output-area{
+                max-width: 100%; /* Allow it to use all available width */
+            }
+            .controls {
+                flex-direction: column; /* Stack controls on small screens */
+                align-items: stretch; /* Stretch buttons to full width */
+
+            }
+            .controls > div, .controls > button{
+                width: 100%; /* Full width on small screens */
+                margin-bottom: 10px; /* Add some margin for spacing */
+            }
+        }
+
+    </style>
+</head>
+<body>
+    <p>
+        This is a demo of <a href="https://github.com/nturley/netlistsvg">netlistsvg</a>.
+    </p>
+
+    <div class="container">
+        <div class="input-area">
+            <div class="controls">
+                <button id="formatButton">Format JSON</button>
+                <div>
+                    <label for="skinSelect">Select skin:</label>
+                    <select id="skinSelect"></select>
+                    <button id="renderButton">Render</button>
+                </div>
+            </div>
+            <textarea></textarea>
+        </div>
+        <div class="output-area">
+            <img id="svgArea" alt="Rendered SVG">
+        </div>
+    </div>
+
+    <script type="text/javascript" src="elk.bundled.js"></script>
+    <script type="text/javascript" src="bundle.js"></script>
+</body>
+</html>

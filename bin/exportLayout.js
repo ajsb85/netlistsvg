@@ -39,7 +39,7 @@ function parseFiles(skinPath, netlistPath, callback) {
 }
 
 function main(netlistPath, outputPath, skinPath, preLayout) {
-    skinPath = skinPath || path.join(__dirname, '../lib/default.svg');
+    skinPath = skinPath || path.join(__dirname, '../skin/default.svg');
     outputPath = outputPath || 'out.json';
     var schemaPath = path.join(__dirname, '../lib/yosys.schema.json5');
     parseFiles(skinPath, netlistPath, (skinData, netlistString) => {

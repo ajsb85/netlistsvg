@@ -3,9 +3,9 @@
 const superagent = require('superagent');
 const JSON5 = require('json5');
 const netlistRenderer = require('../built');
-const exampleNetlist = require('../test/analog/and.json');
+const exampleNetlist = require('../test/analog/horizontal.json');
 
-const skinPaths = ['lib/analog.svg', 'lib/default.svg'];
+const skinPaths = ['skin/horizontal.svg', 'skin/default.svg'];
 
 const textarea = document.querySelector('textarea');
 const skinSelect = document.querySelector('#skinSelect');
