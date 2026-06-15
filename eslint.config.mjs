@@ -5,10 +5,19 @@ import typescriptParser from "@typescript-eslint/parser";
 
 export default [
   {
-    ignores: ["built/**", "coverage/**", "node_modules/**", "examples/**", "jsmodule/**"],
+    ignores: [
+      "built/**",
+      "coverage/**",
+      "node_modules/**",
+      "examples/**",
+      "jsmodule/**",
+      "bundle.js",
+      "elk.bundled.js",
+      "test/**/*.svg",
+    ],
   },
   {
-    files: ["**/*.ts"],
+    files: ["lib/**/*.ts"],
     languageOptions: {
       parser: typescriptParser,
       parserOptions: {
@@ -32,11 +41,48 @@ export default [
         "warn",
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
       ],
+      "@typescript-eslint/no-namespace": "off",
+      "@typescript-eslint/no-require-imports": "off",
+      "quotes": ["error", "single", { "avoidEscape": true }],
       "no-cond-assign": "off",
       "no-constant-condition": "off",
       "no-empty": ["error", { allowEmptyCatch: true }],
       "no-prototype-builtins": "off", // Consider enabling this later
       "no-undef": "off",  // TypeScript handles this
+      "no-useless-escape": "off",
+    },
+  },
+  {
+    files: ["test/**/*.ts"],
+    languageOptions: {
+      parser: typescriptParser,
+      parserOptions: {
+        ecmaVersion: 2017,
+        sourceType: "module",
+      },
+    },
+    plugins: {
+        "@typescript-eslint": typescriptEslint,
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+      ...typescriptEslint.configs.recommended.rules,
+
+      "@typescript-eslint/explicit-function-return-type": "off",
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-use-before-define": "off",
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
+      ],
+      "@typescript-eslint/no-namespace": "off",
+      "@typescript-eslint/no-require-imports": "off",
+      "quotes": ["error", "single", { "avoidEscape": true }],
+      "no-cond-assign": "off",
+      "no-constant-condition": "off",
+      "no-empty": ["error", { allowEmptyCatch: true }],
+      "no-prototype-builtins": "off",
+      "no-undef": "off",
       "no-useless-escape": "off",
     },
   },
@@ -63,6 +109,7 @@ export default [
     },
     rules: {
       ...js.configs.recommended.rules,
+      "quotes": ["error", "single", { "avoidEscape": true }],
       "no-cond-assign": "off",
       "no-constant-condition": "off",
       "no-empty": ["error", { allowEmptyCatch: true }],

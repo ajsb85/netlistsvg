@@ -4,14 +4,14 @@ var path = require('path'),
 var digital_tests = ['generics', 'ports_splitjoin', 'up3down5', 'mux4', 'hyperedges', 'pc'];
 var analog_tests = ['and', 'common_emitter_full', 'mcu', 'resistor_divider', 'vcc_and_gnd']
 
-for (var test of digital_tests) {
+for (const test of digital_tests) {
     bin.main(
         path.join('test', 'digital', test + '.json'),
         path.join('test', 'digital', test + '.svg'),
         path.join('skin', 'default.svg')
     );
 }
-for (var test of analog_tests) {
+for (const test of analog_tests) {
     bin.main(
         path.join('test', 'analog', test + '.json'),
         path.join('test', 'analog', test + '.svg'),

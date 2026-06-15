@@ -3,6 +3,13 @@
   "version": "1.1.0",
   "description": "rendering a schematic from a netlist",
   "main": "built/index.js",
+  "module": "built/index.esm.js",
+  "exports": {
+    ".": {
+      "import": "./built/index.esm.js",
+      "require": "./built/index.js"
+    }
+  },
   "author": "Neil Turley",
   "license": "MIT",
   "dependencies": {
@@ -25,11 +32,12 @@
     "netlistsvg-dumplayout": "./bin/exportLayout.js"
   },
   "scripts": {
-    "test-examples": "tsc && node --trace-warnings test/test-all.js",
-    "lint": "tslint --project . && eslint bin/**/*.js && eslint --global=document demo/**/*.js",
+    "build": "tsc && esbuild lib/index.ts --bundle --platform=node --format=esm --outfile=built/index.esm.js --packages=external && npm run build-module && npm run build-demo",
+    "test-examples": "npm run build && node --trace-warnings test/test-all.js",
+    "lint": "eslint .",
     "test": "npm run -s test-examples && npm run -s lint && jest",
-    "build-demo": "cp demo/index.html . && cp node_modules/elkjs/lib/elk.bundled.js . && browserify demo/demo.js > bundle.js",
-    "build-module": "browserify -t brfs -s netlistsvg jsmodule/index.js > built/netlistsvg.bundle.js",
+    "build-demo": "cp demo/index.html . && cp node_modules/elkjs/lib/elk.bundled.js . && esbuild demo/demo.js --bundle --outfile=bundle.js --platform=browser --external:elkjs --banner:js=\"const require = (name) => name === 'elkjs' ? window.ELK : undefined;\"",
+    "build-module": "esbuild jsmodule/index.js --bundle --format=iife --global-name=netlistsvg --outfile=built/netlistsvg.bundle.js --loader:.svg=text --loader:.json5=text --platform=browser --external:elkjs --banner:js=\"const require = (name) => name === 'elkjs' ? window.ELK : undefined;\"",
     "serve": "http-server . -o index.html"
   },
   "keywords": [
@@ -46,23 +54,12 @@
     "@types/node": "^25.9.3",
     "@typescript-eslint/eslint-plugin": "^8.61.1",
     "@typescript-eslint/parser": "^8.61.1",
-    "brfs": "^2.0.2",
-    "browserify": "^17.0.1",
-    "browserify-shim": "^3.8.16",
+    "esbuild": "^0.28.1",
     "eslint": "^10.5.0",
     "http-server": "^14.1.1",
     "jest": "^30.4.2",
     "superagent": "^10.3.0",
     "ts-jest": "^29.4.11",
-    "tslint": "^6.1.3",
     "typescript": "^6.0.3"
-  },
-  "browserify-shim": {
-    "elkjs": "global:ELK"
-  },
-  "browserify": {
-    "transform": [
-      "browserify-shim"
-    ]
   }
 }

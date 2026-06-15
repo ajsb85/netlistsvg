@@ -1,17 +1,14 @@
 const lib = require('../built');
-const fs = require('fs');
 const json5 = require('json5');
 const Ajv = require('ajv');
-var ajv = new Ajv({allErrors: true});
+var ajv = new Ajv({allErrors: true, allowUnionTypes: true});
 require('ajv-errors')(ajv);
 
-const digital = fs.readFileSync(__dirname + '/../skin/default.svg', 'utf8');
-const analog = fs.readFileSync(__dirname + '/../skin/default.svg', 'utf8');
-const exampleDigital = fs.readFileSync(__dirname + '/../test/digital/up3down5.json');
-const exampleAnalog = fs.readFileSync(__dirname + '/../test/analog/and.json');
-const schema = fs.readFileSync(__dirname + '/../lib/yosys.schema.json5');
-const exampleDigitalJson = json5.parse(exampleDigital);
-const exampleAnalogJson = json5.parse(exampleAnalog);
+const digital = require('../skin/default.svg');
+const analog = require('../skin/default.svg');
+const exampleDigitalJson = require('../test/digital/up3down5.json');
+const exampleAnalogJson = require('../test/analog/and.json');
+const schema = require('../lib/yosys.schema.json5');
 
 function render(skinData, netlistData, cb) {
     var valid = ajv.validate(json5.parse(schema), netlistData);

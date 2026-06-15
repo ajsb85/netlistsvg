@@ -19,8 +19,8 @@ async function loadSkins(paths) {
         const skins = await Promise.all(skinPromises);
         return skins;
     } catch (error) {
-        console.error("Error loading skins:", error);
-        alert("Error loading skins. See console for details.");
+        console.error('Error loading skins:', error);
+        alert('Error loading skins. See console for details.');
         return [];
     }
 }
@@ -41,12 +41,12 @@ async function render() {
         const svgString = await netlistRenderer.render(skinSelect.value, netlist);
         svgImage.src = 'data:image/svg+xml;base64,' + btoa(svgString);
     } catch (error) {
-        console.error("Error rendering netlist:", error);
+        console.error('Error rendering netlist:', error);
         // More specific error message for invalid JSON
         if (error instanceof SyntaxError) {
-          alert("Invalid JSON in textarea.  Please correct the JSON and try again.");
+          alert('Invalid JSON in textarea.  Please correct the JSON and try again.');
         } else {
-          alert("Error rendering netlist. See console for details.");
+          alert('Error rendering netlist. See console for details.');
         }
     }
 }
@@ -56,8 +56,8 @@ function format() {
         const netlist = JSON5.parse(textarea.value);
         textarea.value = JSON5.stringify(netlist, null, 4);
     } catch (error) {
-        console.error("Error formatting JSON:", error);
-        alert("Invalid JSON5. Please check your input.");
+        console.error('Error formatting JSON:', error);
+        alert('Invalid JSON5. Please check your input.');
     }
 }
 
