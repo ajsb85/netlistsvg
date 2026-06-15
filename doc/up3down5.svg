@@ -18,7 +18,22 @@
   }
   .splitjoinBody {
     fill:#000;
-  }</style>
+  }
+  @media (prefers-color-scheme: dark) {
+    svg {
+      stroke: #fff;
+    }
+    text {
+      fill: #fff !important;
+    }
+    .splitjoinBody {
+      fill: #fff;
+    }
+    [style*="fill:#000"], [style*="fill:#000000"] {
+      fill: #fff !important;
+    }
+  }
+</style>
   <g s:type="add" transform="translate(96.66666666666667,244)" s:width="25" s:height="25" id="cell_$add$input.v:17$3">
     <s:alias val="$add"/>
     <circle r="12.5" cx="12.5" cy="12.5" class="cell_$add$input.v:17$3"/>

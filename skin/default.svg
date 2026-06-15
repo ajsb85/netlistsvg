@@ -34,6 +34,21 @@ line {
 .splitjoinBody {
   fill:#000;
 }
+
+  @media (prefers-color-scheme: dark) {
+    svg {
+      stroke: #fff;
+    }
+    text {
+      fill: #fff !important;
+    }
+    .splitjoinBody {
+      fill: #fff;
+    }
+    [style*="fill:#000"], [style*="fill:#000000"] {
+      fill: #fff !important;
+    }
+  }
 </style>
 
   <g s:type="mux" transform="translate(50, 50)" s:width="20" s:height="40">

@@ -28,7 +28,22 @@
     stroke-linejoin: round;
     stroke-linecap: round;
     fill: #000;
-  }</style>
+  }
+  @media (prefers-color-scheme: dark) {
+    svg {
+      stroke: #fff;
+    }
+    text {
+      fill: #fff !important;
+    }
+    .splitjoinBody {
+      fill: #fff;
+    }
+    [style*="fill:#000"], [style*="fill:#000000"] {
+      fill: #fff !important;
+    }
+  }
+</style>
   <g s:type="capacitor_v" s:width="30" s:height="50" transform="translate(226,189)" id="cell_C1">
     <s:alias val="c_v"/>
     <text x="25" y="10" s:attribute="ref" class="cell_C1">C1</text>

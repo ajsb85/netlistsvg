@@ -28,7 +28,22 @@
     stroke-linejoin: round;
     stroke-linecap: round;
     fill: #000;
-  }</style>
+  }
+  @media (prefers-color-scheme: dark) {
+    svg {
+      stroke: #fff;
+    }
+    text {
+      fill: #fff !important;
+    }
+    .splitjoinBody {
+      fill: #fff;
+    }
+    [style*="fill:#000"], [style*="fill:#000000"] {
+      fill: #fff !important;
+    }
+  }
+</style>
   <g s:type="resistor_v" s:width="10" s:height="50" transform="translate(47,47)" id="cell_R1">
     <s:alias val="r_v"/>
     <text x="15" y="15" s:attribute="ref" class="cell_R1">R1</text>

@@ -18,7 +18,22 @@
   }
   .splitjoinBody {
     fill:#000;
-  }</style>
+  }
+  @media (prefers-color-scheme: dark) {
+    svg {
+      stroke: #fff;
+    }
+    text {
+      fill: #fff !important;
+    }
+    .splitjoinBody {
+      fill: #fff;
+    }
+    [style*="fill:#000"], [style*="fill:#000000"] {
+      fill: #fff !important;
+    }
+  }
+</style>
   <g s:type="inputExt" transform="translate(12,189.5)" s:width="30" s:height="20" id="cell_inthing">
     <text x="15" y="-4" class="nodelabel cell_inthing" s:attribute="ref">inthing</text>
     <s:alias val="$_inputExt_"/>
