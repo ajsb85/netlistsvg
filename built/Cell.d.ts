@@ -29,8 +29,8 @@ export default class Cell {
     protected type: string;
     protected inputPorts: Port[];
     protected outputPorts: Port[];
-    protected attributes: Yosys.CellAttributes;
-    constructor(key: string, type: string, inputPorts: Port[], outputPorts: Port[], attributes: Yosys.CellAttributes);
+    protected attributes: Record<string, any>;
+    constructor(key: string, type: string, inputPorts: Port[], outputPorts: Port[], attributes: Record<string, any>);
     get Type(): string;
     get Key(): string;
     get InputPorts(): Port[];

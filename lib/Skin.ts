@@ -2,7 +2,7 @@ import onml = require('onml');
 import { ElkModel } from './elkGraph';
 
 export namespace Skin {
-    export let skin: onml.Element = null;
+    export let skin: onml.Element | null = null;
 
     /**
      * Safely extracts attributes from an element
@@ -51,7 +51,7 @@ export namespace Skin {
      * Returns IDs of lateral ports
      */
     export function getLateralPortPids(template: any[]): string[] {
-        return filterPortPids(template, attrs => 
+        return filterPortPids(template, attrs =>
             attrs['s:dir'] === 'lateral' || ['left', 'right'].includes(attrs['s:position'])
         );
     }
@@ -60,7 +60,10 @@ export namespace Skin {
      * Finds a skin type by name, first checking aliases then falling back to generic
      */
     export function findSkinType(type: string): onml.Element | null {
-        let foundNode: onml.Element | null = null;
+        if (!skin) {
+            return null;
+        }
+        let foundNode: any = undefined;
 
         // First try to find an alias matching the requested type
         onml.traverse(skin, {
@@ -83,7 +86,7 @@ export namespace Skin {
                 },
             });
         }
-        
+
         return foundNode ? foundNode.full : null;
     }
 
@@ -92,7 +95,11 @@ export namespace Skin {
      */
     export function getLowPriorityAliases(): string[] {
         const aliases: string[] = [];
-        
+
+        if (!skin) {
+            return aliases;
+        }
+
         onml.traverse(skin, {
             enter: (node) => {
                 if (node.name === 's:low_priority_alias' && typeof node.attr.value === 'string') {
@@ -100,7 +107,7 @@ export namespace Skin {
                 }
             },
         });
-        
+
         return aliases;
     }
 
@@ -110,13 +117,18 @@ export namespace Skin {
     export function getProperties(): { [attr: string]: boolean | string | number | ElkModel.LayoutOptions } {
         const properties: { [attr: string]: boolean | string | number | ElkModel.LayoutOptions } = {};
 
+        if (!skin) {
+            properties.layoutEngine = {};
+            return properties;
+        }
+
         onml.traverse(skin, {
             enter: (node) => {
                 if (node.name === 's:properties') {
                     // Convert property values to appropriate types
                     for (const [key, val] of Object.entries(node.attr)) {
                         const strVal = String(val);
-                        
+
                         if (!isNaN(Number(strVal))) {
                             properties[key] = Number(strVal);
                         } else if (strVal === 'true') {

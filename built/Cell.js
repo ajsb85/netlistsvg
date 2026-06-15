@@ -24,7 +24,7 @@ class Cell {
     }
     static fromYosysCell(yCell, name) {
         this.setAlternateCellType(yCell);
-        const template = Skin_1.default.findSkinType(yCell.type);
+        const template = Skin_1.default.findSkinType(yCell.type) || [];
         const templateInputPids = Skin_1.default.getInputPids(template);
         const templateOutputPids = Skin_1.default.getOutputPids(template);
         const ports = Object.entries(yCell.connections).map(([portName, conn]) => new Port_1.Port(portName, conn));
@@ -129,11 +129,12 @@ class Cell {
     }
     collectPortsByDirection(ridersByNet, driversByNet, lateralsByNet, genericsLaterals) {
         const template = Skin_1.default.findSkinType(this.type);
-        const lateralPids = Skin_1.default.getLateralPortPids(template);
+        const lateralPids = template ? Skin_1.default.getLateralPortPids(template) : [];
         // find all ports connected to the same net
         this.inputPorts.forEach((port) => {
             const isLateral = port.keyIn(lateralPids);
-            if (isLateral || (template[1]['s:type'] === 'generic' && genericsLaterals)) {
+            const isGeneric = template && template[1] && template[1]['s:type'] === 'generic';
+            if (isLateral || (isGeneric && genericsLaterals)) {
                 (0, FlatModule_1.addToCollection)(lateralsByNet, port.valString(), port);
             }
             else {
@@ -142,7 +143,8 @@ class Cell {
         });
         this.outputPorts.forEach((port) => {
             const isLateral = port.keyIn(lateralPids);
-            if (isLateral || (template[1]['s:type'] === 'generic' && genericsLaterals)) {
+            const isGeneric = template && template[1] && template[1]['s:type'] === 'generic';
+            if (isLateral || (isGeneric && genericsLaterals)) {
                 (0, FlatModule_1.addToCollection)(lateralsByNet, port.valString(), port);
             }
             else {
@@ -232,7 +234,7 @@ class Cell {
     render(cell) {
         const template = this.getTemplate();
         const tempclone = clone(template);
-        for (const label of cell.labels) {
+        for (const label of cell.labels || []) {
             const labelIDSplit = label.id.split('.');
             const attrName = labelIDSplit[labelIDSplit.length - 1];
             setTextAttribute(tempclone, attrName, label.text);
@@ -315,8 +317,9 @@ class Cell {
     addLabels(template, cell) {
         onml.traverse(template, {
             enter: (node) => {
+                var _a;
                 if (node.name === 'text' && node.attr['s:attribute']) {
-                    const attrName = node.attr['s:attribute'];
+                    const attrName = String(node.attr['s:attribute']);
                     let newString;
                     if (attrName === 'ref' || attrName === 'id') {
                         if (this.type === '$_constant_' && this.key.length > 3) {
@@ -334,11 +337,11 @@ class Cell {
                     else {
                         return;
                     }
-                    cell.labels.push({
+                    ((_a = cell.labels) !== null && _a !== void 0 ? _a : (cell.labels = [])).push({
                         id: this.key + '.label.' + attrName,
                         text: newString,
-                        x: node.attr.x,
-                        y: node.attr.y - 6,
+                        x: Number(node.attr.x),
+                        y: Number(node.attr.y) - 6,
                         height: 11,
                         width: (6 * newString.length),
                     });
@@ -383,7 +386,7 @@ function setTextAttribute(tempclone, attribute, value) {
 function setClass(tempclone, searchKey, className) {
     onml.traverse(tempclone, {
         enter: (node) => {
-            const currentClass = node.attr.class;
+            const currentClass = String(node.attr.class || '');
             if (currentClass && currentClass.includes(searchKey)) {
                 node.attr.class = currentClass.replace(searchKey, className);
             }

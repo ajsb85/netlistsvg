@@ -5,8 +5,10 @@ import typescriptParser from "@typescript-eslint/parser";
 
 export default [
   {
-    files: ["**/*.ts", "**/*.js"], // Apply to both TypeScript and JavaScript files
-    ignores: ["built/**", "coverage/**", "node_modules/**", "examples/**", "jsmodule/**", "demo/**"],
+    ignores: ["built/**", "coverage/**", "node_modules/**", "examples/**", "jsmodule/**"],
+  },
+  {
+    files: ["**/*.ts"],
     languageOptions: {
       parser: typescriptParser,
       parserOptions: {
@@ -35,6 +37,36 @@ export default [
       "no-empty": ["error", { allowEmptyCatch: true }],
       "no-prototype-builtins": "off", // Consider enabling this later
       "no-undef": "off",  // TypeScript handles this
+      "no-useless-escape": "off",
+    },
+  },
+  {
+    files: ["**/*.js"],
+    languageOptions: {
+      ecmaVersion: 2017,
+      sourceType: "module",
+      globals: {
+        require: "readonly",
+        module: "readonly",
+        exports: "readonly",
+        __dirname: "readonly",
+        __filename: "readonly",
+        process: "readonly",
+        console: "readonly",
+        document: "readonly",
+        window: "readonly",
+        alert: "readonly",
+        btoa: "readonly",
+        clearTimeout: "readonly",
+        setTimeout: "readonly",
+      },
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+      "no-cond-assign": "off",
+      "no-constant-condition": "off",
+      "no-empty": ["error", { allowEmptyCatch: true }],
+      "no-prototype-builtins": "off",
       "no-useless-escape": "off",
     },
   },

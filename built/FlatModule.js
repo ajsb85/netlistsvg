@@ -83,7 +83,7 @@ function processSplitsAndJoins(inputs, outputs, targetSignal, start, end, splits
         return;
     }
     // Continue searching with a shorter segment
-    const newEnd = targetSignal.substring(0, end).lastIndexOf(',') + 1;
+    const newEnd = targetSignal.substring(0, end - 1).lastIndexOf(',') + 1;
     processSplitsAndJoins(inputs, outputs, targetSignal, start, newEnd, splits, joins);
 }
 /**
@@ -132,7 +132,7 @@ class FlatModule {
             processSplitsAndJoins(allOutputs, inputsCopy, input, 0, input.length, splits, joins);
         }
         // Create new cells for joins and splits
-        const joinCells = Object.entries(joins).map(([joinInput, [joinOutput]]) => Cell_1.default.fromJoinInfo(joinInput, joinOutput));
+        const joinCells = Object.entries(joins).map(([joinInput, joinOutputs]) => Cell_1.default.fromJoinInfo(joinInput, joinOutputs));
         const splitCells = Object.entries(splits).map(([splitInput, splitOutputs]) => Cell_1.default.fromSplitInfo(splitInput, splitOutputs));
         // Add new cells to the module
         this.nodes.push(...joinCells, ...splitCells);

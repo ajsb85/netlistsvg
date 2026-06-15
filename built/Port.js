@@ -45,8 +45,11 @@ class Port {
         return maxNum;
     }
     getGenericElkPort(index, templatePorts, dir) {
-        const { Key: nodeKey, getTemplate } = this.parentNode;
-        const type = getTemplate()[1]['s:type'];
+        if (!this.parentNode) {
+            throw new Error('Port has no parentNode');
+        }
+        const nodeKey = this.parentNode.Key;
+        const type = this.parentNode.getTemplate()[1]['s:type'];
         const x = Number(templatePorts[0][1]['s:x']);
         const y = Number(templatePorts[0][1]['s:y']);
         const portId = `${nodeKey}.${this.key}`;

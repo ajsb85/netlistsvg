@@ -4,8 +4,8 @@ import Yosys from './YosysModel';
 import { ElkModel } from './elkGraph';
 export declare class Port {
     parentNode?: Cell;
-    private key;
-    private value;
+    key: string;
+    value: number[] | Yosys.Signals;
     constructor(key: string, value: number[] | Yosys.Signals);
     get Key(): string;
     keyIn(pids: string[]): boolean;

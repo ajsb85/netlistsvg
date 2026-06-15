@@ -7,6 +7,9 @@
     "required": "Netlist must have a 'modules' property"
   },
   "properties": {
+    "creator": {
+      "type": "string"
+    },
     "modules": {
       "type": "object",
       "minProperties": 1,
@@ -93,7 +96,7 @@
                     },
                     "errorMessage": {
                       "type": "Cell connections must be arrays",
-                      "items": "Invalid connection bit type"
+                      "items": ["Invalid connection bit type"]
                     }
                   },
                   "errorMessage": {
@@ -180,7 +183,7 @@
 
                 }
               },
-              "additionalProperties": false
+              "additionalProperties": true
           }
         },
         "additionalProperties": false,

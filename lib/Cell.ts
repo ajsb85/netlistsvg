@@ -22,12 +22,12 @@ export default class Cell {
 
     public static fromYosysCell(yCell: Yosys.Cell, name: string) {
         this.setAlternateCellType(yCell);
-        const template = Skin.findSkinType(yCell.type);
+        const template = Skin.findSkinType(yCell.type) || [];
         const templateInputPids = Skin.getInputPids(template);
         const templateOutputPids = Skin.getOutputPids(template);
-        const ports: Port[] = Object.entries(yCell.connections).map(([portName, conn]) => 
+        const ports: Port[] = Object.entries(yCell.connections).map(([portName, conn]) =>
             new Port(portName, conn)
-        );        
+        );
         let inputPorts = ports.filter((port) => port.keyIn(templateInputPids));
         let outputPorts = ports.filter((port) => port.keyIn(templateOutputPids));
         if (inputPorts.length + outputPorts.length !== ports.length) {
@@ -95,13 +95,13 @@ export default class Cell {
     protected type: string;
     protected inputPorts: Port[];
     protected outputPorts: Port[];
-    protected attributes: Yosys.CellAttributes;
+    protected attributes: Record<string, any>;
 
     constructor(key: string,
                 type: string,
                 inputPorts: Port[],
                 outputPorts: Port[],
-                attributes: Yosys.CellAttributes) {
+                attributes: Record<string, any>) {
         this.key = key;
         this.type = type;
         this.inputPorts = inputPorts;
@@ -158,11 +158,12 @@ export default class Cell {
                                    lateralsByNet: NameToPorts,
                                    genericsLaterals: boolean): void {
         const template = Skin.findSkinType(this.type);
-        const lateralPids = Skin.getLateralPortPids(template);
+        const lateralPids = template ? Skin.getLateralPortPids(template) : [];
         // find all ports connected to the same net
         this.inputPorts.forEach((port) => {
             const isLateral = port.keyIn(lateralPids);
-            if (isLateral || (template[1]['s:type'] === 'generic' && genericsLaterals)) {
+            const isGeneric = template && template[1] && (template[1] as any)['s:type'] === 'generic';
+            if (isLateral || (isGeneric && genericsLaterals)) {
                 addToCollection(lateralsByNet, port.valString(), port);
             } else {
                 addToCollection(ridersByNet, port.valString(), port);
@@ -170,7 +171,8 @@ export default class Cell {
         });
         this.outputPorts.forEach((port) => {
             const isLateral = port.keyIn(lateralPids);
-            if (isLateral || (template[1]['s:type'] === 'generic' && genericsLaterals)) {
+            const isGeneric = template && template[1] && (template[1] as any)['s:type'] === 'generic';
+            if (isLateral || (isGeneric && genericsLaterals)) {
                 addToCollection(lateralsByNet, port.valString(), port);
             } else {
                 addToCollection(driversByNet, port.valString(), port);
@@ -265,7 +267,7 @@ export default class Cell {
     public render(cell: ElkModel.Cell): onml.Element {
         const template = this.getTemplate();
         const tempclone = clone(template);
-        for (const label of cell.labels) {
+        for (const label of cell.labels || []) {
             const labelIDSplit = label.id.split('.');
             const attrName = labelIDSplit[labelIDSplit.length - 1];
             setTextAttribute(tempclone, attrName, label.text);
@@ -326,7 +328,7 @@ export default class Cell {
                 portClone[portClone.length - 1][2] = port.Key;
                 portClone[1].transform = 'translate(' + inPorts[1][1]['s:x'] + ','
                     + (instartY + i * ingap) + ')';
-                portClone[1].id = 'port_' + port.parentNode.Key + '~' + port.Key;
+                portClone[1].id = 'port_' + port.parentNode!.Key + '~' + port.Key;
                 tempclone.push(portClone);
             });
             this.outputPorts.forEach((port, i) => {
@@ -334,7 +336,7 @@ export default class Cell {
                 portClone[portClone.length - 1][2] = port.Key;
                 portClone[1].transform = 'translate(' + outPorts[1][1]['s:x'] + ','
                     + (outstartY + i * outgap) + ')';
-                portClone[1].id = 'port_' + port.parentNode.Key + '~' + port.Key;
+                portClone[1].id = 'port_' + port.parentNode!.Key + '~' + port.Key;
                 tempclone.push(portClone);
             });
             // first child of generic must be a text node.
@@ -348,7 +350,7 @@ export default class Cell {
         onml.traverse(template, {
             enter: (node) => {
                 if (node.name === 'text' && node.attr['s:attribute']) {
-                    const attrName = node.attr['s:attribute'];
+                    const attrName = String(node.attr['s:attribute']);
                     let newString;
                     if (attrName === 'ref' || attrName === 'id') {
                         if (this.type === '$_constant_' && this.key.length > 3) {
@@ -363,11 +365,11 @@ export default class Cell {
                     } else {
                         return;
                     }
-                    cell.labels.push({
+                    (cell.labels ??= []).push({
                         id: this.key + '.label.' + attrName,
                         text: newString,
-                        x: node.attr.x,
-                        y: node.attr.y - 6,
+                        x: Number(node.attr.x),
+                        y: Number(node.attr.y) - 6,
                         height: 11,
                         width: (6 * newString.length),
                     });
@@ -416,7 +418,7 @@ function setTextAttribute(tempclone, attribute, value) {
 function setClass(tempclone, searchKey, className) {
     onml.traverse(tempclone, {
         enter: (node) => {
-            const currentClass: string = node.attr.class;
+            const currentClass = String(node.attr.class || '');
             if (currentClass && currentClass.includes(searchKey)) {
                 node.attr.class = currentClass.replace(searchKey, className);
             }

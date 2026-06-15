@@ -5,8 +5,8 @@ import { ElkModel } from './elkGraph';
 
 export class Port {
     public parentNode?: Cell;
-    private key: string;
-    private value: number[] | Yosys.Signals;
+    public key: string;
+    public value: number[] | Yosys.Signals;
 
     constructor(key: string, value: number[] | Yosys.Signals) {
         this.key = key;
@@ -39,7 +39,7 @@ export class Port {
 
         for (let i = 0; i < this.value.length; i++) {
             const portSig = this.value[i];
-            
+
             if (portSig === '0' || portSig === '1') {
                 maxNum += 1;
                 constName += portSig;
@@ -64,15 +64,18 @@ export class Port {
         templatePorts: any[],
         dir: string,
     ): ElkModel.Port {
-        const { Key: nodeKey, getTemplate } = this.parentNode;
-        const type = getTemplate()[1]['s:type'];
+        if (!this.parentNode) {
+            throw new Error('Port has no parentNode');
+        }
+        const nodeKey = this.parentNode.Key;
+        const type = this.parentNode.getTemplate()[1]['s:type'];
         const x = Number(templatePorts[0][1]['s:x']);
         const y = Number(templatePorts[0][1]['s:y']);
-        
+
         const portId = `${nodeKey}.${this.key}`;
-        const portY = index === 0 ? y : 
+        const portY = index === 0 ? y :
                      index * (Number(templatePorts[1][1]['s:y']) - y) + y;
-        
+
         const elkPort: ElkModel.Port = {
             id: portId,
             width: 1,
@@ -81,10 +84,10 @@ export class Port {
             y: portY,
         };
 
-        const needsLabel = (type === 'generic' || 
+        const needsLabel = (type === 'generic' ||
                           (type === 'join' && dir === 'in') ||
                           (type === 'split' && dir === 'out'));
-        
+
         if (needsLabel) {
             elkPort.labels = [{
                 id: `${portId}.label`,
@@ -106,11 +109,11 @@ export class Port {
         constantCollector: Cell[]
     ): void {
         const reversedName = name.split('').reverse().join('');
-        
+
         if (signalsByConstantName[reversedName]) {
             const constSigs = signalsByConstantName[reversedName];
             const firstConstIndex = this.value.indexOf(constants[0]);
-            
+
             if (firstConstIndex >= 0) {
                 for (let i = 0; i < constSigs.length; i++) {
                     this.value[firstConstIndex + i] = constSigs[i];

@@ -57,7 +57,10 @@ var Skin;
      * Finds a skin type by name, first checking aliases then falling back to generic
      */
     function findSkinType(type) {
-        let foundNode = null;
+        if (!Skin.skin) {
+            return null;
+        }
+        let foundNode = undefined;
         // First try to find an alias matching the requested type
         onml.traverse(Skin.skin, {
             enter: (node, parent) => {
@@ -86,6 +89,9 @@ var Skin;
      */
     function getLowPriorityAliases() {
         const aliases = [];
+        if (!Skin.skin) {
+            return aliases;
+        }
         onml.traverse(Skin.skin, {
             enter: (node) => {
                 if (node.name === 's:low_priority_alias' && typeof node.attr.value === 'string') {
@@ -101,6 +107,10 @@ var Skin;
      */
     function getProperties() {
         const properties = {};
+        if (!Skin.skin) {
+            properties.layoutEngine = {};
+            return properties;
+        }
         onml.traverse(Skin.skin, {
             enter: (node) => {
                 if (node.name === 's:properties') {

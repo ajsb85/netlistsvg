@@ -24,7 +24,7 @@ interface SplitJoin {
 export declare function arrayToBitstring(bitArray: number[]): string;
 export declare function contains(needle: string, haystack: string | string[]): boolean;
 export declare function findIndexContaining(needle: string, haystack: string[]): number;
-export declare function addToCollection(collection: Record<string, string[]>, key: string, value: string): void;
+export declare function addToCollection<T>(collection: Record<string, T[]>, key: string, value: T): void;
 export declare function getIndicesString(bitstring: string, query: string, start: number): string;
 /**
  * Process signal connections to identify splits and joins in the circuit

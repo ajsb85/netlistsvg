@@ -43,7 +43,7 @@ export function findIndexContaining(needle: string, haystack: string[]): number 
     return haystack.findIndex(item => item.includes(needle));
 }
 
-export function addToCollection(collection: Record<string, string[]>, key: string, value: string): void {
+export function addToCollection<T>(collection: Record<string, T[]>, key: string, value: T): void {
     // Initialize array if it doesn't exist, then add the value
     (collection[key] ??= []).push(value);
 }
@@ -119,7 +119,7 @@ export function processSplitsAndJoins(
     }
 
     // Continue searching with a shorter segment
-    const newEnd = targetSignal.substring(0, end).lastIndexOf(',') + 1;
+    const newEnd = targetSignal.substring(0, end - 1).lastIndexOf(',') + 1;
     processSplitsAndJoins(inputs, outputs, targetSignal, start, newEnd, splits, joins);
 }
 
@@ -141,15 +141,15 @@ export class FlatModule {
         ) || Object.keys(netlist.modules)[0];
 
         const topModule = netlist.modules[this.moduleName];
-        
+
         // Create nodes from ports and cells
         this.nodes = [
-            ...Object.entries(topModule.ports).map(([key, portData]) => 
+            ...Object.entries(topModule.ports).map(([key, portData]) =>
                 Cell.fromPort(portData, key)),
-            ...Object.entries(topModule.cells).map(([key, cellData]) => 
+            ...Object.entries(topModule.cells).map(([key, cellData]) =>
                 Cell.fromYosysCell(cellData, key))
         ];
-        
+
         this.wires = []; // Will be populated by createWires
     }
 
@@ -160,12 +160,12 @@ export class FlatModule {
         let maxNum = this.nodes.reduce((acc, node) => node.maxOutVal(acc), -1);
         const signalsByConstantName: SigsByConstName = {};
         const newCells: Cell[] = [];
-        
+
         // Find and create constants
         this.nodes.forEach(node => {
             maxNum = node.findConstants(signalsByConstantName, maxNum, newCells);
         });
-        
+
         // Add new constant cells
         this.nodes.push(...newCells);
     }
@@ -177,7 +177,7 @@ export class FlatModule {
         const allInputs = this.nodes.flatMap(node => node.inputPortVals());
         const allOutputs = this.nodes.flatMap(node => node.outputPortVals());
         const inputsCopy = allInputs.slice();
-        
+
         const splits: SplitJoin = {};
         const joins: SplitJoin = {};
 
@@ -187,10 +187,10 @@ export class FlatModule {
         }
 
         // Create new cells for joins and splits
-        const joinCells = Object.entries(joins).map(([joinInput, [joinOutput]]) =>
-            Cell.fromJoinInfo(joinInput, joinOutput)
+        const joinCells = Object.entries(joins).map(([joinInput, joinOutputs]) =>
+            Cell.fromJoinInfo(joinInput, joinOutputs)
         );
-        
+
         const splitCells = Object.entries(splits).map(([splitInput, splitOutputs]) =>
             Cell.fromSplitInfo(splitInput, splitOutputs)
         );
@@ -231,14 +231,14 @@ export class FlatModule {
             const drivers = driversByNet[netName] || [];
             const riders = ridersByNet[netName] || [];
             const laterals = lateralsByNet[netName] || [];
-            
+
             const wire: Wire = { netName, drivers, riders, laterals };
-            
+
             // Connect ports to their wire
             [...drivers, ...riders, ...laterals].forEach(port => {
                 port.wire = wire;
             });
-            
+
             return wire;
         });
     }

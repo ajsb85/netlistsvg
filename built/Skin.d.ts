@@ -1,7 +1,7 @@
 import onml = require('onml');
 import { ElkModel } from './elkGraph';
 export declare namespace Skin {
-    let skin: onml.Element;
+    let skin: onml.Element | null;
     /**
      * Returns ports that have IDs starting with the specified prefix
      */

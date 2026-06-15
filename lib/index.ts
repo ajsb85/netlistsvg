@@ -1,4 +1,4 @@
-import ELK = require('elkjs');
+import ELK from 'elkjs';
 import onml = require('onml');
 import { FlatModule } from './FlatModule';
 import Yosys from './YosysModel';
@@ -19,18 +19,18 @@ function createFlatModule(skinData: string, yosysNetlist: Yosys.Netlist): FlatMo
   // Parse skin data
   Skin.skin = onml.p(skinData);
   const layoutProps = Skin.getProperties();
-  
+
   // Create and configure flat module
   const flatModule = new FlatModule(yosysNetlist);
-  
+
   if (layoutProps.constants !== false) {
     flatModule.addConstants();
   }
-  
+
   if (layoutProps.splitsAndJoins !== false) {
     flatModule.addSplitsJoins();
   }
-  
+
   flatModule.createWires();
   return flatModule;
 }
@@ -39,27 +39,27 @@ function createFlatModule(skinData: string, yosysNetlist: Yosys.Netlist): FlatMo
  * Generates and returns the ELK graph layout JSON
  */
 export async function dumpLayout(
-  skinData: string, 
-  yosysNetlist: Yosys.Netlist, 
-  prelayout: boolean, 
+  skinData: string,
+  yosysNetlist: Yosys.Netlist,
+  prelayout: boolean,
   done: ICallback
 ): Promise<void> {
   try {
     // Create module and build graph
     const flatModule = createFlatModule(skinData, yosysNetlist);
     const kgraph: ElkModel.Graph = buildElkGraph(flatModule);
-    
+
     // Return unlayouted graph if prelayout is true
     if (prelayout) {
       done(null, JSON.stringify(kgraph, null, 2));
       return;
     }
-    
+
     // Apply layout and return result
     const layoutProps = Skin.getProperties();
-    const graph = await elk.layout(kgraph, { layoutOptions: layoutProps.layoutEngine });
+    const graph = await elk.layout(kgraph as any, { layoutOptions: layoutProps.layoutEngine as any });
     done(null, JSON.stringify(graph, null, 2));
-    
+
   } catch (error) {
     done(error instanceof Error ? error : new Error(String(error)));
   }
@@ -69,39 +69,40 @@ export async function dumpLayout(
  * Renders the Yosys netlist using the provided skin and optional ELK data
  */
 export function render(
-  skinData: string, 
-  yosysNetlist: Yosys.Netlist, 
-  done?: ICallback, 
+  skinData: string,
+  yosysNetlist: Yosys.Netlist,
+  done?: ICallback,
   elkData?: ElkModel.Graph
 ): Promise<string> {
   // Create module and build graph
   const flatModule = createFlatModule(skinData, yosysNetlist);
   const kgraph: ElkModel.Graph = buildElkGraph(flatModule);
   const layoutProps = Skin.getProperties();
-  
+
   // Define rendering process
   const renderPromise: Promise<string> = (async () => {
     // Use provided ELK data if available
     if (elkData) {
       return drawModule(elkData, flatModule);
     }
-    
+
     // Otherwise perform layout and rendering
     try {
-      const graph = await elk.layout(kgraph, { layoutOptions: layoutProps.layoutEngine });
-      return drawModule(graph, flatModule);
+      const graph = await elk.layout(kgraph as any, { layoutOptions: layoutProps.layoutEngine as any });
+      return drawModule(graph as any, flatModule);
     } catch (error) {
+      // tslint:disable-next-line:no-console
       console.error(error);
       throw error;
     }
   })();
-  
+
   // Handle callback if provided
   if (done) {
     renderPromise
       .then(output => done(null, output))
       .catch(error => done(error instanceof Error ? error : new Error(String(error))));
   }
-  
+
   return renderPromise;
 }

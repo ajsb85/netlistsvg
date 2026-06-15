@@ -8,13 +8,13 @@ for (var test of digital_tests) {
     bin.main(
         path.join('test', 'digital', test + '.json'),
         path.join('test', 'digital', test + '.svg'),
-        path.join('lib', 'default.svg')
+        path.join('skin', 'default.svg')
     );
 }
 for (var test of analog_tests) {
     bin.main(
         path.join('test', 'analog', test + '.json'),
         path.join('test', 'analog', test + '.svg'),
-        path.join('lib', 'analog.svg')
+        path.join('skin', 'analog.svg')
     );
 }

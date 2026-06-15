@@ -184,7 +184,7 @@ function drawModule(graph, module) {
         lines.push(...labels);
     }
     // Set up SVG attributes
-    const svgAttributes = Object.assign({}, Skin_1.default.skin[1]);
+    const svgAttributes = { ...Skin_1.default.skin[1] };
     svgAttributes.width = String(graph.width);
     svgAttributes.height = String(graph.height);
     // Extract and combine styles

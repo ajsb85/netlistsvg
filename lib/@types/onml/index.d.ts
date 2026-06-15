@@ -6,9 +6,9 @@ declare module 'onml' {
 
     // Define the 'enter' and 'leave' callback types
     export interface TraverseCallbacks {
-        enter?: (node: Element, parent?: Element) => void | boolean;
-        leave?: (node: Element, parent?: Element) => void;
-        text?: (text: string, parent?: Element) => void; // Add the 'text' callback
+        enter?: (node: Node, parent?: Node) => void | boolean;
+        leave?: (node: Node, parent?: Node) => void;
+        text?: (text: string, parent?: Node) => void; // Add the 'text' callback
     }
      // Define a common interface for element and node.
      export interface Node {
