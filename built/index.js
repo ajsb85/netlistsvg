@@ -5,14 +5,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.dumpLayout = dumpLayout;
 exports.render = render;
-const elkjs_1 = __importDefault(require("elkjs"));
+const ELK = require("elkjs");
 const onml = require("onml");
 const FlatModule_1 = require("./FlatModule");
 const Skin_1 = __importDefault(require("./Skin"));
 const elkGraph_1 = require("./elkGraph");
 const drawModule_1 = __importDefault(require("./drawModule"));
 // Initialize ELK engine
-const elk = new elkjs_1.default();
+const elk = new ELK();
 /**
  * Creates a flat module representation from Yosys netlist using skin data
  */

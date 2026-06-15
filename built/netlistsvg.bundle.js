@@ -405,7 +405,7 @@ function getBits(signals, indicesString) {
     }
 }
 
-},{"./FlatModule":2,"./Port":3,"./Skin":4,"./YosysModel":5,"clone":77,"onml":89}],2:[function(require,module,exports){
+},{"./FlatModule":2,"./Port":3,"./Skin":4,"./YosysModel":5,"clone":77,"onml":88}],2:[function(require,module,exports){
 "use strict";
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
@@ -813,7 +813,7 @@ var Skin;
 })(Skin || (exports.Skin = Skin = {}));
 exports.default = Skin;
 
-},{"onml":89}],5:[function(require,module,exports){
+},{"onml":88}],5:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var Yosys;
@@ -1049,7 +1049,7 @@ function drawModule(graph, module) {
     return onml.s(svgElement);
 }
 
-},{"./Skin":4,"./elkGraph":7,"onml":89}],7:[function(require,module,exports){
+},{"./Skin":4,"./elkGraph":7,"onml":88}],7:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ElkModel = void 0;
@@ -1268,7 +1268,7 @@ function render(skinData, yosysNetlist, done, elkData) {
 }
 
 }).call(this)}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./FlatModule":2,"./Skin":4,"./drawModule":6,"./elkGraph":7,"onml":89}],9:[function(require,module,exports){
+},{"./FlatModule":2,"./Skin":4,"./drawModule":6,"./elkGraph":7,"onml":88}],9:[function(require,module,exports){
 (function (Buffer){(function (){
 const lib = require('../built');
 
@@ -1302,7 +1302,7 @@ module.exports = {
 };
 
 }).call(this)}).call(this,require("buffer").Buffer)
-},{"../built":8,"ajv":11,"ajv-errors":10,"buffer":76,"json5":87}],10:[function(require,module,exports){
+},{"../built":8,"ajv":11,"ajv-errors":10,"buffer":76,"json5":86}],10:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const ajv_1 = require("ajv");
@@ -3193,7 +3193,7 @@ function getSchemaRefs(schema, baseId) {
 }
 exports.getSchemaRefs = getSchemaRefs;
 
-},{"./util":21,"fast-deep-equal":79,"json-schema-traverse":86}],20:[function(require,module,exports){
+},{"./util":21,"fast-deep-equal":79,"json-schema-traverse":85}],20:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getRules = exports.isJSONType = void 0;
@@ -4535,7 +4535,7 @@ class Ajv {
     constructor(opts = {}) {
         this.schemas = {};
         this.refs = {};
-        this.formats = {};
+        this.formats = Object.create(null);
         this._compilations = new Set();
         this._loading = {};
         this._cache = new Map();
@@ -6915,6 +6915,7 @@ exports.default = def;
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const code_1 = require("../code");
+const util_1 = require("../../compile/util");
 const codegen_1 = require("../../compile/codegen");
 const error = {
     message: ({ schemaCode }) => (0, codegen_1.str) `must match pattern "${schemaCode}"`,
@@ -6927,16 +6928,24 @@ const def = {
     $data: true,
     error,
     code(cxt) {
-        const { data, $data, schema, schemaCode, it } = cxt;
-        // TODO regexp should be wrapped in try/catchs
+        const { gen, data, $data, schema, schemaCode, it } = cxt;
         const u = it.opts.unicodeRegExp ? "u" : "";
-        const regExp = $data ? (0, codegen_1._) `(new RegExp(${schemaCode}, ${u}))` : (0, code_1.usePattern)(cxt, schema);
-        cxt.fail$data((0, codegen_1._) `!${regExp}.test(${data})`);
+        if ($data) {
+            const { regExp } = it.opts.code;
+            const regExpCode = regExp.code === "new RegExp" ? (0, codegen_1._) `new RegExp` : (0, util_1.useFunc)(gen, regExp);
+            const valid = gen.let("valid");
+            gen.try(() => gen.assign(valid, (0, codegen_1._) `${regExpCode}(${schemaCode}, ${u}).test(${data})`), () => gen.assign(valid, false));
+            cxt.fail$data((0, codegen_1._) `!${valid}`);
+        }
+        else {
+            const regExp = (0, code_1.usePattern)(cxt, schema);
+            cxt.fail$data((0, codegen_1._) `!${regExp}.test(${data})`);
+        }
     },
 };
 exports.default = def;
 
-},{"../../compile/codegen":13,"../code":53}],72:[function(require,module,exports){
+},{"../../compile/codegen":13,"../../compile/util":21,"../code":53}],72:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const code_1 = require("../code");
@@ -9016,7 +9025,7 @@ function numberIsNaN (obj) {
 }
 
 }).call(this)}).call(this,require("buffer").Buffer)
-},{"base64-js":74,"buffer":76,"ieee754":84}],77:[function(require,module,exports){
+},{"base64-js":74,"buffer":76,"ieee754":83}],77:[function(require,module,exports){
 (function (Buffer){(function (){
 var clone = (function() {
 'use strict';
@@ -9827,29 +9836,50 @@ module.exports = function equal(a, b) {
 },{}],80:[function(require,module,exports){
 'use strict'
 
-const { normalizeIPv6, normalizeIPv4, removeDotSegments, recomposeAuthority, normalizeComponentEncoding } = require('./lib/utils')
-const SCHEMES = require('./lib/schemes')
+const { normalizeIPv6, removeDotSegments, recomposeAuthority, normalizePercentEncoding, normalizePathEncoding, escapePreservingEscapes, reescapeHostDelimiters, isIPv4, nonSimpleDomain } = require('./lib/utils')
+const { SCHEMES, getSchemeHandler } = require('./lib/schemes')
 
+/**
+ * @template {import('./types/index').URIComponent|string} T
+ * @param {T} uri
+ * @param {import('./types/index').Options} [options]
+ * @returns {T}
+ */
 function normalize (uri, options) {
   if (typeof uri === 'string') {
-    uri = serialize(parse(uri, options), options)
+    uri = /** @type {T} */ (normalizeString(uri, options))
   } else if (typeof uri === 'object') {
-    uri = parse(serialize(uri, options), options)
+    uri = /** @type {T} */ (parse(serialize(uri, options), options))
   }
   return uri
 }
 
+/**
+ * @param {string} baseURI
+ * @param {string} relativeURI
+ * @param {import('./types/index').Options} [options]
+ * @returns {string}
+ */
 function resolve (baseURI, relativeURI, options) {
-  const schemelessOptions = Object.assign({ scheme: 'null' }, options)
-  const resolved = resolveComponents(parse(baseURI, schemelessOptions), parse(relativeURI, schemelessOptions), schemelessOptions, true)
-  return serialize(resolved, { ...schemelessOptions, skipEscape: true })
+  const schemelessOptions = options ? Object.assign({ scheme: 'null' }, options) : { scheme: 'null' }
+  const resolved = resolveComponent(parse(baseURI, schemelessOptions), parse(relativeURI, schemelessOptions), schemelessOptions, true)
+  schemelessOptions.skipEscape = true
+  return serialize(resolved, schemelessOptions)
 }
 
-function resolveComponents (base, relative, options, skipNormalization) {
+/**
+ * @param {import ('./types/index').URIComponent} base
+ * @param {import ('./types/index').URIComponent} relative
+ * @param {import('./types/index').Options} [options]
+ * @param {boolean} [skipNormalization=false]
+ * @returns {import ('./types/index').URIComponent}
+ */
+function resolveComponent (base, relative, options, skipNormalization) {
+  /** @type {import('./types/index').URIComponent} */
   const target = {}
   if (!skipNormalization) {
-    base = parse(serialize(base, options), options) // normalize base components
-    relative = parse(serialize(relative, options), options) // normalize relative components
+    base = parse(serialize(base, options), options) // normalize base component
+    relative = parse(serialize(relative, options), options) // normalize relative component
   }
   options = options || {}
 
@@ -9878,7 +9908,7 @@ function resolveComponents (base, relative, options, skipNormalization) {
           target.query = base.query
         }
       } else {
-        if (relative.path.charAt(0) === '/') {
+        if (relative.path[0] === '/') {
           target.path = removeDotSegments(relative.path)
         } else {
           if ((base.userinfo !== undefined || base.host !== undefined || base.port !== undefined) && !base.path) {
@@ -9905,26 +9935,26 @@ function resolveComponents (base, relative, options, skipNormalization) {
   return target
 }
 
+/**
+ * @param {import ('./types/index').URIComponent|string} uriA
+ * @param {import ('./types/index').URIComponent|string} uriB
+ * @param {import ('./types/index').Options} options
+ * @returns {boolean}
+ */
 function equal (uriA, uriB, options) {
-  if (typeof uriA === 'string') {
-    uriA = unescape(uriA)
-    uriA = serialize(normalizeComponentEncoding(parse(uriA, options), true), { ...options, skipEscape: true })
-  } else if (typeof uriA === 'object') {
-    uriA = serialize(normalizeComponentEncoding(uriA, true), { ...options, skipEscape: true })
-  }
+  const normalizedA = normalizeComparableURI(uriA, options)
+  const normalizedB = normalizeComparableURI(uriB, options)
 
-  if (typeof uriB === 'string') {
-    uriB = unescape(uriB)
-    uriB = serialize(normalizeComponentEncoding(parse(uriB, options), true), { ...options, skipEscape: true })
-  } else if (typeof uriB === 'object') {
-    uriB = serialize(normalizeComponentEncoding(uriB, true), { ...options, skipEscape: true })
-  }
-
-  return uriA.toLowerCase() === uriB.toLowerCase()
+  return normalizedA !== undefined && normalizedB !== undefined && normalizedA.toLowerCase() === normalizedB.toLowerCase()
 }
 
+/**
+ * @param {Readonly<import('./types/index').URIComponent>} cmpts
+ * @param {import('./types/index').Options} [opts]
+ * @returns {string}
+ */
 function serialize (cmpts, opts) {
-  const components = {
+  const component = {
     host: cmpts.host,
     scheme: cmpts.scheme,
     userinfo: cmpts.userinfo,
@@ -9944,28 +9974,28 @@ function serialize (cmpts, opts) {
   const uriTokens = []
 
   // find scheme handler
-  const schemeHandler = SCHEMES[(options.scheme || components.scheme || '').toLowerCase()]
+  const schemeHandler = getSchemeHandler(options.scheme || component.scheme)
 
   // perform scheme specific serialization
-  if (schemeHandler && schemeHandler.serialize) schemeHandler.serialize(components, options)
+  if (schemeHandler && schemeHandler.serialize) schemeHandler.serialize(component, options)
 
-  if (components.path !== undefined) {
+  if (component.path !== undefined) {
     if (!options.skipEscape) {
-      components.path = escape(components.path)
+      component.path = escapePreservingEscapes(component.path)
 
-      if (components.scheme !== undefined) {
-        components.path = components.path.split('%3A').join(':')
+      if (component.scheme !== undefined) {
+        component.path = component.path.split('%3A').join(':')
       }
     } else {
-      components.path = unescape(components.path)
+      component.path = normalizePercentEncoding(component.path)
     }
   }
 
-  if (options.reference !== 'suffix' && components.scheme) {
-    uriTokens.push(components.scheme, ':')
+  if (options.reference !== 'suffix' && component.scheme) {
+    uriTokens.push(component.scheme, ':')
   }
 
-  const authority = recomposeAuthority(components)
+  const authority = recomposeAuthority(component)
   if (authority !== undefined) {
     if (options.reference !== 'suffix') {
       uriTokens.push('//')
@@ -9973,51 +10003,66 @@ function serialize (cmpts, opts) {
 
     uriTokens.push(authority)
 
-    if (components.path && components.path.charAt(0) !== '/') {
+    if (component.path && component.path[0] !== '/') {
       uriTokens.push('/')
     }
   }
-  if (components.path !== undefined) {
-    let s = components.path
+  if (component.path !== undefined) {
+    let s = component.path
 
     if (!options.absolutePath && (!schemeHandler || !schemeHandler.absolutePath)) {
       s = removeDotSegments(s)
     }
 
-    if (authority === undefined) {
-      s = s.replace(/^\/\//u, '/%2F') // don't allow the path to start with "//"
+    if (
+      authority === undefined &&
+      s[0] === '/' &&
+      s[1] === '/'
+    ) {
+      // don't allow the path to start with "//"
+      s = '/%2F' + s.slice(2)
     }
 
     uriTokens.push(s)
   }
 
-  if (components.query !== undefined) {
-    uriTokens.push('?', components.query)
+  if (component.query !== undefined) {
+    uriTokens.push('?', component.query)
   }
 
-  if (components.fragment !== undefined) {
-    uriTokens.push('#', components.fragment)
+  if (component.fragment !== undefined) {
+    uriTokens.push('#', component.fragment)
   }
   return uriTokens.join('')
 }
 
-const hexLookUp = Array.from({ length: 127 }, (_v, k) => /[^!"$&'()*+,\-.;=_`a-z{}~]/u.test(String.fromCharCode(k)))
-
-function nonSimpleDomain (value) {
-  let code = 0
-  for (let i = 0, len = value.length; i < len; ++i) {
-    code = value.charCodeAt(i)
-    if (code > 126 || hexLookUp[code]) {
-      return true
-    }
-  }
-  return false
-}
-
 const URI_PARSE = /^(?:([^#/:?]+):)?(?:\/\/((?:([^#/?@]*)@)?(\[[^#/?\]]+\]|[^#/:?]*)(?::(\d*))?))?([^#?]*)(?:\?([^#]*))?(?:#((?:.|[\n\r])*))?/u
 
-function parse (uri, opts) {
+/**
+ * @param {import('./types/index').URIComponent} parsed
+ * @param {RegExpMatchArray} matches
+ * @returns {string|undefined}
+ */
+function getParseError (parsed, matches) {
+  if (matches[2] !== undefined && parsed.path && parsed.path[0] !== '/') {
+    return 'URI path must start with "/" when authority is present.'
+  }
+
+  if (typeof parsed.port === 'number' && (parsed.port < 0 || parsed.port > 65535)) {
+    return 'URI port is malformed.'
+  }
+
+  return undefined
+}
+
+/**
+ * @param {string} uri
+ * @param {import('./types/index').Options} [opts]
+ * @returns {{ parsed: import('./types/index').URIComponent, malformedAuthorityOrPort: boolean }}
+ */
+function parseWithStatus (uri, opts) {
   const options = Object.assign({}, opts)
+  /** @type {import('./types/index').URIComponent} */
   const parsed = {
     scheme: undefined,
     userinfo: undefined,
@@ -10027,9 +10072,17 @@ function parse (uri, opts) {
     query: undefined,
     fragment: undefined
   }
-  const gotEncoding = uri.indexOf('%') !== -1
+
+  let malformedAuthorityOrPort = false
+
   let isIP = false
-  if (options.reference === 'suffix') uri = (options.scheme ? options.scheme + ':' : '') + '//' + uri
+  if (options.reference === 'suffix') {
+    if (options.scheme) {
+      uri = options.scheme + ':' + uri
+    } else {
+      uri = '//' + uri
+    }
+  }
 
   const matches = uri.match(URI_PARSE)
 
@@ -10047,14 +10100,20 @@ function parse (uri, opts) {
     if (isNaN(parsed.port)) {
       parsed.port = matches[5]
     }
+
+    const parseError = getParseError(parsed, matches)
+    if (parseError !== undefined) {
+      parsed.error = parsed.error || parseError
+      malformedAuthorityOrPort = true
+    }
+
     if (parsed.host) {
-      const ipv4result = normalizeIPv4(parsed.host)
-      if (ipv4result.isIPV4 === false) {
-        const ipv6result = normalizeIPv6(ipv4result.host)
+      const ipv4result = isIPv4(parsed.host)
+      if (ipv4result === false) {
+        const ipv6result = normalizeIPv6(parsed.host)
         parsed.host = ipv6result.host.toLowerCase()
         isIP = ipv6result.isIPV6
       } else {
-        parsed.host = ipv4result.host
         isIP = true
       }
     }
@@ -10074,7 +10133,7 @@ function parse (uri, opts) {
     }
 
     // find scheme handler
-    const schemeHandler = SCHEMES[(options.scheme || parsed.scheme || '').toLowerCase()]
+    const schemeHandler = getSchemeHandler(options.scheme || parsed.scheme)
 
     // check if scheme can't handle IRIs
     if (!options.unicodeSupport && (!schemeHandler || !schemeHandler.unicodeSupport)) {
@@ -10091,17 +10150,23 @@ function parse (uri, opts) {
     }
 
     if (!schemeHandler || (schemeHandler && !schemeHandler.skipNormalize)) {
-      if (gotEncoding && parsed.scheme !== undefined) {
-        parsed.scheme = unescape(parsed.scheme)
-      }
-      if (gotEncoding && parsed.host !== undefined) {
-        parsed.host = unescape(parsed.host)
+      if (uri.indexOf('%') !== -1) {
+        if (parsed.scheme !== undefined) {
+          parsed.scheme = unescape(parsed.scheme)
+        }
+        if (parsed.host !== undefined) {
+          parsed.host = reescapeHostDelimiters(unescape(parsed.host), isIP)
+        }
       }
       if (parsed.path) {
-        parsed.path = escape(unescape(parsed.path))
+        parsed.path = normalizePathEncoding(parsed.path)
       }
       if (parsed.fragment) {
-        parsed.fragment = encodeURI(decodeURIComponent(parsed.fragment))
+        try {
+          parsed.fragment = encodeURI(decodeURIComponent(parsed.fragment))
+        } catch {
+          parsed.error = parsed.error || 'URI malformed'
+        }
       }
     }
 
@@ -10112,14 +10177,61 @@ function parse (uri, opts) {
   } else {
     parsed.error = parsed.error || 'URI can not be parsed.'
   }
-  return parsed
+  return { parsed, malformedAuthorityOrPort }
+}
+
+/**
+ * @param {string} uri
+ * @param {import('./types/index').Options} [opts]
+ * @returns
+ */
+function parse (uri, opts) {
+  return parseWithStatus(uri, opts).parsed
+}
+
+/**
+ * @param {string} uri
+ * @param {import('./types/index').Options} [opts]
+ * @returns {string}
+ */
+function normalizeString (uri, opts) {
+  return normalizeStringWithStatus(uri, opts).normalized
+}
+
+/**
+ * @param {string} uri
+ * @param {import('./types/index').Options} [opts]
+ * @returns {{ normalized: string, malformedAuthorityOrPort: boolean }}
+ */
+function normalizeStringWithStatus (uri, opts) {
+  const { parsed, malformedAuthorityOrPort } = parseWithStatus(uri, opts)
+  return {
+    normalized: malformedAuthorityOrPort ? uri : serialize(parsed, opts),
+    malformedAuthorityOrPort
+  }
+}
+
+/**
+ * @param {import ('./types/index').URIComponent|string} uri
+ * @param {import('./types/index').Options} [opts]
+ * @returns {string|undefined}
+ */
+function normalizeComparableURI (uri, opts) {
+  if (typeof uri === 'string') {
+    const { normalized, malformedAuthorityOrPort } = normalizeStringWithStatus(uri, opts)
+    return malformedAuthorityOrPort ? undefined : normalized
+  }
+
+  if (typeof uri === 'object') {
+    return serialize(uri, opts)
+  }
 }
 
 const fastUri = {
   SCHEMES,
   normalize,
   resolve,
-  resolveComponents,
+  resolveComponent,
   equal,
   serialize,
   parse
@@ -10129,287 +10241,381 @@ module.exports = fastUri
 module.exports.default = fastUri
 module.exports.fastUri = fastUri
 
-},{"./lib/schemes":81,"./lib/utils":83}],81:[function(require,module,exports){
+},{"./lib/schemes":81,"./lib/utils":82}],81:[function(require,module,exports){
 'use strict'
 
-const UUID_REG = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/iu
+const { isUUID } = require('./utils')
 const URN_REG = /([\da-z][\d\-a-z]{0,31}):((?:[\w!$'()*+,\-.:;=@]|%[\da-f]{2})+)/iu
 
-function isSecure (wsComponents) {
-  return typeof wsComponents.secure === 'boolean' ? wsComponents.secure : String(wsComponents.scheme).toLowerCase() === 'wss'
+const supportedSchemeNames = /** @type {const} */ (['http', 'https', 'ws',
+  'wss', 'urn', 'urn:uuid'])
+
+/** @typedef {supportedSchemeNames[number]} SchemeName */
+
+/**
+ * @param {string} name
+ * @returns {name is SchemeName}
+ */
+function isValidSchemeName (name) {
+  return supportedSchemeNames.indexOf(/** @type {*} */ (name)) !== -1
 }
 
-function httpParse (components) {
-  if (!components.host) {
-    components.error = components.error || 'HTTP URIs must have a host.'
+/**
+ * @callback SchemeFn
+ * @param {import('../types/index').URIComponent} component
+ * @param {import('../types/index').Options} options
+ * @returns {import('../types/index').URIComponent}
+ */
+
+/**
+ * @typedef {Object} SchemeHandler
+ * @property {SchemeName} scheme - The scheme name.
+ * @property {boolean} [domainHost] - Indicates if the scheme supports domain hosts.
+ * @property {SchemeFn} parse - Function to parse the URI component for this scheme.
+ * @property {SchemeFn} serialize - Function to serialize the URI component for this scheme.
+ * @property {boolean} [skipNormalize] - Indicates if normalization should be skipped for this scheme.
+ * @property {boolean} [absolutePath] - Indicates if the scheme uses absolute paths.
+ * @property {boolean} [unicodeSupport] - Indicates if the scheme supports Unicode.
+ */
+
+/**
+ * @param {import('../types/index').URIComponent} wsComponent
+ * @returns {boolean}
+ */
+function wsIsSecure (wsComponent) {
+  if (wsComponent.secure === true) {
+    return true
+  } else if (wsComponent.secure === false) {
+    return false
+  } else if (wsComponent.scheme) {
+    return (
+      wsComponent.scheme.length === 3 &&
+      (wsComponent.scheme[0] === 'w' || wsComponent.scheme[0] === 'W') &&
+      (wsComponent.scheme[1] === 's' || wsComponent.scheme[1] === 'S') &&
+      (wsComponent.scheme[2] === 's' || wsComponent.scheme[2] === 'S')
+    )
+  } else {
+    return false
+  }
+}
+
+/** @type {SchemeFn} */
+function httpParse (component) {
+  if (!component.host) {
+    component.error = component.error || 'HTTP URIs must have a host.'
   }
 
-  return components
+  return component
 }
 
-function httpSerialize (components) {
-  const secure = String(components.scheme).toLowerCase() === 'https'
+/** @type {SchemeFn} */
+function httpSerialize (component) {
+  const secure = String(component.scheme).toLowerCase() === 'https'
 
   // normalize the default port
-  if (components.port === (secure ? 443 : 80) || components.port === '') {
-    components.port = undefined
+  if (component.port === (secure ? 443 : 80) || component.port === '') {
+    component.port = undefined
   }
 
   // normalize the empty path
-  if (!components.path) {
-    components.path = '/'
+  if (!component.path) {
+    component.path = '/'
   }
 
   // NOTE: We do not parse query strings for HTTP URIs
   // as WWW Form Url Encoded query strings are part of the HTML4+ spec,
   // and not the HTTP spec.
 
-  return components
+  return component
 }
 
-function wsParse (wsComponents) {
+/** @type {SchemeFn} */
+function wsParse (wsComponent) {
 // indicate if the secure flag is set
-  wsComponents.secure = isSecure(wsComponents)
+  wsComponent.secure = wsIsSecure(wsComponent)
 
   // construct resouce name
-  wsComponents.resourceName = (wsComponents.path || '/') + (wsComponents.query ? '?' + wsComponents.query : '')
-  wsComponents.path = undefined
-  wsComponents.query = undefined
+  wsComponent.resourceName = (wsComponent.path || '/') + (wsComponent.query ? '?' + wsComponent.query : '')
+  wsComponent.path = undefined
+  wsComponent.query = undefined
 
-  return wsComponents
+  return wsComponent
 }
 
-function wsSerialize (wsComponents) {
+/** @type {SchemeFn} */
+function wsSerialize (wsComponent) {
 // normalize the default port
-  if (wsComponents.port === (isSecure(wsComponents) ? 443 : 80) || wsComponents.port === '') {
-    wsComponents.port = undefined
+  if (wsComponent.port === (wsIsSecure(wsComponent) ? 443 : 80) || wsComponent.port === '') {
+    wsComponent.port = undefined
   }
 
   // ensure scheme matches secure flag
-  if (typeof wsComponents.secure === 'boolean') {
-    wsComponents.scheme = (wsComponents.secure ? 'wss' : 'ws')
-    wsComponents.secure = undefined
+  if (typeof wsComponent.secure === 'boolean') {
+    wsComponent.scheme = (wsComponent.secure ? 'wss' : 'ws')
+    wsComponent.secure = undefined
   }
 
   // reconstruct path from resource name
-  if (wsComponents.resourceName) {
-    const [path, query] = wsComponents.resourceName.split('?')
-    wsComponents.path = (path && path !== '/' ? path : undefined)
-    wsComponents.query = query
-    wsComponents.resourceName = undefined
+  if (wsComponent.resourceName) {
+    const [path, query] = wsComponent.resourceName.split('?')
+    wsComponent.path = (path && path !== '/' ? path : undefined)
+    wsComponent.query = query
+    wsComponent.resourceName = undefined
   }
 
   // forbid fragment component
-  wsComponents.fragment = undefined
+  wsComponent.fragment = undefined
 
-  return wsComponents
+  return wsComponent
 }
 
-function urnParse (urnComponents, options) {
-  if (!urnComponents.path) {
-    urnComponents.error = 'URN can not be parsed'
-    return urnComponents
+/** @type {SchemeFn} */
+function urnParse (urnComponent, options) {
+  if (!urnComponent.path) {
+    urnComponent.error = 'URN can not be parsed'
+    return urnComponent
   }
-  const matches = urnComponents.path.match(URN_REG)
+  const matches = urnComponent.path.match(URN_REG)
   if (matches) {
-    const scheme = options.scheme || urnComponents.scheme || 'urn'
-    urnComponents.nid = matches[1].toLowerCase()
-    urnComponents.nss = matches[2]
-    const urnScheme = `${scheme}:${options.nid || urnComponents.nid}`
-    const schemeHandler = SCHEMES[urnScheme]
-    urnComponents.path = undefined
+    const scheme = options.scheme || urnComponent.scheme || 'urn'
+    urnComponent.nid = matches[1].toLowerCase()
+    urnComponent.nss = matches[2]
+    const urnScheme = `${scheme}:${options.nid || urnComponent.nid}`
+    const schemeHandler = getSchemeHandler(urnScheme)
+    urnComponent.path = undefined
 
     if (schemeHandler) {
-      urnComponents = schemeHandler.parse(urnComponents, options)
+      urnComponent = schemeHandler.parse(urnComponent, options)
     }
   } else {
-    urnComponents.error = urnComponents.error || 'URN can not be parsed.'
+    urnComponent.error = urnComponent.error || 'URN can not be parsed.'
   }
 
-  return urnComponents
+  return urnComponent
 }
 
-function urnSerialize (urnComponents, options) {
-  const scheme = options.scheme || urnComponents.scheme || 'urn'
-  const nid = urnComponents.nid.toLowerCase()
+/** @type {SchemeFn} */
+function urnSerialize (urnComponent, options) {
+  if (urnComponent.nid === undefined) {
+    throw new Error('URN without nid cannot be serialized')
+  }
+  const scheme = options.scheme || urnComponent.scheme || 'urn'
+  const nid = urnComponent.nid.toLowerCase()
   const urnScheme = `${scheme}:${options.nid || nid}`
-  const schemeHandler = SCHEMES[urnScheme]
+  const schemeHandler = getSchemeHandler(urnScheme)
 
   if (schemeHandler) {
-    urnComponents = schemeHandler.serialize(urnComponents, options)
+    urnComponent = schemeHandler.serialize(urnComponent, options)
   }
 
-  const uriComponents = urnComponents
-  const nss = urnComponents.nss
-  uriComponents.path = `${nid || options.nid}:${nss}`
+  const uriComponent = urnComponent
+  const nss = urnComponent.nss
+  uriComponent.path = `${nid || options.nid}:${nss}`
 
   options.skipEscape = true
-  return uriComponents
+  return uriComponent
 }
 
-function urnuuidParse (urnComponents, options) {
-  const uuidComponents = urnComponents
-  uuidComponents.uuid = uuidComponents.nss
-  uuidComponents.nss = undefined
+/** @type {SchemeFn} */
+function urnuuidParse (urnComponent, options) {
+  const uuidComponent = urnComponent
+  uuidComponent.uuid = uuidComponent.nss
+  uuidComponent.nss = undefined
 
-  if (!options.tolerant && (!uuidComponents.uuid || !UUID_REG.test(uuidComponents.uuid))) {
-    uuidComponents.error = uuidComponents.error || 'UUID is not valid.'
+  if (!options.tolerant && (!uuidComponent.uuid || !isUUID(uuidComponent.uuid))) {
+    uuidComponent.error = uuidComponent.error || 'UUID is not valid.'
   }
 
-  return uuidComponents
+  return uuidComponent
 }
 
-function urnuuidSerialize (uuidComponents) {
-  const urnComponents = uuidComponents
+/** @type {SchemeFn} */
+function urnuuidSerialize (uuidComponent) {
+  const urnComponent = uuidComponent
   // normalize UUID
-  urnComponents.nss = (uuidComponents.uuid || '').toLowerCase()
-  return urnComponents
+  urnComponent.nss = (uuidComponent.uuid || '').toLowerCase()
+  return urnComponent
 }
 
-const http = {
+const http = /** @type {SchemeHandler} */ ({
   scheme: 'http',
   domainHost: true,
   parse: httpParse,
   serialize: httpSerialize
-}
+})
 
-const https = {
+const https = /** @type {SchemeHandler} */ ({
   scheme: 'https',
   domainHost: http.domainHost,
   parse: httpParse,
   serialize: httpSerialize
-}
+})
 
-const ws = {
+const ws = /** @type {SchemeHandler} */ ({
   scheme: 'ws',
   domainHost: true,
   parse: wsParse,
   serialize: wsSerialize
-}
+})
 
-const wss = {
+const wss = /** @type {SchemeHandler} */ ({
   scheme: 'wss',
   domainHost: ws.domainHost,
   parse: ws.parse,
   serialize: ws.serialize
-}
+})
 
-const urn = {
+const urn = /** @type {SchemeHandler} */ ({
   scheme: 'urn',
   parse: urnParse,
   serialize: urnSerialize,
   skipNormalize: true
-}
+})
 
-const urnuuid = {
+const urnuuid = /** @type {SchemeHandler} */ ({
   scheme: 'urn:uuid',
   parse: urnuuidParse,
   serialize: urnuuidSerialize,
   skipNormalize: true
-}
+})
 
-const SCHEMES = {
+const SCHEMES = /** @type {Record<SchemeName, SchemeHandler>} */ ({
   http,
   https,
   ws,
   wss,
   urn,
   'urn:uuid': urnuuid
-}
+})
 
-module.exports = SCHEMES
+Object.setPrototypeOf(SCHEMES, null)
 
-},{}],82:[function(require,module,exports){
-'use strict'
-
-const HEX = {
-  0: 0,
-  1: 1,
-  2: 2,
-  3: 3,
-  4: 4,
-  5: 5,
-  6: 6,
-  7: 7,
-  8: 8,
-  9: 9,
-  a: 10,
-  A: 10,
-  b: 11,
-  B: 11,
-  c: 12,
-  C: 12,
-  d: 13,
-  D: 13,
-  e: 14,
-  E: 14,
-  f: 15,
-  F: 15
+/**
+ * @param {string|undefined} scheme
+ * @returns {SchemeHandler|undefined}
+ */
+function getSchemeHandler (scheme) {
+  return (
+    scheme && (
+      SCHEMES[/** @type {SchemeName} */ (scheme)] ||
+      SCHEMES[/** @type {SchemeName} */(scheme.toLowerCase())])
+  ) ||
+    undefined
 }
 
 module.exports = {
-  HEX
+  wsIsSecure,
+  SCHEMES,
+  isValidSchemeName,
+  getSchemeHandler,
 }
 
-},{}],83:[function(require,module,exports){
+},{"./utils":82}],82:[function(require,module,exports){
 'use strict'
 
-const { HEX } = require('./scopedChars')
+/** @type {(value: string) => boolean} */
+const isUUID = RegExp.prototype.test.bind(/^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/iu)
 
-const IPV4_REG = /^(?:(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]\d|\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]\d|\d)$/u
+/** @type {(value: string) => boolean} */
+const isIPv4 = RegExp.prototype.test.bind(/^(?:(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]\d|\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]\d|\d)$/u)
 
-function normalizeIPv4 (host) {
-  if (findToken(host, '.') < 3) { return { host, isIPV4: false } }
-  const matches = host.match(IPV4_REG) || []
-  const [address] = matches
-  if (address) {
-    return { host: stripLeadingZeros(address, '.'), isIPV4: true }
-  } else {
-    return { host, isIPV4: false }
-  }
-}
+/** @type {(value: string) => boolean} */
+const isHexPair = RegExp.prototype.test.bind(/^[\da-f]{2}$/iu)
+
+/** @type {(value: string) => boolean} */
+const isUnreserved = RegExp.prototype.test.bind(/^[\da-z\-._~]$/iu)
+
+/** @type {(value: string) => boolean} */
+const isPathCharacter = RegExp.prototype.test.bind(/^[\da-z\-._~!$&'()*+,;=:@/]$/iu)
 
 /**
- * @param {string[]} input
- * @param {boolean} [keepZero=false]
- * @returns {string|undefined}
+ * @param {Array<string>} input
+ * @returns {string}
  */
-function stringArrayToHexStripped (input, keepZero = false) {
+function stringArrayToHexStripped (input) {
   let acc = ''
-  let strip = true
-  for (const c of input) {
-    if (HEX[c] === undefined) return undefined
-    if (c !== '0' && strip === true) strip = false
-    if (!strip) acc += c
+  let code = 0
+  let i = 0
+
+  for (i = 0; i < input.length; i++) {
+    code = input[i].charCodeAt(0)
+    if (code === 48) {
+      continue
+    }
+    if (!((code >= 48 && code <= 57) || (code >= 65 && code <= 70) || (code >= 97 && code <= 102))) {
+      return ''
+    }
+    acc += input[i]
+    break
   }
-  if (keepZero && acc.length === 0) acc = '0'
+
+  for (i += 1; i < input.length; i++) {
+    code = input[i].charCodeAt(0)
+    if (!((code >= 48 && code <= 57) || (code >= 65 && code <= 70) || (code >= 97 && code <= 102))) {
+      return ''
+    }
+    acc += input[i]
+  }
   return acc
 }
 
+/**
+ * @typedef {Object} GetIPV6Result
+ * @property {boolean} error - Indicates if there was an error parsing the IPv6 address.
+ * @property {string} address - The parsed IPv6 address.
+ * @property {string} [zone] - The zone identifier, if present.
+ */
+
+/**
+ * @param {string} value
+ * @returns {boolean}
+ */
+const nonSimpleDomain = RegExp.prototype.test.bind(/[^!"$&'()*+,\-.;=_`a-z{}~]/u)
+
+/**
+ * @param {Array<string>} buffer
+ * @returns {boolean}
+ */
+function consumeIsZone (buffer) {
+  buffer.length = 0
+  return true
+}
+
+/**
+ * @param {Array<string>} buffer
+ * @param {Array<string>} address
+ * @param {GetIPV6Result} output
+ * @returns {boolean}
+ */
+function consumeHextets (buffer, address, output) {
+  if (buffer.length) {
+    const hex = stringArrayToHexStripped(buffer)
+    if (hex !== '') {
+      address.push(hex)
+    } else {
+      output.error = true
+      return false
+    }
+    buffer.length = 0
+  }
+  return true
+}
+
+/**
+ * @param {string} input
+ * @returns {GetIPV6Result}
+ */
 function getIPV6 (input) {
   let tokenCount = 0
   const output = { error: false, address: '', zone: '' }
+  /** @type {Array<string>} */
   const address = []
+  /** @type {Array<string>} */
   const buffer = []
-  let isZone = false
   let endipv6Encountered = false
   let endIpv6 = false
 
-  function consume () {
-    if (buffer.length) {
-      if (isZone === false) {
-        const hex = stringArrayToHexStripped(buffer)
-        if (hex !== undefined) {
-          address.push(hex)
-        } else {
-          output.error = true
-          return false
-        }
-      }
-      buffer.length = 0
-    }
-    return true
-  }
+  let consume = consumeHextets
 
   for (let i = 0; i < input.length; i++) {
     const cursor = input[i]
@@ -10418,29 +10624,28 @@ function getIPV6 (input) {
       if (endipv6Encountered === true) {
         endIpv6 = true
       }
-      if (!consume()) { break }
-      tokenCount++
-      address.push(':')
-      if (tokenCount > 7) {
+      if (!consume(buffer, address, output)) { break }
+      if (++tokenCount > 7) {
         // not valid
         output.error = true
         break
       }
-      if (i - 1 >= 0 && input[i - 1] === ':') {
+      if (i > 0 && input[i - 1] === ':') {
         endipv6Encountered = true
       }
+      address.push(':')
       continue
     } else if (cursor === '%') {
-      if (!consume()) { break }
+      if (!consume(buffer, address, output)) { break }
       // switch to zone detection
-      isZone = true
+      consume = consumeIsZone
     } else {
       buffer.push(cursor)
       continue
     }
   }
   if (buffer.length) {
-    if (isZone) {
+    if (consume === consumeIsZone) {
       output.zone = buffer.join('')
     } else if (endIpv6) {
       address.push(buffer.join(''))
@@ -10452,6 +10657,17 @@ function getIPV6 (input) {
   return output
 }
 
+/**
+ * @typedef {Object} NormalizeIPv6Result
+ * @property {string} host - The normalized host.
+ * @property {string} [escapedHost] - The escaped host.
+ * @property {boolean} isIPV6 - Indicates if the host is an IPv6 address.
+ */
+
+/**
+ * @param {string} host
+ * @returns {NormalizeIPv6Result}
+ */
 function normalizeIPv6 (host) {
   if (findToken(host, ':') < 2) { return { host, isIPV6: false } }
   const ipv6 = getIPV6(host)
@@ -10463,35 +10679,17 @@ function normalizeIPv6 (host) {
       newHost += '%' + ipv6.zone
       escapedHost += '%25' + ipv6.zone
     }
-    return { host: newHost, escapedHost, isIPV6: true }
+    return { host: newHost, isIPV6: true, escapedHost }
   } else {
     return { host, isIPV6: false }
   }
 }
 
-function stripLeadingZeros (str, token) {
-  let out = ''
-  let skip = true
-  const l = str.length
-  for (let i = 0; i < l; i++) {
-    const c = str[i]
-    if (c === '0' && skip) {
-      if ((i + 1 <= l && str[i + 1] === token) || i + 1 === l) {
-        out += c
-        skip = false
-      }
-    } else {
-      if (c === token) {
-        skip = true
-      } else {
-        skip = false
-      }
-      out += c
-    }
-  }
-  return out
-}
-
+/**
+ * @param {string} str
+ * @param {string} token
+ * @returns {number}
+ */
 function findToken (str, token) {
   let ind = 0
   for (let i = 0; i < str.length; i++) {
@@ -10500,104 +10698,264 @@ function findToken (str, token) {
   return ind
 }
 
-const RDS1 = /^\.\.?\//u
-const RDS2 = /^\/\.(?:\/|$)/u
-const RDS3 = /^\/\.\.(?:\/|$)/u
-const RDS5 = /^\/?(?:.|\n)*?(?=\/|$)/u
-
-function removeDotSegments (input) {
+/**
+ * @param {string} path
+ * @returns {string}
+ *
+ * @see https://datatracker.ietf.org/doc/html/rfc3986#section-5.2.4
+ */
+function removeDotSegments (path) {
+  let input = path
   const output = []
+  let nextSlash = -1
+  let len = 0
 
-  while (input.length) {
-    if (input.match(RDS1)) {
-      input = input.replace(RDS1, '')
-    } else if (input.match(RDS2)) {
-      input = input.replace(RDS2, '/')
-    } else if (input.match(RDS3)) {
-      input = input.replace(RDS3, '/')
-      output.pop()
-    } else if (input === '.' || input === '..') {
-      input = ''
-    } else {
-      const im = input.match(RDS5)
-      if (im) {
-        const s = im[0]
-        input = input.slice(s.length)
-        output.push(s)
+  // eslint-disable-next-line no-cond-assign
+  while (len = input.length) {
+    if (len === 1) {
+      if (input === '.') {
+        break
+      } else if (input === '/') {
+        output.push('/')
+        break
       } else {
-        throw new Error('Unexpected dot segment condition')
+        output.push(input)
+        break
+      }
+    } else if (len === 2) {
+      if (input[0] === '.') {
+        if (input[1] === '.') {
+          break
+        } else if (input[1] === '/') {
+          input = input.slice(2)
+          continue
+        }
+      } else if (input[0] === '/') {
+        if (input[1] === '.' || input[1] === '/') {
+          output.push('/')
+          break
+        }
+      }
+    } else if (len === 3) {
+      if (input === '/..') {
+        if (output.length !== 0) {
+          output.pop()
+        }
+        output.push('/')
+        break
       }
     }
+    if (input[0] === '.') {
+      if (input[1] === '.') {
+        if (input[2] === '/') {
+          input = input.slice(3)
+          continue
+        }
+      } else if (input[1] === '/') {
+        input = input.slice(2)
+        continue
+      }
+    } else if (input[0] === '/') {
+      if (input[1] === '.') {
+        if (input[2] === '/') {
+          input = input.slice(2)
+          continue
+        } else if (input[2] === '.') {
+          if (input[3] === '/') {
+            input = input.slice(3)
+            if (output.length !== 0) {
+              output.pop()
+            }
+            continue
+          }
+        }
+      }
+    }
+
+    // Rule 2E: Move normal path segment to output
+    if ((nextSlash = input.indexOf('/', 1)) === -1) {
+      output.push(input)
+      break
+    } else {
+      output.push(input.slice(0, nextSlash))
+      input = input.slice(nextSlash)
+    }
   }
+
   return output.join('')
 }
 
-function normalizeComponentEncoding (components, esc) {
-  const func = esc !== true ? escape : unescape
-  if (components.scheme !== undefined) {
-    components.scheme = func(components.scheme)
-  }
-  if (components.userinfo !== undefined) {
-    components.userinfo = func(components.userinfo)
-  }
-  if (components.host !== undefined) {
-    components.host = func(components.host)
-  }
-  if (components.path !== undefined) {
-    components.path = func(components.path)
-  }
-  if (components.query !== undefined) {
-    components.query = func(components.query)
-  }
-  if (components.fragment !== undefined) {
-    components.fragment = func(components.fragment)
-  }
-  return components
+/**
+ * Re-escape RFC 3986 gen-delims that must not appear literally in the host.
+ * After the URI regex parses, these characters cannot be literal in the host
+ * field, so any that appear after decoding came from percent-encoding and
+ * must be restored to prevent authority structure changes.
+ *
+ * @param {string} host
+ * @param {boolean} isIP - true for IPv4/IPv6 hosts (skip colon re-escaping)
+ * @returns {string}
+ */
+const HOST_DELIMS = { '@': '%40', '/': '%2F', '?': '%3F', '#': '%23', ':': '%3A' }
+const HOST_DELIM_RE = /[@/?#:]/g
+const HOST_DELIM_NO_COLON_RE = /[@/?#]/g
+
+function reescapeHostDelimiters (host, isIP) {
+  const re = isIP ? HOST_DELIM_NO_COLON_RE : HOST_DELIM_RE
+  re.lastIndex = 0
+  return host.replace(re, (ch) => HOST_DELIMS[ch])
 }
 
-function recomposeAuthority (components) {
+/**
+ * Normalizes percent escapes and optionally decodes only unreserved ASCII bytes.
+ * Reserved delimiters such as `%2F` and `%2E` stay escaped.
+ *
+ * @param {string} input
+ * @param {boolean} [decodeUnreserved=false]
+ * @returns {string}
+ */
+function normalizePercentEncoding (input, decodeUnreserved = false) {
+  if (input.indexOf('%') === -1) {
+    return input
+  }
+
+  let output = ''
+
+  for (let i = 0; i < input.length; i++) {
+    if (input[i] === '%' && i + 2 < input.length) {
+      const hex = input.slice(i + 1, i + 3)
+      if (isHexPair(hex)) {
+        const normalizedHex = hex.toUpperCase()
+        const decoded = String.fromCharCode(parseInt(normalizedHex, 16))
+
+        if (decodeUnreserved && isUnreserved(decoded)) {
+          output += decoded
+        } else {
+          output += '%' + normalizedHex
+        }
+
+        i += 2
+        continue
+      }
+    }
+
+    output += input[i]
+  }
+
+  return output
+}
+
+/**
+ * Normalizes path data without turning reserved escapes into live path syntax.
+ * Valid escapes are uppercased, raw unsafe characters are escaped, and only
+ * unreserved bytes that are not `.` are decoded.
+ *
+ * @param {string} input
+ * @returns {string}
+ */
+function normalizePathEncoding (input) {
+  let output = ''
+
+  for (let i = 0; i < input.length; i++) {
+    if (input[i] === '%' && i + 2 < input.length) {
+      const hex = input.slice(i + 1, i + 3)
+      if (isHexPair(hex)) {
+        const normalizedHex = hex.toUpperCase()
+        const decoded = String.fromCharCode(parseInt(normalizedHex, 16))
+
+        if (decoded !== '.' && isUnreserved(decoded)) {
+          output += decoded
+        } else {
+          output += '%' + normalizedHex
+        }
+
+        i += 2
+        continue
+      }
+    }
+
+    if (isPathCharacter(input[i])) {
+      output += input[i]
+    } else {
+      output += escape(input[i])
+    }
+  }
+
+  return output
+}
+
+/**
+ * Escapes a component while preserving existing valid percent escapes.
+ *
+ * @param {string} input
+ * @returns {string}
+ */
+function escapePreservingEscapes (input) {
+  let output = ''
+
+  for (let i = 0; i < input.length; i++) {
+    if (input[i] === '%' && i + 2 < input.length) {
+      const hex = input.slice(i + 1, i + 3)
+      if (isHexPair(hex)) {
+        output += '%' + hex.toUpperCase()
+        i += 2
+        continue
+      }
+    }
+
+    output += escape(input[i])
+  }
+
+  return output
+}
+
+/**
+ * @param {import('../types/index').URIComponent} component
+ * @returns {string|undefined}
+ */
+function recomposeAuthority (component) {
   const uriTokens = []
 
-  if (components.userinfo !== undefined) {
-    uriTokens.push(components.userinfo)
+  if (component.userinfo !== undefined) {
+    uriTokens.push(component.userinfo)
     uriTokens.push('@')
   }
 
-  if (components.host !== undefined) {
-    let host = unescape(components.host)
-    const ipV4res = normalizeIPv4(host)
-
-    if (ipV4res.isIPV4) {
-      host = ipV4res.host
-    } else {
-      const ipV6res = normalizeIPv6(ipV4res.host)
+  if (component.host !== undefined) {
+    let host = unescape(component.host)
+    if (!isIPv4(host)) {
+      const ipV6res = normalizeIPv6(host)
       if (ipV6res.isIPV6 === true) {
         host = `[${ipV6res.escapedHost}]`
       } else {
-        host = components.host
+        host = reescapeHostDelimiters(host, false)
       }
     }
     uriTokens.push(host)
   }
 
-  if (typeof components.port === 'number' || typeof components.port === 'string') {
+  if (typeof component.port === 'number' || typeof component.port === 'string') {
     uriTokens.push(':')
-    uriTokens.push(String(components.port))
+    uriTokens.push(String(component.port))
   }
 
   return uriTokens.length ? uriTokens.join('') : undefined
 };
 
 module.exports = {
+  nonSimpleDomain,
   recomposeAuthority,
-  normalizeComponentEncoding,
+  reescapeHostDelimiters,
+  normalizePercentEncoding,
+  normalizePathEncoding,
+  escapePreservingEscapes,
   removeDotSegments,
-  normalizeIPv4,
+  isIPv4,
+  isUUID,
   normalizeIPv6,
   stringArrayToHexStripped
 }
 
-},{"./scopedChars":82}],84:[function(require,module,exports){
+},{}],83:[function(require,module,exports){
 /*! ieee754. BSD-3-Clause License. Feross Aboukhadijeh <https://feross.org/opensource> */
 exports.read = function (buffer, offset, isLE, mLen, nBytes) {
   var e, m
@@ -10684,7 +11042,7 @@ exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
   buffer[offset + i - d] |= s * 128
 }
 
-},{}],85:[function(require,module,exports){
+},{}],84:[function(require,module,exports){
 if (typeof Object.create === 'function') {
   // implementation from standard node.js 'util' module
   module.exports = function inherits(ctor, superCtor) {
@@ -10713,7 +11071,7 @@ if (typeof Object.create === 'function') {
   }
 }
 
-},{}],86:[function(require,module,exports){
+},{}],85:[function(require,module,exports){
 'use strict';
 
 var traverse = module.exports = function (schema, opts, cb) {
@@ -10808,7 +11166,7 @@ function escapeJsonPtr(str) {
   return str.replace(/~/g, '~0').replace(/\//g, '~1');
 }
 
-},{}],87:[function(require,module,exports){
+},{}],86:[function(require,module,exports){
 (function (global, factory) {
 	typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
 	typeof define === 'function' && define.amd ? define(factory) :
@@ -12547,7 +12905,7 @@ function escapeJsonPtr(str) {
 
 })));
 
-},{}],88:[function(require,module,exports){
+},{}],87:[function(require,module,exports){
 'use strict';
 
 const w3 = {
@@ -12562,7 +12920,7 @@ module.exports = (w, h) => ['svg', {
   viewBox: '0 0 ' + w + ' ' + h
 }];
 
-},{}],89:[function(require,module,exports){
+},{}],88:[function(require,module,exports){
 'use strict';
 
 const parse = require('./parse.js');
@@ -12586,7 +12944,7 @@ exports.p = parse;
 exports.s = stringify;
 exports.t = traverse;
 
-},{"./gen-svg.js":88,"./parse.js":90,"./renderer.js":91,"./stringify.js":92,"./traverse.js":93,"./tt.js":94}],90:[function(require,module,exports){
+},{"./gen-svg.js":87,"./parse.js":89,"./renderer.js":90,"./stringify.js":91,"./traverse.js":92,"./tt.js":93}],89:[function(require,module,exports){
 'use strict';
 
 const parser = require('sax').parser;
@@ -12639,7 +12997,7 @@ function parse(data, config) {
 
 module.exports = parse;
 
-},{"sax":97}],91:[function(require,module,exports){
+},{"sax":96}],90:[function(require,module,exports){
 'use strict';
 
 const stringify = require('./stringify.js');
@@ -12664,7 +13022,7 @@ module.exports = renderer;
 
 /* eslint-env browser */
 
-},{"./stringify.js":92}],92:[function(require,module,exports){
+},{"./stringify.js":91}],91:[function(require,module,exports){
 'use strict';
 
 const isObject = o => o && Object.prototype.toString.call(o) === '[object Object]';
@@ -12757,7 +13115,7 @@ function stringify (a, indentation) {
 
 module.exports = stringify;
 
-},{}],93:[function(require,module,exports){
+},{}],92:[function(require,module,exports){
 'use strict';
 
 function skipFn() {
@@ -12885,7 +13243,7 @@ module.exports = traverse;
 
 /* eslint complexity: 0 */
 
-},{}],94:[function(require,module,exports){
+},{}],93:[function(require,module,exports){
 'use strict';
 
 module.exports = (x, y, obj) => {
@@ -12898,7 +13256,7 @@ module.exports = (x, y, obj) => {
   return Object.assign(objt, obj);
 };
 
-},{}],95:[function(require,module,exports){
+},{}],94:[function(require,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 
@@ -13084,7 +13442,7 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],96:[function(require,module,exports){
+},{}],95:[function(require,module,exports){
 /*! safe-buffer. MIT License. Feross Aboukhadijeh <https://feross.org/opensource> */
 /* eslint-disable node/no-deprecated-api */
 var buffer = require('buffer')
@@ -13151,10 +13509,13 @@ SafeBuffer.allocUnsafeSlow = function (size) {
   return buffer.SlowBuffer(size)
 }
 
-},{"buffer":76}],97:[function(require,module,exports){
+},{"buffer":76}],96:[function(require,module,exports){
 (function (Buffer){(function (){
-;(function (sax) { // wrapper for non-node envs
-  sax.parser = function (strict, opt) { return new SAXParser(strict, opt) }
+;(function (sax) {
+  // wrapper for non-node envs
+  sax.parser = function (strict, opt) {
+    return new SAXParser(strict, opt)
+  }
   sax.SAXParser = SAXParser
   sax.SAXStream = SAXStream
   sax.createStream = createStream
@@ -13171,9 +13532,18 @@ SafeBuffer.allocUnsafeSlow = function (size) {
   sax.MAX_BUFFER_LENGTH = 64 * 1024
 
   var buffers = [
-    'comment', 'sgmlDecl', 'textNode', 'tagName', 'doctype',
-    'procInstName', 'procInstBody', 'entity', 'attribName',
-    'attribValue', 'cdata', 'script'
+    'comment',
+    'sgmlDecl',
+    'textNode',
+    'tagName',
+    'doctype',
+    'procInstName',
+    'procInstBody',
+    'entity',
+    'attribName',
+    'attribValue',
+    'cdata',
+    'script',
   ]
 
   sax.EVENTS = [
@@ -13194,10 +13564,10 @@ SafeBuffer.allocUnsafeSlow = function (size) {
     'ready',
     'script',
     'opennamespace',
-    'closenamespace'
+    'closenamespace',
   ]
 
-  function SAXParser (strict, opt) {
+  function SAXParser(strict, opt) {
     if (!(this instanceof SAXParser)) {
       return new SAXParser(strict, opt)
     }
@@ -13206,9 +13576,13 @@ SafeBuffer.allocUnsafeSlow = function (size) {
     clearBuffers(parser)
     parser.q = parser.c = ''
     parser.bufferCheckPosition = sax.MAX_BUFFER_LENGTH
+    parser.encoding = null;
     parser.opt = opt || {}
     parser.opt.lowercase = parser.opt.lowercase || parser.opt.lowercasetags
     parser.looseCase = parser.opt.lowercase ? 'toLowerCase' : 'toUpperCase'
+    parser.opt.maxEntityCount = parser.opt.maxEntityCount || 512
+    parser.opt.maxEntityDepth = parser.opt.maxEntityDepth || 4
+    parser.entityCount = parser.entityDepth = 0
     parser.tags = []
     parser.closed = parser.closedRoot = parser.sawRoot = false
     parser.tag = parser.error = null
@@ -13216,7 +13590,10 @@ SafeBuffer.allocUnsafeSlow = function (size) {
     parser.noscript = !!(strict || parser.opt.noscript)
     parser.state = S.BEGIN
     parser.strictEntities = parser.opt.strictEntities
-    parser.ENTITIES = parser.strictEntities ? Object.create(sax.XML_ENTITIES) : Object.create(sax.ENTITIES)
+    parser.ENTITIES =
+      parser.strictEntities ?
+        Object.create(sax.XML_ENTITIES)
+      : Object.create(sax.ENTITIES)
     parser.attribList = []
 
     // namespaces form a prototype chain.
@@ -13229,7 +13606,7 @@ SafeBuffer.allocUnsafeSlow = function (size) {
     // disallow unquoted attribute values if not otherwise configured
     // and strict mode is true
     if (parser.opt.unquotedAttributeValues === undefined) {
-      parser.opt.unquotedAttributeValues = !strict;
+      parser.opt.unquotedAttributeValues = !strict
     }
 
     // mostly just for error reporting
@@ -13242,7 +13619,7 @@ SafeBuffer.allocUnsafeSlow = function (size) {
 
   if (!Object.create) {
     Object.create = function (o) {
-      function F () {}
+      function F() {}
       F.prototype = o
       var newf = new F()
       return newf
@@ -13257,7 +13634,7 @@ SafeBuffer.allocUnsafeSlow = function (size) {
     }
   }
 
-  function checkBufferLength (parser) {
+  function checkBufferLength(parser) {
     var maxAllowed = Math.max(sax.MAX_BUFFER_LENGTH, 10)
     var maxActual = 0
     for (var i = 0, l = buffers.length; i < l; i++) {
@@ -13293,13 +13670,13 @@ SafeBuffer.allocUnsafeSlow = function (size) {
     parser.bufferCheckPosition = m + parser.position
   }
 
-  function clearBuffers (parser) {
+  function clearBuffers(parser) {
     for (var i = 0, l = buffers.length; i < l; i++) {
       parser[buffers[i]] = ''
     }
   }
 
-  function flushBuffers (parser) {
+  function flushBuffers(parser) {
     closeText(parser)
     if (parser.cdata !== '') {
       emitNode(parser, 'oncdata', parser.cdata)
@@ -13312,11 +13689,20 @@ SafeBuffer.allocUnsafeSlow = function (size) {
   }
 
   SAXParser.prototype = {
-    end: function () { end(this) },
+    end: function () {
+      end(this)
+    },
     write: write,
-    resume: function () { this.error = null; return this },
-    close: function () { return this.write(null) },
-    flush: function () { flushBuffers(this) }
+    resume: function () {
+      this.error = null
+      return this
+    },
+    close: function () {
+      return this.write(null)
+    },
+    flush: function () {
+      flushBuffers(this)
+    },
   }
 
   var Stream
@@ -13331,11 +13717,44 @@ SafeBuffer.allocUnsafeSlow = function (size) {
     return ev !== 'error' && ev !== 'end'
   })
 
-  function createStream (strict, opt) {
+  function createStream(strict, opt) {
     return new SAXStream(strict, opt)
   }
 
-  function SAXStream (strict, opt) {
+  function determineBufferEncoding(data, isEnd) {
+    // BOM-based detection is the most reliable signal when present.
+    if (data.length >= 2) {
+      if (data[0] === 0xff && data[1] === 0xfe) {
+        return 'utf-16le'
+      }
+
+      if (data[0] === 0xfe && data[1] === 0xff) {
+        return 'utf-16be'
+      }
+    }
+
+    if (data.length >= 3 && data[0] === 0xef && data[1] === 0xbb && data[2] === 0xbf) {
+      return 'utf8'
+    }
+
+    if (data.length >= 4) {
+      // XML documents without a BOM still start with "<?xml", which is enough
+      // to distinguish UTF-16LE/BE from UTF-8 by looking at the zero bytes.
+      if (data[0] === 0x3c && data[1] === 0x00 && data[2] === 0x3f && data[3] === 0x00) {
+        return 'utf-16le'
+      }
+
+      if (data[0] === 0x00 && data[1] === 0x3c && data[2] === 0x00 && data[3] === 0x3f) {
+        return 'utf-16be'
+      }
+
+      return 'utf8'
+    }
+
+    return isEnd ? 'utf8' : null
+  }
+
+  function SAXStream(strict, opt) {
     if (!(this instanceof SAXStream)) {
       return new SAXStream(strict, opt)
     }
@@ -13361,7 +13780,7 @@ SafeBuffer.allocUnsafeSlow = function (size) {
     }
 
     this._decoder = null
-
+    this._decoderBuffer = null
     streamWraps.forEach(function (ev) {
       Object.defineProperty(me, 'on' + ev, {
         get: function () {
@@ -13376,26 +13795,58 @@ SafeBuffer.allocUnsafeSlow = function (size) {
           me.on(ev, h)
         },
         enumerable: true,
-        configurable: false
+        configurable: false,
       })
     })
   }
 
   SAXStream.prototype = Object.create(Stream.prototype, {
     constructor: {
-      value: SAXStream
-    }
+      value: SAXStream,
+    },
   })
 
-  SAXStream.prototype.write = function (data) {
-    if (typeof Buffer === 'function' &&
-      typeof Buffer.isBuffer === 'function' &&
-      Buffer.isBuffer(data)) {
-      if (!this._decoder) {
-        var SD = require('string_decoder').StringDecoder
-        this._decoder = new SD('utf8')
+  SAXStream.prototype._decodeBuffer = function (data, isEnd) {
+    if (this._decoderBuffer) {
+      // Keep incomplete leading bytes until we have enough data to infer the
+      // stream encoding, then decode the buffered prefix together with the next chunk.
+      data = Buffer.concat([this._decoderBuffer, data])
+      this._decoderBuffer = null
+    }
+
+    if (!this._decoder) {
+      var encoding = determineBufferEncoding(data, isEnd)
+      if (!encoding) {
+        // A very short first chunk may not contain enough bytes to detect the
+        // encoding yet, so defer decoding until the next write/end call.
+        this._decoderBuffer = data
+        return ''
       }
-      data = this._decoder.write(data)
+
+      // Store the detected transport encoding so strict mode can compare it
+      // with the optional encoding declared in the XML prolog later on.
+      this._parser.encoding = encoding
+      this._decoder = new TextDecoder(encoding)
+    }
+
+    return this._decoder.decode(data, { stream: !isEnd })
+  }
+
+  SAXStream.prototype.write = function (data) {
+    if (
+      typeof Buffer === 'function' &&
+      typeof Buffer.isBuffer === 'function' &&
+      Buffer.isBuffer(data)
+    ) {
+      data = this._decodeBuffer(data, false)
+    } else if (this._decoderBuffer) {
+      // Flush any buffered binary prefix before handling a string chunk.
+      // This only matters if the caller mixes Buffer and string writes (used in test).
+      var remaining = this._decodeBuffer(Buffer.alloc(0), true)
+      if (remaining) {
+        this._parser.write(remaining)
+        this.emit('data', remaining)
+      }
     }
 
     this._parser.write(data.toString())
@@ -13407,6 +13858,20 @@ SafeBuffer.allocUnsafeSlow = function (size) {
     if (chunk && chunk.length) {
       this.write(chunk)
     }
+    // Flush any remaining decoded data from the TextDecoder
+    if (this._decoderBuffer) {
+      var finalChunk = this._decodeBuffer(Buffer.alloc(0), true)
+      if (finalChunk) {
+        this._parser.write(finalChunk)
+        this.emit('data', finalChunk)
+      }
+    } else if (this._decoder) {
+      var remaining = this._decoder.decode()
+      if (remaining) {
+        this._parser.write(remaining)
+        this.emit('data', remaining)
+      }
+    }
     this._parser.end()
     return true
   }
@@ -13415,7 +13880,10 @@ SafeBuffer.allocUnsafeSlow = function (size) {
     var me = this
     if (!me._parser['on' + ev] && streamWraps.indexOf(ev) !== -1) {
       me._parser['on' + ev] = function () {
-        var args = arguments.length === 1 ? [arguments[0]] : Array.apply(null, arguments)
+        var args =
+          arguments.length === 1 ?
+            [arguments[0]]
+          : Array.apply(null, arguments)
         args.splice(0, 0, ev)
         me.emit.apply(me, args)
       }
@@ -13438,30 +13906,34 @@ SafeBuffer.allocUnsafeSlow = function (size) {
   // without a significant breaking change to either this  parser, or the
   // JavaScript language.  Implementation of an emoji-capable xml parser
   // is left as an exercise for the reader.
-  var nameStart = /[:_A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD]/
+  var nameStart =
+    /[:_A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD]/
 
-  var nameBody = /[:_A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\u00B7\u0300-\u036F\u203F-\u2040.\d-]/
+  var nameBody =
+    /[:_A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\u00B7\u0300-\u036F\u203F-\u2040.\d-]/
 
-  var entityStart = /[#:_A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD]/
-  var entityBody = /[#:_A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\u00B7\u0300-\u036F\u203F-\u2040.\d-]/
+  var entityStart =
+    /[#:_A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD]/
+  var entityBody =
+    /[#:_A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\u00B7\u0300-\u036F\u203F-\u2040.\d-]/
 
-  function isWhitespace (c) {
+  function isWhitespace(c) {
     return c === ' ' || c === '\n' || c === '\r' || c === '\t'
   }
 
-  function isQuote (c) {
-    return c === '"' || c === '\''
+  function isQuote(c) {
+    return c === '"' || c === "'"
   }
 
-  function isAttribEnd (c) {
+  function isAttribEnd(c) {
     return c === '>' || isWhitespace(c)
   }
 
-  function isMatch (regex, c) {
+  function isMatch(regex, c) {
     return regex.test(c)
   }
 
-  function notMatch (regex, c) {
+  function notMatch(regex, c) {
     return !isMatch(regex, c)
   }
 
@@ -13502,271 +13974,271 @@ SafeBuffer.allocUnsafeSlow = function (size) {
     CLOSE_TAG: S++, // </a
     CLOSE_TAG_SAW_WHITE: S++, // </a   >
     SCRIPT: S++, // <script> ...
-    SCRIPT_ENDING: S++ // <script> ... <
+    SCRIPT_ENDING: S++, // <script> ... <
   }
 
   sax.XML_ENTITIES = {
-    'amp': '&',
-    'gt': '>',
-    'lt': '<',
-    'quot': '"',
-    'apos': "'"
+    amp: '&',
+    gt: '>',
+    lt: '<',
+    quot: '"',
+    apos: "'",
   }
 
   sax.ENTITIES = {
-    'amp': '&',
-    'gt': '>',
-    'lt': '<',
-    'quot': '"',
-    'apos': "'",
-    'AElig': 198,
-    'Aacute': 193,
-    'Acirc': 194,
-    'Agrave': 192,
-    'Aring': 197,
-    'Atilde': 195,
-    'Auml': 196,
-    'Ccedil': 199,
-    'ETH': 208,
-    'Eacute': 201,
-    'Ecirc': 202,
-    'Egrave': 200,
-    'Euml': 203,
-    'Iacute': 205,
-    'Icirc': 206,
-    'Igrave': 204,
-    'Iuml': 207,
-    'Ntilde': 209,
-    'Oacute': 211,
-    'Ocirc': 212,
-    'Ograve': 210,
-    'Oslash': 216,
-    'Otilde': 213,
-    'Ouml': 214,
-    'THORN': 222,
-    'Uacute': 218,
-    'Ucirc': 219,
-    'Ugrave': 217,
-    'Uuml': 220,
-    'Yacute': 221,
-    'aacute': 225,
-    'acirc': 226,
-    'aelig': 230,
-    'agrave': 224,
-    'aring': 229,
-    'atilde': 227,
-    'auml': 228,
-    'ccedil': 231,
-    'eacute': 233,
-    'ecirc': 234,
-    'egrave': 232,
-    'eth': 240,
-    'euml': 235,
-    'iacute': 237,
-    'icirc': 238,
-    'igrave': 236,
-    'iuml': 239,
-    'ntilde': 241,
-    'oacute': 243,
-    'ocirc': 244,
-    'ograve': 242,
-    'oslash': 248,
-    'otilde': 245,
-    'ouml': 246,
-    'szlig': 223,
-    'thorn': 254,
-    'uacute': 250,
-    'ucirc': 251,
-    'ugrave': 249,
-    'uuml': 252,
-    'yacute': 253,
-    'yuml': 255,
-    'copy': 169,
-    'reg': 174,
-    'nbsp': 160,
-    'iexcl': 161,
-    'cent': 162,
-    'pound': 163,
-    'curren': 164,
-    'yen': 165,
-    'brvbar': 166,
-    'sect': 167,
-    'uml': 168,
-    'ordf': 170,
-    'laquo': 171,
-    'not': 172,
-    'shy': 173,
-    'macr': 175,
-    'deg': 176,
-    'plusmn': 177,
-    'sup1': 185,
-    'sup2': 178,
-    'sup3': 179,
-    'acute': 180,
-    'micro': 181,
-    'para': 182,
-    'middot': 183,
-    'cedil': 184,
-    'ordm': 186,
-    'raquo': 187,
-    'frac14': 188,
-    'frac12': 189,
-    'frac34': 190,
-    'iquest': 191,
-    'times': 215,
-    'divide': 247,
-    'OElig': 338,
-    'oelig': 339,
-    'Scaron': 352,
-    'scaron': 353,
-    'Yuml': 376,
-    'fnof': 402,
-    'circ': 710,
-    'tilde': 732,
-    'Alpha': 913,
-    'Beta': 914,
-    'Gamma': 915,
-    'Delta': 916,
-    'Epsilon': 917,
-    'Zeta': 918,
-    'Eta': 919,
-    'Theta': 920,
-    'Iota': 921,
-    'Kappa': 922,
-    'Lambda': 923,
-    'Mu': 924,
-    'Nu': 925,
-    'Xi': 926,
-    'Omicron': 927,
-    'Pi': 928,
-    'Rho': 929,
-    'Sigma': 931,
-    'Tau': 932,
-    'Upsilon': 933,
-    'Phi': 934,
-    'Chi': 935,
-    'Psi': 936,
-    'Omega': 937,
-    'alpha': 945,
-    'beta': 946,
-    'gamma': 947,
-    'delta': 948,
-    'epsilon': 949,
-    'zeta': 950,
-    'eta': 951,
-    'theta': 952,
-    'iota': 953,
-    'kappa': 954,
-    'lambda': 955,
-    'mu': 956,
-    'nu': 957,
-    'xi': 958,
-    'omicron': 959,
-    'pi': 960,
-    'rho': 961,
-    'sigmaf': 962,
-    'sigma': 963,
-    'tau': 964,
-    'upsilon': 965,
-    'phi': 966,
-    'chi': 967,
-    'psi': 968,
-    'omega': 969,
-    'thetasym': 977,
-    'upsih': 978,
-    'piv': 982,
-    'ensp': 8194,
-    'emsp': 8195,
-    'thinsp': 8201,
-    'zwnj': 8204,
-    'zwj': 8205,
-    'lrm': 8206,
-    'rlm': 8207,
-    'ndash': 8211,
-    'mdash': 8212,
-    'lsquo': 8216,
-    'rsquo': 8217,
-    'sbquo': 8218,
-    'ldquo': 8220,
-    'rdquo': 8221,
-    'bdquo': 8222,
-    'dagger': 8224,
-    'Dagger': 8225,
-    'bull': 8226,
-    'hellip': 8230,
-    'permil': 8240,
-    'prime': 8242,
-    'Prime': 8243,
-    'lsaquo': 8249,
-    'rsaquo': 8250,
-    'oline': 8254,
-    'frasl': 8260,
-    'euro': 8364,
-    'image': 8465,
-    'weierp': 8472,
-    'real': 8476,
-    'trade': 8482,
-    'alefsym': 8501,
-    'larr': 8592,
-    'uarr': 8593,
-    'rarr': 8594,
-    'darr': 8595,
-    'harr': 8596,
-    'crarr': 8629,
-    'lArr': 8656,
-    'uArr': 8657,
-    'rArr': 8658,
-    'dArr': 8659,
-    'hArr': 8660,
-    'forall': 8704,
-    'part': 8706,
-    'exist': 8707,
-    'empty': 8709,
-    'nabla': 8711,
-    'isin': 8712,
-    'notin': 8713,
-    'ni': 8715,
-    'prod': 8719,
-    'sum': 8721,
-    'minus': 8722,
-    'lowast': 8727,
-    'radic': 8730,
-    'prop': 8733,
-    'infin': 8734,
-    'ang': 8736,
-    'and': 8743,
-    'or': 8744,
-    'cap': 8745,
-    'cup': 8746,
-    'int': 8747,
-    'there4': 8756,
-    'sim': 8764,
-    'cong': 8773,
-    'asymp': 8776,
-    'ne': 8800,
-    'equiv': 8801,
-    'le': 8804,
-    'ge': 8805,
-    'sub': 8834,
-    'sup': 8835,
-    'nsub': 8836,
-    'sube': 8838,
-    'supe': 8839,
-    'oplus': 8853,
-    'otimes': 8855,
-    'perp': 8869,
-    'sdot': 8901,
-    'lceil': 8968,
-    'rceil': 8969,
-    'lfloor': 8970,
-    'rfloor': 8971,
-    'lang': 9001,
-    'rang': 9002,
-    'loz': 9674,
-    'spades': 9824,
-    'clubs': 9827,
-    'hearts': 9829,
-    'diams': 9830
+    amp: '&',
+    gt: '>',
+    lt: '<',
+    quot: '"',
+    apos: "'",
+    AElig: 198,
+    Aacute: 193,
+    Acirc: 194,
+    Agrave: 192,
+    Aring: 197,
+    Atilde: 195,
+    Auml: 196,
+    Ccedil: 199,
+    ETH: 208,
+    Eacute: 201,
+    Ecirc: 202,
+    Egrave: 200,
+    Euml: 203,
+    Iacute: 205,
+    Icirc: 206,
+    Igrave: 204,
+    Iuml: 207,
+    Ntilde: 209,
+    Oacute: 211,
+    Ocirc: 212,
+    Ograve: 210,
+    Oslash: 216,
+    Otilde: 213,
+    Ouml: 214,
+    THORN: 222,
+    Uacute: 218,
+    Ucirc: 219,
+    Ugrave: 217,
+    Uuml: 220,
+    Yacute: 221,
+    aacute: 225,
+    acirc: 226,
+    aelig: 230,
+    agrave: 224,
+    aring: 229,
+    atilde: 227,
+    auml: 228,
+    ccedil: 231,
+    eacute: 233,
+    ecirc: 234,
+    egrave: 232,
+    eth: 240,
+    euml: 235,
+    iacute: 237,
+    icirc: 238,
+    igrave: 236,
+    iuml: 239,
+    ntilde: 241,
+    oacute: 243,
+    ocirc: 244,
+    ograve: 242,
+    oslash: 248,
+    otilde: 245,
+    ouml: 246,
+    szlig: 223,
+    thorn: 254,
+    uacute: 250,
+    ucirc: 251,
+    ugrave: 249,
+    uuml: 252,
+    yacute: 253,
+    yuml: 255,
+    copy: 169,
+    reg: 174,
+    nbsp: 160,
+    iexcl: 161,
+    cent: 162,
+    pound: 163,
+    curren: 164,
+    yen: 165,
+    brvbar: 166,
+    sect: 167,
+    uml: 168,
+    ordf: 170,
+    laquo: 171,
+    not: 172,
+    shy: 173,
+    macr: 175,
+    deg: 176,
+    plusmn: 177,
+    sup1: 185,
+    sup2: 178,
+    sup3: 179,
+    acute: 180,
+    micro: 181,
+    para: 182,
+    middot: 183,
+    cedil: 184,
+    ordm: 186,
+    raquo: 187,
+    frac14: 188,
+    frac12: 189,
+    frac34: 190,
+    iquest: 191,
+    times: 215,
+    divide: 247,
+    OElig: 338,
+    oelig: 339,
+    Scaron: 352,
+    scaron: 353,
+    Yuml: 376,
+    fnof: 402,
+    circ: 710,
+    tilde: 732,
+    Alpha: 913,
+    Beta: 914,
+    Gamma: 915,
+    Delta: 916,
+    Epsilon: 917,
+    Zeta: 918,
+    Eta: 919,
+    Theta: 920,
+    Iota: 921,
+    Kappa: 922,
+    Lambda: 923,
+    Mu: 924,
+    Nu: 925,
+    Xi: 926,
+    Omicron: 927,
+    Pi: 928,
+    Rho: 929,
+    Sigma: 931,
+    Tau: 932,
+    Upsilon: 933,
+    Phi: 934,
+    Chi: 935,
+    Psi: 936,
+    Omega: 937,
+    alpha: 945,
+    beta: 946,
+    gamma: 947,
+    delta: 948,
+    epsilon: 949,
+    zeta: 950,
+    eta: 951,
+    theta: 952,
+    iota: 953,
+    kappa: 954,
+    lambda: 955,
+    mu: 956,
+    nu: 957,
+    xi: 958,
+    omicron: 959,
+    pi: 960,
+    rho: 961,
+    sigmaf: 962,
+    sigma: 963,
+    tau: 964,
+    upsilon: 965,
+    phi: 966,
+    chi: 967,
+    psi: 968,
+    omega: 969,
+    thetasym: 977,
+    upsih: 978,
+    piv: 982,
+    ensp: 8194,
+    emsp: 8195,
+    thinsp: 8201,
+    zwnj: 8204,
+    zwj: 8205,
+    lrm: 8206,
+    rlm: 8207,
+    ndash: 8211,
+    mdash: 8212,
+    lsquo: 8216,
+    rsquo: 8217,
+    sbquo: 8218,
+    ldquo: 8220,
+    rdquo: 8221,
+    bdquo: 8222,
+    dagger: 8224,
+    Dagger: 8225,
+    bull: 8226,
+    hellip: 8230,
+    permil: 8240,
+    prime: 8242,
+    Prime: 8243,
+    lsaquo: 8249,
+    rsaquo: 8250,
+    oline: 8254,
+    frasl: 8260,
+    euro: 8364,
+    image: 8465,
+    weierp: 8472,
+    real: 8476,
+    trade: 8482,
+    alefsym: 8501,
+    larr: 8592,
+    uarr: 8593,
+    rarr: 8594,
+    darr: 8595,
+    harr: 8596,
+    crarr: 8629,
+    lArr: 8656,
+    uArr: 8657,
+    rArr: 8658,
+    dArr: 8659,
+    hArr: 8660,
+    forall: 8704,
+    part: 8706,
+    exist: 8707,
+    empty: 8709,
+    nabla: 8711,
+    isin: 8712,
+    notin: 8713,
+    ni: 8715,
+    prod: 8719,
+    sum: 8721,
+    minus: 8722,
+    lowast: 8727,
+    radic: 8730,
+    prop: 8733,
+    infin: 8734,
+    ang: 8736,
+    and: 8743,
+    or: 8744,
+    cap: 8745,
+    cup: 8746,
+    int: 8747,
+    there4: 8756,
+    sim: 8764,
+    cong: 8773,
+    asymp: 8776,
+    ne: 8800,
+    equiv: 8801,
+    le: 8804,
+    ge: 8805,
+    sub: 8834,
+    sup: 8835,
+    nsub: 8836,
+    sube: 8838,
+    supe: 8839,
+    oplus: 8853,
+    otimes: 8855,
+    perp: 8869,
+    sdot: 8901,
+    lceil: 8968,
+    rceil: 8969,
+    lfloor: 8970,
+    rfloor: 8971,
+    lang: 9001,
+    rang: 9002,
+    loz: 9674,
+    spades: 9824,
+    clubs: 9827,
+    hearts: 9829,
+    diams: 9830,
   }
 
   Object.keys(sax.ENTITIES).forEach(function (key) {
@@ -13782,33 +14254,90 @@ SafeBuffer.allocUnsafeSlow = function (size) {
   // shorthand
   S = sax.STATE
 
-  function emit (parser, event, data) {
+  function emit(parser, event, data) {
     parser[event] && parser[event](data)
   }
 
-  function emitNode (parser, nodeType, data) {
+  function getDeclaredEncoding(body) {
+    var match = body && body.match(/(?:^|\s)encoding\s*=\s*(['"])([^'"]+)\1/i)
+    return match ? match[2] : null
+  }
+
+  function normalizeEncodingName(encoding) {
+    if (!encoding) {
+      return null
+    }
+
+    return encoding.toLowerCase().replace(/[^a-z0-9]/g, '')
+  }
+
+  function encodingsMatch(detectedEncoding, declaredEncoding) {
+    const detected = normalizeEncodingName(detectedEncoding)
+    const declared = normalizeEncodingName(declaredEncoding)
+
+    if (!detected || !declared) {
+      return true
+    }
+
+    if (declared === 'utf16') {
+      return detected === 'utf16le' || detected === 'utf16be'
+    }
+
+    return detected === declared
+  }
+
+  function validateXmlDeclarationEncoding(parser, data) {
+    if (
+      !parser.strict ||
+      !parser.encoding ||
+      !data ||
+      data.name !== 'xml'
+    ) {
+      return
+    }
+
+    var declaredEncoding = getDeclaredEncoding(data.body)
+    if (
+      declaredEncoding &&
+      !encodingsMatch(parser.encoding, declaredEncoding)
+    ) {
+      strictFail(
+        parser,
+        'XML declaration encoding ' +
+          declaredEncoding +
+          ' does not match detected stream encoding ' +
+          parser.encoding.toUpperCase()
+      )
+    }
+  }
+
+  function emitNode(parser, nodeType, data) {
     if (parser.textNode) closeText(parser)
     emit(parser, nodeType, data)
   }
 
-  function closeText (parser) {
+  function closeText(parser) {
     parser.textNode = textopts(parser.opt, parser.textNode)
     if (parser.textNode) emit(parser, 'ontext', parser.textNode)
     parser.textNode = ''
   }
 
-  function textopts (opt, text) {
+  function textopts(opt, text) {
     if (opt.trim) text = text.trim()
     if (opt.normalize) text = text.replace(/\s+/g, ' ')
     return text
   }
 
-  function error (parser, er) {
+  function error(parser, er) {
     closeText(parser)
     if (parser.trackPosition) {
-      er += '\nLine: ' + parser.line +
-        '\nColumn: ' + parser.column +
-        '\nChar: ' + parser.c
+      er +=
+        '\nLine: ' +
+        parser.line +
+        '\nColumn: ' +
+        parser.column +
+        '\nChar: ' +
+        parser.c
     }
     er = new Error(er)
     parser.error = er
@@ -13816,11 +14345,14 @@ SafeBuffer.allocUnsafeSlow = function (size) {
     return parser
   }
 
-  function end (parser) {
-    if (parser.sawRoot && !parser.closedRoot) strictFail(parser, 'Unclosed root tag')
-    if ((parser.state !== S.BEGIN) &&
-      (parser.state !== S.BEGIN_WHITESPACE) &&
-      (parser.state !== S.TEXT)) {
+  function end(parser) {
+    if (parser.sawRoot && !parser.closedRoot)
+      strictFail(parser, 'Unclosed root tag')
+    if (
+      parser.state !== S.BEGIN &&
+      parser.state !== S.BEGIN_WHITESPACE &&
+      parser.state !== S.TEXT
+    ) {
       error(parser, 'Unexpected end')
     }
     closeText(parser)
@@ -13831,7 +14363,7 @@ SafeBuffer.allocUnsafeSlow = function (size) {
     return parser
   }
 
-  function strictFail (parser, message) {
+  function strictFail(parser, message) {
     if (typeof parser !== 'object' || !(parser instanceof SAXParser)) {
       throw new Error('bad call to strictFail')
     }
@@ -13840,10 +14372,10 @@ SafeBuffer.allocUnsafeSlow = function (size) {
     }
   }
 
-  function newTag (parser) {
+  function newTag(parser) {
     if (!parser.strict) parser.tagName = parser.tagName[parser.looseCase]()
     var parent = parser.tags[parser.tags.length - 1] || parser
-    var tag = parser.tag = { name: parser.tagName, attributes: {} }
+    var tag = (parser.tag = { name: parser.tagName, attributes: {} })
 
     // will be overridden if tag contails an xmlns="foo" or xmlns:foo="bar"
     if (parser.opt.xmlns) {
@@ -13853,9 +14385,9 @@ SafeBuffer.allocUnsafeSlow = function (size) {
     emitNode(parser, 'onopentagstart', tag)
   }
 
-  function qname (name, attribute) {
+  function qname(name, attribute) {
     var i = name.indexOf(':')
-    var qualName = i < 0 ? [ '', name ] : name.split(':')
+    var qualName = i < 0 ? ['', name] : name.split(':')
     var prefix = qualName[0]
     var local = qualName[1]
 
@@ -13868,13 +14400,15 @@ SafeBuffer.allocUnsafeSlow = function (size) {
     return { prefix: prefix, local: local }
   }
 
-  function attrib (parser) {
+  function attrib(parser) {
     if (!parser.strict) {
       parser.attribName = parser.attribName[parser.looseCase]()
     }
 
-    if (parser.attribList.indexOf(parser.attribName) !== -1 ||
-      parser.tag.attributes.hasOwnProperty(parser.attribName)) {
+    if (
+      parser.attribList.indexOf(parser.attribName) !== -1 ||
+      parser.tag.attributes.hasOwnProperty(parser.attribName)
+    ) {
       parser.attribName = parser.attribValue = ''
       return
     }
@@ -13887,13 +14421,26 @@ SafeBuffer.allocUnsafeSlow = function (size) {
       if (prefix === 'xmlns') {
         // namespace binding attribute. push the binding into scope
         if (local === 'xml' && parser.attribValue !== XML_NAMESPACE) {
-          strictFail(parser,
-            'xml: prefix must be bound to ' + XML_NAMESPACE + '\n' +
-            'Actual: ' + parser.attribValue)
-        } else if (local === 'xmlns' && parser.attribValue !== XMLNS_NAMESPACE) {
-          strictFail(parser,
-            'xmlns: prefix must be bound to ' + XMLNS_NAMESPACE + '\n' +
-            'Actual: ' + parser.attribValue)
+          strictFail(
+            parser,
+            'xml: prefix must be bound to ' +
+              XML_NAMESPACE +
+              '\n' +
+              'Actual: ' +
+              parser.attribValue
+          )
+        } else if (
+          local === 'xmlns' &&
+          parser.attribValue !== XMLNS_NAMESPACE
+        ) {
+          strictFail(
+            parser,
+            'xmlns: prefix must be bound to ' +
+              XMLNS_NAMESPACE +
+              '\n' +
+              'Actual: ' +
+              parser.attribValue
+          )
         } else {
           var tag = parser.tag
           var parent = parser.tags[parser.tags.length - 1] || parser
@@ -13913,14 +14460,14 @@ SafeBuffer.allocUnsafeSlow = function (size) {
       parser.tag.attributes[parser.attribName] = parser.attribValue
       emitNode(parser, 'onattribute', {
         name: parser.attribName,
-        value: parser.attribValue
+        value: parser.attribValue,
       })
     }
 
     parser.attribName = parser.attribValue = ''
   }
 
-  function openTag (parser, selfClosing) {
+  function openTag(parser, selfClosing) {
     if (parser.opt.xmlns) {
       // emit namespace binding events
       var tag = parser.tag
@@ -13932,8 +14479,10 @@ SafeBuffer.allocUnsafeSlow = function (size) {
       tag.uri = tag.ns[qn.prefix] || ''
 
       if (tag.prefix && !tag.uri) {
-        strictFail(parser, 'Unbound namespace prefix: ' +
-          JSON.stringify(parser.tagName))
+        strictFail(
+          parser,
+          'Unbound namespace prefix: ' + JSON.stringify(parser.tagName)
+        )
         tag.uri = qn.prefix
       }
 
@@ -13942,7 +14491,7 @@ SafeBuffer.allocUnsafeSlow = function (size) {
         Object.keys(tag.ns).forEach(function (p) {
           emitNode(parser, 'onopennamespace', {
             prefix: p,
-            uri: tag.ns[p]
+            uri: tag.ns[p],
           })
         })
       }
@@ -13957,20 +14506,22 @@ SafeBuffer.allocUnsafeSlow = function (size) {
         var qualName = qname(name, true)
         var prefix = qualName.prefix
         var local = qualName.local
-        var uri = prefix === '' ? '' : (tag.ns[prefix] || '')
+        var uri = prefix === '' ? '' : tag.ns[prefix] || ''
         var a = {
           name: name,
           value: value,
           prefix: prefix,
           local: local,
-          uri: uri
+          uri: uri,
         }
 
         // if there's any attributes with an undefined namespace,
         // then fail on them now.
         if (prefix && prefix !== 'xmlns' && !uri) {
-          strictFail(parser, 'Unbound namespace prefix: ' +
-            JSON.stringify(prefix))
+          strictFail(
+            parser,
+            'Unbound namespace prefix: ' + JSON.stringify(prefix)
+          )
           a.uri = prefix
         }
         parser.tag.attributes[name] = a
@@ -13999,7 +14550,7 @@ SafeBuffer.allocUnsafeSlow = function (size) {
     parser.attribList.length = 0
   }
 
-  function closeTag (parser) {
+  function closeTag(parser) {
     if (!parser.tagName) {
       strictFail(parser, 'Weird empty close tag.')
       parser.textNode += '</>'
@@ -14046,7 +14597,7 @@ SafeBuffer.allocUnsafeSlow = function (size) {
     parser.tagName = tagName
     var s = parser.tags.length
     while (s-- > t) {
-      var tag = parser.tag = parser.tags.pop()
+      var tag = (parser.tag = parser.tags.pop())
       parser.tagName = parser.tag.name
       emitNode(parser, 'onclosetag', parser.tagName)
 
@@ -14070,7 +14621,7 @@ SafeBuffer.allocUnsafeSlow = function (size) {
     parser.state = S.TEXT
   }
 
-  function parseEntity (parser) {
+  function parseEntity(parser) {
     var entity = parser.entity
     var entityLC = entity.toLowerCase()
     var num
@@ -14095,7 +14646,12 @@ SafeBuffer.allocUnsafeSlow = function (size) {
       }
     }
     entity = entity.replace(/^0+/, '')
-    if (isNaN(num) || numStr.toLowerCase() !== entity) {
+    if (
+      isNaN(num) ||
+      numStr.toLowerCase() !== entity ||
+      num < 0 ||
+      num > 0x10ffff
+    ) {
       strictFail(parser, 'Invalid character entity')
       return '&' + parser.entity + ';'
     }
@@ -14103,7 +14659,7 @@ SafeBuffer.allocUnsafeSlow = function (size) {
     return String.fromCodePoint(num)
   }
 
-  function beginWhiteSpace (parser, c) {
+  function beginWhiteSpace(parser, c) {
     if (c === '<') {
       parser.state = S.OPEN_WAKA
       parser.startTagPosition = parser.position
@@ -14116,7 +14672,7 @@ SafeBuffer.allocUnsafeSlow = function (size) {
     }
   }
 
-  function charAt (chunk, i) {
+  function charAt(chunk, i) {
     var result = ''
     if (i < chunk.length) {
       result = chunk.charAt(i)
@@ -14124,14 +14680,16 @@ SafeBuffer.allocUnsafeSlow = function (size) {
     return result
   }
 
-  function write (chunk) {
+  function write(chunk) {
     var parser = this
     if (this.error) {
       throw this.error
     }
     if (parser.closed) {
-      return error(parser,
-        'Cannot write after close. Assign an onready handler.')
+      return error(
+        parser,
+        'Cannot write after close. Assign an onready handler.'
+      )
     }
     if (chunk === null) {
       return end(parser)
@@ -14189,11 +14747,17 @@ SafeBuffer.allocUnsafeSlow = function (size) {
             }
             parser.textNode += chunk.substring(starti, i - 1)
           }
-          if (c === '<' && !(parser.sawRoot && parser.closedRoot && !parser.strict)) {
+          if (
+            c === '<' &&
+            !(parser.sawRoot && parser.closedRoot && !parser.strict)
+          ) {
             parser.state = S.OPEN_WAKA
             parser.startTagPosition = parser.position
           } else {
-            if (!isWhitespace(c) && (!parser.sawRoot || parser.closedRoot)) {
+            if (
+              !isWhitespace(c) &&
+              (!parser.sawRoot || parser.closedRoot)
+            ) {
               strictFail(parser, 'Text data outside of root node.')
             }
             if (c === '&') {
@@ -14255,10 +14819,14 @@ SafeBuffer.allocUnsafeSlow = function (size) {
             parser.state = S.COMMENT
             parser.comment = ''
             parser.sgmlDecl = ''
-            continue;
+            continue
           }
 
-          if (parser.doctype && parser.doctype !== true && parser.sgmlDecl) {
+          if (
+            parser.doctype &&
+            parser.doctype !== true &&
+            parser.sgmlDecl
+          ) {
             parser.state = S.DOCTYPE_DTD
             parser.doctype += '<!' + parser.sgmlDecl + c
             parser.sgmlDecl = ''
@@ -14270,8 +14838,10 @@ SafeBuffer.allocUnsafeSlow = function (size) {
           } else if ((parser.sgmlDecl + c).toUpperCase() === DOCTYPE) {
             parser.state = S.DOCTYPE
             if (parser.doctype || parser.sawRoot) {
-              strictFail(parser,
-                'Inappropriately located doctype declaration')
+              strictFail(
+                parser,
+                'Inappropriately located doctype declaration'
+              )
             }
             parser.doctype = ''
             parser.sgmlDecl = ''
@@ -14380,10 +14950,22 @@ SafeBuffer.allocUnsafeSlow = function (size) {
           continue
 
         case S.CDATA:
+          var starti = i - 1
+          while (c && c !== ']') {
+            c = charAt(chunk, i++)
+            if (c && parser.trackPosition) {
+              parser.position++
+              if (c === '\n') {
+                parser.line++
+                parser.column = 0
+              } else {
+                parser.column++
+              }
+            }
+          }
+          parser.cdata += chunk.substring(starti, i - 1)
           if (c === ']') {
             parser.state = S.CDATA_ENDING
-          } else {
-            parser.cdata += c
           }
           continue
 
@@ -14434,10 +15016,12 @@ SafeBuffer.allocUnsafeSlow = function (size) {
 
         case S.PROC_INST_ENDING:
           if (c === '>') {
-            emitNode(parser, 'onprocessinginstruction', {
+            const procInstEndData = {
               name: parser.procInstName,
-              body: parser.procInstBody
-            })
+              body: parser.procInstBody,
+            }
+            validateXmlDeclarationEncoding(parser, procInstEndData)
+            emitNode(parser, 'onprocessinginstruction', procInstEndData)
             parser.procInstName = parser.procInstBody = ''
             parser.state = S.TEXT
           } else {
@@ -14469,7 +15053,10 @@ SafeBuffer.allocUnsafeSlow = function (size) {
             openTag(parser, true)
             closeTag(parser)
           } else {
-            strictFail(parser, 'Forward-slash in opening tag not followed by >')
+            strictFail(
+              parser,
+              'Forward-slash in opening tag not followed by >'
+            )
             parser.state = S.ATTRIB
           }
           continue
@@ -14519,7 +15106,7 @@ SafeBuffer.allocUnsafeSlow = function (size) {
             parser.attribValue = ''
             emitNode(parser, 'onattribute', {
               name: parser.attribName,
-              value: ''
+              value: '',
             })
             parser.attribName = ''
             if (c === '>') {
@@ -14616,7 +15203,7 @@ SafeBuffer.allocUnsafeSlow = function (size) {
           } else if (isMatch(nameBody, c)) {
             parser.tagName += c
           } else if (parser.script) {
-            parser.script += '</' + parser.tagName
+            parser.script += '</' + parser.tagName + c
             parser.tagName = ''
             parser.state = S.SCRIPT
           } else {
@@ -14662,16 +15249,36 @@ SafeBuffer.allocUnsafeSlow = function (size) {
 
           if (c === ';') {
             var parsedEntity = parseEntity(parser)
-            if (parser.opt.unparsedEntities && !Object.values(sax.XML_ENTITIES).includes(parsedEntity)) {
+            if (
+              parser.opt.unparsedEntities &&
+              !Object.values(sax.XML_ENTITIES).includes(parsedEntity)
+            ) {
+              if ((parser.entityCount += 1) > parser.opt.maxEntityCount) {
+                error(
+                  parser,
+                  'Parsed entity count exceeds max entity count'
+                )
+              }
+
+              if ((parser.entityDepth += 1) > parser.opt.maxEntityDepth) {
+                error(
+                  parser,
+                  'Parsed entity depth exceeds max entity depth'
+                )
+              }
+
               parser.entity = ''
               parser.state = returnState
               parser.write(parsedEntity)
+              parser.entityDepth -= 1
             } else {
               parser[buffer] += parsedEntity
               parser.entity = ''
               parser.state = returnState
             }
-          } else if (isMatch(parser.entity.length ? entityBody : entityStart, c)) {
+          } else if (
+            isMatch(parser.entity.length ? entityBody : entityStart, c)
+          ) {
             parser.entity += c
           } else {
             strictFail(parser, 'Invalid character in entity name')
@@ -14697,7 +15304,7 @@ SafeBuffer.allocUnsafeSlow = function (size) {
   /*! http://mths.be/fromcodepoint v0.1.0 by @mathias */
   /* istanbul ignore next */
   if (!String.fromCodePoint) {
-    (function () {
+    ;(function () {
       var stringFromCharCode = String.fromCharCode
       var floor = Math.floor
       var fromCodePoint = function () {
@@ -14716,18 +15323,20 @@ SafeBuffer.allocUnsafeSlow = function (size) {
           if (
             !isFinite(codePoint) || // `NaN`, `+Infinity`, or `-Infinity`
             codePoint < 0 || // not a valid Unicode code point
-            codePoint > 0x10FFFF || // not a valid Unicode code point
+            codePoint > 0x10ffff || // not a valid Unicode code point
             floor(codePoint) !== codePoint // not an integer
           ) {
             throw RangeError('Invalid code point: ' + codePoint)
           }
-          if (codePoint <= 0xFFFF) { // BMP code point
+          if (codePoint <= 0xffff) {
+            // BMP code point
             codeUnits.push(codePoint)
-          } else { // Astral code point; split in surrogate halves
+          } else {
+            // Astral code point; split in surrogate halves
             // http://mathiasbynens.be/notes/javascript-encoding#surrogate-formulae
             codePoint -= 0x10000
-            highSurrogate = (codePoint >> 10) + 0xD800
-            lowSurrogate = (codePoint % 0x400) + 0xDC00
+            highSurrogate = (codePoint >> 10) + 0xd800
+            lowSurrogate = (codePoint % 0x400) + 0xdc00
             codeUnits.push(highSurrogate, lowSurrogate)
           }
           if (index + 1 === length || codeUnits.length > MAX_SIZE) {
@@ -14742,17 +15351,17 @@ SafeBuffer.allocUnsafeSlow = function (size) {
         Object.defineProperty(String, 'fromCodePoint', {
           value: fromCodePoint,
           configurable: true,
-          writable: true
+          writable: true,
         })
       } else {
         String.fromCodePoint = fromCodePoint
       }
-    }())
+    })()
   }
-})(typeof exports === 'undefined' ? this.sax = {} : exports)
+})(typeof exports === 'undefined' ? (this.sax = {}) : exports)
 
 }).call(this)}).call(this,require("buffer").Buffer)
-},{"buffer":76,"stream":98,"string_decoder":113}],98:[function(require,module,exports){
+},{"buffer":76,"stream":97}],97:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -14883,7 +15492,7 @@ Stream.prototype.pipe = function(dest, options) {
   return dest;
 };
 
-},{"events":78,"inherits":85,"readable-stream/lib/_stream_duplex.js":100,"readable-stream/lib/_stream_passthrough.js":101,"readable-stream/lib/_stream_readable.js":102,"readable-stream/lib/_stream_transform.js":103,"readable-stream/lib/_stream_writable.js":104,"readable-stream/lib/internal/streams/end-of-stream.js":108,"readable-stream/lib/internal/streams/pipeline.js":110}],99:[function(require,module,exports){
+},{"events":78,"inherits":84,"readable-stream/lib/_stream_duplex.js":99,"readable-stream/lib/_stream_passthrough.js":100,"readable-stream/lib/_stream_readable.js":101,"readable-stream/lib/_stream_transform.js":102,"readable-stream/lib/_stream_writable.js":103,"readable-stream/lib/internal/streams/end-of-stream.js":107,"readable-stream/lib/internal/streams/pipeline.js":109}],98:[function(require,module,exports){
 'use strict';
 
 function _inheritsLoose(subClass, superClass) { subClass.prototype = Object.create(superClass.prototype); subClass.prototype.constructor = subClass; subClass.__proto__ = superClass; }
@@ -15012,7 +15621,7 @@ createErrorType('ERR_UNKNOWN_ENCODING', function (arg) {
 createErrorType('ERR_STREAM_UNSHIFT_AFTER_END_EVENT', 'stream.unshift() after end event');
 module.exports.codes = codes;
 
-},{}],100:[function(require,module,exports){
+},{}],99:[function(require,module,exports){
 (function (process){(function (){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -15141,7 +15750,7 @@ Object.defineProperty(Duplex.prototype, 'destroyed', {
   }
 });
 }).call(this)}).call(this,require('_process'))
-},{"./_stream_readable":102,"./_stream_writable":104,"_process":95,"inherits":85}],101:[function(require,module,exports){
+},{"./_stream_readable":101,"./_stream_writable":103,"_process":94,"inherits":84}],100:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -15179,7 +15788,7 @@ function PassThrough(options) {
 PassThrough.prototype._transform = function (chunk, encoding, cb) {
   cb(null, chunk);
 };
-},{"./_stream_transform":103,"inherits":85}],102:[function(require,module,exports){
+},{"./_stream_transform":102,"inherits":84}],101:[function(require,module,exports){
 (function (process,global){(function (){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -16209,7 +16818,7 @@ function indexOf(xs, x) {
   return -1;
 }
 }).call(this)}).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"../errors":99,"./_stream_duplex":100,"./internal/streams/async_iterator":105,"./internal/streams/buffer_list":106,"./internal/streams/destroy":107,"./internal/streams/from":109,"./internal/streams/state":111,"./internal/streams/stream":112,"_process":95,"buffer":76,"events":78,"inherits":85,"string_decoder/":113,"util":75}],103:[function(require,module,exports){
+},{"../errors":98,"./_stream_duplex":99,"./internal/streams/async_iterator":104,"./internal/streams/buffer_list":105,"./internal/streams/destroy":106,"./internal/streams/from":108,"./internal/streams/state":110,"./internal/streams/stream":111,"_process":94,"buffer":76,"events":78,"inherits":84,"string_decoder/":112,"util":75}],102:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -16400,7 +17009,7 @@ function done(stream, er, data) {
   if (stream._transformState.transforming) throw new ERR_TRANSFORM_ALREADY_TRANSFORMING();
   return stream.push(null);
 }
-},{"../errors":99,"./_stream_duplex":100,"inherits":85}],104:[function(require,module,exports){
+},{"../errors":98,"./_stream_duplex":99,"inherits":84}],103:[function(require,module,exports){
 (function (process,global){(function (){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -17044,7 +17653,7 @@ Writable.prototype._destroy = function (err, cb) {
   cb(err);
 };
 }).call(this)}).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"../errors":99,"./_stream_duplex":100,"./internal/streams/destroy":107,"./internal/streams/state":111,"./internal/streams/stream":112,"_process":95,"buffer":76,"inherits":85,"util-deprecate":114}],105:[function(require,module,exports){
+},{"../errors":98,"./_stream_duplex":99,"./internal/streams/destroy":106,"./internal/streams/state":110,"./internal/streams/stream":111,"_process":94,"buffer":76,"inherits":84,"util-deprecate":113}],104:[function(require,module,exports){
 (function (process){(function (){
 'use strict';
 
@@ -17227,7 +17836,7 @@ var createReadableStreamAsyncIterator = function createReadableStreamAsyncIterat
 };
 module.exports = createReadableStreamAsyncIterator;
 }).call(this)}).call(this,require('_process'))
-},{"./end-of-stream":108,"_process":95}],106:[function(require,module,exports){
+},{"./end-of-stream":107,"_process":94}],105:[function(require,module,exports){
 'use strict';
 
 function ownKeys(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); enumerableOnly && (symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; })), keys.push.apply(keys, symbols); } return keys; }
@@ -17411,7 +18020,7 @@ module.exports = /*#__PURE__*/function () {
   }]);
   return BufferList;
 }();
-},{"buffer":76,"util":75}],107:[function(require,module,exports){
+},{"buffer":76,"util":75}],106:[function(require,module,exports){
 (function (process){(function (){
 'use strict';
 
@@ -17510,7 +18119,7 @@ module.exports = {
   errorOrDestroy: errorOrDestroy
 };
 }).call(this)}).call(this,require('_process'))
-},{"_process":95}],108:[function(require,module,exports){
+},{"_process":94}],107:[function(require,module,exports){
 // Ported from https://github.com/mafintosh/end-of-stream with
 // permission from the author, Mathias Buus (@mafintosh).
 
@@ -17597,12 +18206,12 @@ function eos(stream, opts, callback) {
   };
 }
 module.exports = eos;
-},{"../../../errors":99}],109:[function(require,module,exports){
+},{"../../../errors":98}],108:[function(require,module,exports){
 module.exports = function () {
   throw new Error('Readable.from is not available in the browser')
 };
 
-},{}],110:[function(require,module,exports){
+},{}],109:[function(require,module,exports){
 // Ported from https://github.com/mafintosh/pump with
 // permission from the author, Mathias Buus (@mafintosh).
 
@@ -17689,7 +18298,7 @@ function pipeline() {
   return streams.reduce(pipe);
 }
 module.exports = pipeline;
-},{"../../../errors":99,"./end-of-stream":108}],111:[function(require,module,exports){
+},{"../../../errors":98,"./end-of-stream":107}],110:[function(require,module,exports){
 'use strict';
 
 var ERR_INVALID_OPT_VALUE = require('../../../errors').codes.ERR_INVALID_OPT_VALUE;
@@ -17712,10 +18321,10 @@ function getHighWaterMark(state, options, duplexKey, isDuplex) {
 module.exports = {
   getHighWaterMark: getHighWaterMark
 };
-},{"../../../errors":99}],112:[function(require,module,exports){
+},{"../../../errors":98}],111:[function(require,module,exports){
 module.exports = require('events').EventEmitter;
 
-},{"events":78}],113:[function(require,module,exports){
+},{"events":78}],112:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -18012,7 +18621,7 @@ function simpleWrite(buf) {
 function simpleEnd(buf) {
   return buf && buf.length ? this.write(buf) : '';
 }
-},{"safe-buffer":96}],114:[function(require,module,exports){
+},{"safe-buffer":95}],113:[function(require,module,exports){
 (function (global){(function (){
 
 /**
