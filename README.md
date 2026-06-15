@@ -1,6 +1,6 @@
-[![Linux Build Status](https://travis-ci.org/nturley/netlistsvg.svg?branch=master)](https://travis-ci.org/nturley/netlistsvg)
-[![Windows Build status](https://ci.appveyor.com/api/projects/status/heijuq5nhw9m7rib/branch/master?svg=true)](https://ci.appveyor.com/project/nturley/netlistsvg/branch/master)
-[![Gitter chat](https://badges.gitter.im/nturley/netlistsvg.png)](https://gitter.im/netlistsvg)
+[![Linux Build Status](https://travis-ci.org/ajsb85/netlistsvg.svg?branch=master)](https://travis-ci.org/ajsb85/netlistsvg)
+[![Windows Build status](https://ci.appveyor.com/api/projects/status/heijuq5nhw9m7rib/branch/master?svg=true)](https://ci.appveyor.com/project/ajsb85/netlistsvg/branch/master)
+[![Gitter chat](https://badges.gitter.im/ajsb85/netlistsvg.png)](https://gitter.im/netlistsvg)
 [![npm version](https://badge.fury.io/js/netlistsvg.svg)](https://badge.fury.io/js/netlistsvg)
 ![npm](https://img.shields.io/npm/dm/netlistsvg.svg)
 
