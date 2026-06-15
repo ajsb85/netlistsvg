@@ -2,7 +2,7 @@
 
 > **⚠️ Notice:** This repository is an [orphan fork](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/what-happens-to-forks-when-a-repository-is-deleted-or-changes-visibility) maintained by [@ajsb85](https://github.com/ajsb85). The original upstream repository by nturley is no longer maintained or available.
 
-draws an SVG schematic from a [yosys](https://github.com/yosyshq/yosys) JSON netlist. This can be generated [the `write_json` command](https://yosyshq.readthedocs.io/projects/yosys/en/latest/cmd/write_json.html). It uses [elkjs](https://github.com/OpenKieler/elkjs) for layout.
+draws an SVG schematic from a [yosys](https://github.com/yosyshq/yosys) JSON netlist. This can be generated using [the `write_json` command](https://yosyshq.readthedocs.io/projects/yosys/en/latest/cmd/write_json.html). It uses [elkjs](https://github.com/OpenKieler/elkjs) for layout.
 
 You can see an online demo [here](https://ajsb85.github.io/netlistsvg)
 
@@ -21,6 +21,7 @@ To install the latest version from source:
 git clone https://github.com/ajsb85/netlistsvg
 cd netlistsvg
 npm install # install dependencies
+npm run build # compile the typescript source
 sudo npm install -g . # install netlistsvg to system
 
 sudo npm uninstall -g netlistsvg # uninstall from system
