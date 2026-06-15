@@ -2,7 +2,7 @@
 
 > **⚠️ Notice:** This repository is an [orphan fork](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/what-happens-to-forks-when-a-repository-is-deleted-or-changes-visibility) maintained by [@ajsb85](https://github.com/ajsb85). The original upstream repository by nturley is no longer maintained or available.
 
-draws an SVG schematic from a [yosys](https://github.com/yosyshq/yosys) JSON netlist. This can be generated using [the `write_json` command](https://yosyshq.readthedocs.io/projects/yosys/en/latest/cmd/write_json.html). It uses [elkjs](https://github.com/OpenKieler/elkjs) for layout.
+draws an SVG schematic from a [yosys](https://github.com/yosyshq/yosys) JSON netlist. This can be generated using [the `write_json` command](https://yosyshq.readthedocs.io/projects/yosys/en/latest/). It uses [elkjs](https://github.com/OpenKieler/elkjs) for layout.
 
 You can see an online demo [here](https://ajsb85.github.io/netlistsvg)
 
@@ -564,7 +564,7 @@ We are getting close to the 1.0 release. At that point, the skin file format wil
 
 ## Generating `input_json_file` with Yosys
 
-[Yosys from Claire Wolf](https://github.com/yosyshq/yosys) can be used to generate the `input_json_file` using [the `write_json` command](https://yosyshq.readthedocs.io/projects/yosys/en/latest/cmd/write_json.html).
+[Yosys from Claire Wolf](https://github.com/yosyshq/yosys) can be used to generate the `input_json_file` using [the `write_json` command](https://yosyshq.readthedocs.io/projects/yosys/en/latest/).
 
 ### Installing Prerequisites (Ubuntu/Debian)
 If you want to run the examples locally or use the example `Makefile` to generate PNG outputs, you will need to install `yosys` (to synthesize Verilog into JSON) and `inkscape` (to export the SVGs to PNG).
@@ -574,7 +574,7 @@ sudo apt-get update
 sudo apt-get install yosys inkscape
 ```
 
-Unless you are doing something special you will want to use [the `prep` command](https://yosyshq.readthedocs.io/projects/yosys/en/latest/cmd/prep.html). Some examples are provided below and you can find some runnable examples which go from Verilog to diagrams in the [examples directory](./examples) (with example Makefile).
+Unless you are doing something special you will want to use [the `prep` command](https://yosyshq.readthedocs.io/projects/yosys/en/latest/). Some examples are provided below and you can find some runnable examples which go from Verilog to diagrams in the [examples directory](./examples) (with example Makefile).
 
 #### Generate top level diagram
 
@@ -586,7 +586,7 @@ yosys -p "prep -top my_top_module; write_json output.json" input.v
 
 #### Generate logic diagram
 
-You can give it the `-flatten` argument to  [the `prep` command](https://yosyshq.readthedocs.io/projects/yosys/en/latest/cmd/prep.html) if you want Yosys to convert everything into low level logic. Only basic logic cells and black boxes will exist after flattening.
+You can give it the `-flatten` argument to  [the `prep` command](https://yosyshq.readthedocs.io/projects/yosys/en/latest/) if you want Yosys to convert everything into low level logic. Only basic logic cells and black boxes will exist after flattening.
 
 ```
 yosys -p "prep -top my_top_module -flatten; write_json output.json" input.v
@@ -594,7 +594,7 @@ yosys -p "prep -top my_top_module -flatten; write_json output.json" input.v
 
 ### Generate AND (or not) and inverter (NOT) diagram
 
-It is also frequently common that you want to create a diagram only using AND and NOT (or NAND and NOT) cells. ([This is called an AIG](https://en.wikipedia.org/wiki/And-inverter_graph).) This can be done with Yosys' [`aigmap` command](https://yosyshq.readthedocs.io/projects/yosys/en/latest/cmd/aigmap.html).
+It is also frequently common that you want to create a diagram only using AND and NOT (or NAND and NOT) cells. ([This is called an AIG](https://en.wikipedia.org/wiki/And-inverter_graph).) This can be done with Yosys' [`aigmap` command](https://yosyshq.readthedocs.io/projects/yosys/en/latest/).
 
 ```
 yosys -p "prep -top my_top_module; aigmap; write_json output.json" input.v
