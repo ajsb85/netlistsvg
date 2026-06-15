@@ -566,6 +566,14 @@ We are getting close to the 1.0 release. At that point, the skin file format wil
 
 [Yosys from Claire Wolf](https://github.com/yosyshq/yosys) can be used to generate the `input_json_file` using [the `write_json` command](https://yosyshq.readthedocs.io/projects/yosys/en/latest/cmd/write_json.html).
 
+### Installing Prerequisites (Ubuntu/Debian)
+If you want to run the examples locally or use the example `Makefile` to generate PNG outputs, you will need to install `yosys` (to synthesize Verilog into JSON) and `inkscape` (to export the SVGs to PNG).
+
+```sh
+sudo apt-get update
+sudo apt-get install yosys inkscape
+```
+
 Unless you are doing something special you will want to use [the `prep` command](https://yosyshq.readthedocs.io/projects/yosys/en/latest/cmd/prep.html). Some examples are provided below and you can find some runnable examples which go from Verilog to diagrams in the [examples directory](./examples) (with example Makefile).
 
 #### Generate top level diagram
