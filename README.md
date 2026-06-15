@@ -306,7 +306,8 @@ Here's an digital netlist produced by Yosys along with the diagram that netlists
 ```
 </details>
 
-![example](https://raw.githubusercontent.com/ajsb85/netlistsvg/main/doc/up3down5.svg?sanitize=true)
+![example](https://raw.githubusercontent.com/ajsb85/netlistsvg/main/doc/up3down5.svg?sanitize=true#gh-light-mode-only)
+![example](https://raw.githubusercontent.com/ajsb85/netlistsvg/main/doc/up3down5-dark.svg?sanitize=true#gh-dark-mode-only)
 
 You can also write out the JSON by hand, of course. We support [JSON5](https://json5.org) syntax.
 
@@ -459,16 +460,19 @@ Here's an analog example.
 ```
 </details>
 
-![example](https://raw.githubusercontent.com/ajsb85/netlistsvg/main/doc/and.svg?sanitize=true)
+![example](https://raw.githubusercontent.com/ajsb85/netlistsvg/main/doc/and.svg?sanitize=true#gh-light-mode-only)
+![example](https://raw.githubusercontent.com/ajsb85/netlistsvg/main/doc/and-dark.svg?sanitize=true#gh-dark-mode-only)
 
 ## Skin File
 It pulls the node icons and configuration options from a SVG skin file. This our default digital skin file.
 
-<img src="https://raw.githubusercontent.com/ajsb85/netlistsvg/main/skin/default.svg?sanitize=true">
+![digital skin](https://raw.githubusercontent.com/ajsb85/netlistsvg/main/skin/default.svg?sanitize=true#gh-light-mode-only)
+![digital skin](https://raw.githubusercontent.com/ajsb85/netlistsvg/main/skin/default-dark.svg?sanitize=true#gh-dark-mode-only)
 
 This is our analog skin file.
 
-<img src="https://raw.githubusercontent.com/ajsb85/netlistsvg/main/skin/analog.svg?sanitize=true">
+![analog skin](https://raw.githubusercontent.com/ajsb85/netlistsvg/main/skin/analog.svg?sanitize=true#gh-light-mode-only)
+![analog skin](https://raw.githubusercontent.com/ajsb85/netlistsvg/main/skin/analog-dark.svg?sanitize=true#gh-dark-mode-only)
 
 A skin file can use style tags or inline CSS to style the elements. That will be copied onto the output file. A skin file also defines a library of components to use. Each component has an alias list. It will use that component as a template for any cell with that type that it encounters. Each component defines the position and id of each of its ports so we know where to attach the wires to.
 
