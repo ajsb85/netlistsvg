@@ -147,8 +147,7 @@ async function init() {
     const debouncedRender = debounce(render, 300);
     textarea.addEventListener('input', debouncedRender);
 
-    // Load first example by default
-    exampleSelect.selectedIndex = 1;
+    // Load default example
     await handleExampleChange();
 }
 

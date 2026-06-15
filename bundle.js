@@ -8560,7 +8560,6 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
     skinSelect.addEventListener("change", render);
     const debouncedRender = debounce(render, 300);
     textarea.addEventListener("input", debouncedRender);
-    exampleSelect.selectedIndex = 1;
     await handleExampleChange();
   }
   init();
