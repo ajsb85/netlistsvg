@@ -105,6 +105,8 @@ export default [
         btoa: "readonly",
         clearTimeout: "readonly",
         setTimeout: "readonly",
+        Blob: "readonly",
+        URL: "readonly",
       },
     },
     rules: {

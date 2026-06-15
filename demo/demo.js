@@ -3,15 +3,31 @@
 const superagent = require('superagent');
 const JSON5 = require('json5');
 const netlistRenderer = require('../built');
-const exampleNetlist = require('../test/analog/horizontal.json');
 
 const skinPaths = ['skin/horizontal.svg', 'skin/default.svg'];
 
-const textarea = document.querySelector('textarea');
+const textarea = document.querySelector('#editor');
 const skinSelect = document.querySelector('#skinSelect');
-const renderButton = document.querySelector('#renderButton'); // Keep for manual rendering
+const exampleSelect = document.querySelector('#exampleSelect');
 const formatButton = document.querySelector('#formatButton');
+const downloadButton = document.querySelector('#downloadButton');
 const svgImage = document.querySelector('#svgArea');
+const emptyState = document.querySelector('#emptyState');
+const toast = document.querySelector('#toast');
+
+let currentSvgString = '';
+
+function showToast(message) {
+    toast.textContent = message;
+    toast.style.display = 'block';
+    setTimeout(() => {
+        toast.style.display = 'none';
+    }, 5000);
+}
+
+function hideToast() {
+    toast.style.display = 'none';
+}
 
 async function loadSkins(paths) {
     try {
@@ -20,7 +36,7 @@ async function loadSkins(paths) {
         return skins;
     } catch (error) {
         console.error('Error loading skins:', error);
-        alert('Error loading skins. See console for details.');
+        showToast('Error loading skins. See console for details.');
         return [];
     }
 }
@@ -36,18 +52,33 @@ function populateSkinSelect(skins) {
 }
 
 async function render() {
+    hideToast();
+    if (!textarea.value.trim()) {
+        svgImage.style.display = 'none';
+        emptyState.style.display = 'flex';
+        downloadButton.style.display = 'none';
+        return;
+    }
+
     try {
         const netlist = JSON5.parse(textarea.value);
         const svgString = await netlistRenderer.render(skinSelect.value, netlist);
-        svgImage.src = 'data:image/svg+xml;base64,' + btoa(svgString);
+        currentSvgString = svgString;
+
+        svgImage.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgString)));
+        svgImage.style.display = 'block';
+        emptyState.style.display = 'none';
+        downloadButton.style.display = 'block';
     } catch (error) {
         console.error('Error rendering netlist:', error);
-        // More specific error message for invalid JSON
         if (error instanceof SyntaxError) {
-          alert('Invalid JSON in textarea.  Please correct the JSON and try again.');
+            showToast('Syntax Error in JSON: Please check your formatting.');
         } else {
-          alert('Error rendering netlist. See console for details.');
+            showToast(error.message || 'Error rendering netlist. Check developer console.');
         }
+        svgImage.style.display = 'none';
+        emptyState.style.display = 'flex';
+        downloadButton.style.display = 'none';
     }
 }
 
@@ -57,8 +88,36 @@ function format() {
         textarea.value = JSON5.stringify(netlist, null, 4);
     } catch (error) {
         console.error('Error formatting JSON:', error);
-        alert('Invalid JSON5. Please check your input.');
+        showToast('Invalid JSON5. Please check your input.');
     }
+}
+
+async function handleExampleChange() {
+    const examplePath = exampleSelect.value;
+    if (!examplePath) return;
+
+    try {
+        const res = await superagent.get(examplePath);
+        textarea.value = res.text;
+        format();
+        render();
+    } catch (error) {
+        console.error('Error loading example:', error);
+        showToast('Failed to load example netlist.');
+    }
+}
+
+function handleDownload() {
+    if (!currentSvgString) return;
+    const blob = new Blob([currentSvgString], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'schematic.svg';
+    document.body.append(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
 }
 
 // Debounce function to limit render calls
@@ -73,22 +132,24 @@ function debounce(func, delay) {
 }
 
 async function init() {
-    textarea.value = JSON5.stringify(exampleNetlist, null, 4);
-
     const skins = await loadSkins(skinPaths);
     if (skins.length > 0) {
         populateSkinSelect(skins);
     }
 
-    renderButton.addEventListener('click', render); // Keep manual render
+    // Event listeners
     formatButton.addEventListener('click', format);
+    downloadButton.addEventListener('click', handleDownload);
+    exampleSelect.addEventListener('change', handleExampleChange);
+    skinSelect.addEventListener('change', render);
 
     // Debounced render on textarea input
-    const debouncedRender = debounce(render, 300); // 300ms delay
+    const debouncedRender = debounce(render, 300);
     textarea.addEventListener('input', debouncedRender);
 
-    // Initial render
-    render();
+    // Load first example by default
+    exampleSelect.selectedIndex = 1;
+    await handleExampleChange();
 }
 
 init();

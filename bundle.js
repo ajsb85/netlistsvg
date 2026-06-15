@@ -8434,163 +8434,30 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
     }
   });
 
-  // test/analog/horizontal.json
-  var require_horizontal = __commonJS({
-    "test/analog/horizontal.json"(exports, module) {
-      module.exports = {
-        modules: {
-          resistor_divider: {
-            ports: {
-              A: {
-                direction: "input",
-                bits: [2]
-              },
-              B: {
-                direction: "input",
-                bits: [3]
-              },
-              Y: {
-                direction: "output",
-                bits: [4]
-              }
-            },
-            cells: {
-              R1: {
-                type: "r_v",
-                connections: {
-                  A: [2],
-                  B: [5]
-                },
-                attributes: {
-                  value: "10k"
-                }
-              },
-              X1: {
-                type: "xtal",
-                connections: {
-                  A: [3],
-                  B: [5]
-                }
-              },
-              Q1: {
-                type: "BC548CTA",
-                port_directions: {
-                  C: "input",
-                  B: "input",
-                  E: "output"
-                },
-                connections: {
-                  C: [6],
-                  B: [5],
-                  E: [7]
-                },
-                attributes: {
-                  value: "BC548CTA"
-                }
-              },
-              C1: {
-                type: "c_v",
-                connections: {
-                  A: [7],
-                  B: [8]
-                },
-                attributes: {
-                  value: "10uF"
-                }
-              },
-              L1: {
-                type: "l_h",
-                connections: {
-                  A: [7],
-                  B: [9]
-                },
-                attributes: {
-                  value: "10uH"
-                }
-              },
-              R5: {
-                type: "r_v",
-                connections: {
-                  A: [4],
-                  B: [12]
-                },
-                attributes: {
-                  value: "10k"
-                }
-              },
-              Q2: {
-                type: "q_pnp",
-                port_directions: {
-                  C: "input",
-                  B: "input",
-                  E: "output"
-                },
-                connections: {
-                  C: [10],
-                  B: [9],
-                  E: [4]
-                }
-              },
-              vcc: {
-                type: "vcc",
-                connections: {
-                  A: [6]
-                },
-                attributes: {
-                  name: "VCC"
-                }
-              },
-              vcc2: {
-                type: "vcc",
-                connections: {
-                  A: [10]
-                },
-                attributes: {
-                  name: "VCC"
-                }
-              },
-              gnd: {
-                type: "gnd",
-                port_directions: {
-                  A: "input"
-                },
-                connections: {
-                  A: [8]
-                },
-                attributes: {
-                  name: "GND"
-                }
-              },
-              gnd2: {
-                type: "gnd",
-                port_directions: {
-                  A: "input"
-                },
-                connections: {
-                  A: [12]
-                },
-                attributes: {
-                  name: "GND"
-                }
-              }
-            }
-          }
-        }
-      };
-    }
-  });
-
   // demo/demo.js
   var superagent = require_client();
   var JSON5 = require_dist();
   var netlistRenderer = require_built();
-  var exampleNetlist = require_horizontal();
   var skinPaths = ["skin/horizontal.svg", "skin/default.svg"];
-  var textarea = document.querySelector("textarea");
+  var textarea = document.querySelector("#editor");
   var skinSelect = document.querySelector("#skinSelect");
-  var renderButton = document.querySelector("#renderButton");
+  var exampleSelect = document.querySelector("#exampleSelect");
   var formatButton = document.querySelector("#formatButton");
+  var downloadButton = document.querySelector("#downloadButton");
   var svgImage = document.querySelector("#svgArea");
+  var emptyState = document.querySelector("#emptyState");
+  var toast = document.querySelector("#toast");
+  var currentSvgString = "";
+  function showToast(message) {
+    toast.textContent = message;
+    toast.style.display = "block";
+    setTimeout(() => {
+      toast.style.display = "none";
+    }, 5e3);
+  }
+  function hideToast() {
+    toast.style.display = "none";
+  }
   async function loadSkins(paths) {
     try {
       const skinPromises = paths.map((path) => superagent.get(path).then((res) => ({ path, svg: res.text })));
@@ -8598,7 +8465,7 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
       return skins;
     } catch (error) {
       console.error("Error loading skins:", error);
-      alert("Error loading skins. See console for details.");
+      showToast("Error loading skins. See console for details.");
       return [];
     }
   }
@@ -8612,17 +8479,31 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
     });
   }
   async function render() {
+    hideToast();
+    if (!textarea.value.trim()) {
+      svgImage.style.display = "none";
+      emptyState.style.display = "flex";
+      downloadButton.style.display = "none";
+      return;
+    }
     try {
       const netlist = JSON5.parse(textarea.value);
       const svgString = await netlistRenderer.render(skinSelect.value, netlist);
-      svgImage.src = "data:image/svg+xml;base64," + btoa(svgString);
+      currentSvgString = svgString;
+      svgImage.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgString)));
+      svgImage.style.display = "block";
+      emptyState.style.display = "none";
+      downloadButton.style.display = "block";
     } catch (error) {
       console.error("Error rendering netlist:", error);
       if (error instanceof SyntaxError) {
-        alert("Invalid JSON in textarea.  Please correct the JSON and try again.");
+        showToast("Syntax Error in JSON: Please check your formatting.");
       } else {
-        alert("Error rendering netlist. See console for details.");
+        showToast(error.message || "Error rendering netlist. Check developer console.");
       }
+      svgImage.style.display = "none";
+      emptyState.style.display = "flex";
+      downloadButton.style.display = "none";
     }
   }
   function format() {
@@ -8631,8 +8512,33 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
       textarea.value = JSON5.stringify(netlist, null, 4);
     } catch (error) {
       console.error("Error formatting JSON:", error);
-      alert("Invalid JSON5. Please check your input.");
+      showToast("Invalid JSON5. Please check your input.");
     }
+  }
+  async function handleExampleChange() {
+    const examplePath = exampleSelect.value;
+    if (!examplePath) return;
+    try {
+      const res = await superagent.get(examplePath);
+      textarea.value = res.text;
+      format();
+      render();
+    } catch (error) {
+      console.error("Error loading example:", error);
+      showToast("Failed to load example netlist.");
+    }
+  }
+  function handleDownload() {
+    if (!currentSvgString) return;
+    const blob = new Blob([currentSvgString], { type: "image/svg+xml" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "schematic.svg";
+    document.body.append(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
   }
   function debounce(func, delay) {
     let timeoutId;
@@ -8644,16 +8550,18 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
     };
   }
   async function init() {
-    textarea.value = JSON5.stringify(exampleNetlist, null, 4);
     const skins = await loadSkins(skinPaths);
     if (skins.length > 0) {
       populateSkinSelect(skins);
     }
-    renderButton.addEventListener("click", render);
     formatButton.addEventListener("click", format);
+    downloadButton.addEventListener("click", handleDownload);
+    exampleSelect.addEventListener("change", handleExampleChange);
+    skinSelect.addEventListener("change", render);
     const debouncedRender = debounce(render, 300);
     textarea.addEventListener("input", debouncedRender);
-    render();
+    exampleSelect.selectedIndex = 1;
+    await handleExampleChange();
   }
   init();
 })();

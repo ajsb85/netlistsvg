@@ -3,136 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NetlistSVG Demo</title>
-    <style>
-        body {
-            font-family: sans-serif;
-            padding: 20px; /* Consistent padding */
-            display: flex; /* Use flexbox for overall layout */
-            flex-direction: column; /* Stack content vertically */
-            align-items: center; /* Center content horizontally */
-            min-height: 100vh; /* Ensure the body takes at least the full viewport height */
-            background-color: #f0f0f0; /* Light background color */
-        }
-
-        .container {
-            display: flex;
-            flex-wrap: wrap; /* Allow wrapping on smaller screens */
-            gap: 20px; /* Space between items */
-            max-width: 1200px; /* Limit maximum width */
-            width: 100%; /* Use full available width */
-            justify-content: center; /* Center content horizontally */
-        }
-
-        .input-area, .output-area {
-            flex: 1 1 500px; /* Grow and shrink equally, minimum 500px width */
-            max-width: 600px; /* Limit maximum width for each section */
-            margin: 10px; /* Add some margin for spacing */
-        }
-
-        textarea {
-            font-family: monospace;
-            width: 100%; /* Take up full width of container */
-            height: 500px;
-            resize: vertical; /* Allow vertical resizing */
-            border: 1px solid #ccc; /* Add a border */
-            padding: 10px; /* Add padding inside the textarea */
-            box-sizing: border-box; /* Include padding and border in element's total width and height */
-        }
-
-        #svgArea {
-            width: 100%; /* Make image responsive */
-            height: auto; /* Maintain aspect ratio */
-            border: 1px solid #ccc; /* Add a border */
-            display: block;  /* Remove extra space below inline elements*/
-            object-fit: contain; /* Ensure the SVG scales to fit within the container */
-        }
-
-
-        .controls {
-            display: flex;
-            justify-content: space-between;
-            align-items: center; /* Vertically align items */
-            margin-bottom: 10px; /* Space below controls */
-            width: 100%; /* Ensure it takes the full width */
-        }
-
-        .controls label {
-            margin-right: 10px; /* Space between label and select */
-        }
-
-        button {
-            padding: 10px 15px;
-            background-color: #4CAF50; /* Green background */
-            color: white;
-            border: none;
-            cursor: pointer;
-            border-radius: 4px;
-        }
-
-        button:hover {
-            background-color: #367c39; /* Darker green on hover */
-        }
-
-        #skinSelect {
-            margin-right: 10px; /* Space between select and button */
-            padding: 5px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-
-
-        a {
-            color: #0366d6;  /* Standard link color */
-            text-decoration: none; /* Remove underline by default */
-        }
-
-        a:hover {
-            text-decoration: underline; /* Add underline on hover */
-        }
-
-        /* Responsive adjustments for smaller screens */
-        @media (max-width: 768px) {
-            .container {
-                flex-direction: column; /* Stack input and output vertically */
-            }
-            .input-area, .output-area{
-                max-width: 100%; /* Allow it to use all available width */
-            }
-            .controls {
-                flex-direction: column; /* Stack controls on small screens */
-                align-items: stretch; /* Stretch buttons to full width */
-
-            }
-            .controls > div, .controls > button{
-                width: 100%; /* Full width on small screens */
-                margin-bottom: 10px; /* Add some margin for spacing */
-            }
-        }
-
-    </style>
+    <title>NetlistSVG Interactive Dashboard</title>
+    <link rel="stylesheet" href="demo/index.css">
 </head>
 <body>
-    <p>
-        This is a demo of <a href="https://github.com/nturley/netlistsvg">netlistsvg</a>.
-    </p>
+    <header>
+        <h1>NetlistSVG Interactive Dashboard</h1>
+        <p>Render beautiful schematic diagrams from Yosys netlists. Powered by <a href="https://github.com/nturley/netlistsvg" target="_blank">NetlistSVG</a> &amp; ELK.</p>
+    </header>
 
-    <div class="container">
-        <div class="input-area">
-            <div class="controls">
-                <button id="formatButton">Format JSON</button>
-                <div>
-                    <label for="skinSelect">Select skin:</label>
-                    <select id="skinSelect"></select>
-                    <button id="renderButton">Render</button>
+    <div class="dashboard">
+        <!-- Input Panel -->
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title">Netlist Code</div>
+                <div class="controls">
+                    <select id="exampleSelect">
+                        <option value="" disabled selected>Load Example...</option>
+                        <option value="test/digital/up3down5.json">UP3DOWN5 (Counter)</option>
+                        <option value="test/digital/generics.json">Generics (Digital)</option>
+                        <option value="test/digital/mux4.json">MUX4 (Multiplexer)</option>
+                        <option value="test/digital/pc.json">PC (Program Counter)</option>
+                        <option value="test/analog/and.json">AND Gate (Analog)</option>
+                        <option value="test/analog/resistor_divider.json">Resistor Divider (Analog)</option>
+                    </select>
+                    <button id="formatButton" class="btn-secondary">Format JSON</button>
                 </div>
             </div>
-            <textarea></textarea>
+            <div class="editor-wrapper">
+                <textarea id="editor" placeholder="Paste your Yosys JSON netlist here..."></textarea>
+            </div>
         </div>
-        <div class="output-area">
-            <img id="svgArea" alt="Rendered SVG">
+
+        <!-- Output Panel -->
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title">Schematic Preview</div>
+                <div class="controls">
+                    <label for="skinSelect" style="font-size: 0.85rem; color: var(--text-secondary);">Skin:</label>
+                    <select id="skinSelect"></select>
+                    <button id="downloadButton" class="btn-success" style="display: none;">Download SVG</button>
+                </div>
+            </div>
+            <div class="preview-container">
+                <div id="emptyState" class="empty-state">
+                    <div class="empty-state-icon">⚡</div>
+                    <div>Write some netlist JSON or load an example to render the schematic.</div>
+                </div>
+                <img id="svgArea" alt="Rendered SVG">
+            </div>
         </div>
     </div>
+
+    <!-- Error Toast -->
+    <div id="toast" class="toast"></div>
 
     <script type="text/javascript" src="elk.bundled.js"></script>
     <script type="text/javascript" src="bundle.js"></script>
