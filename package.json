@@ -25,7 +25,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/nturley/netlistsvg.git"
+    "url": "git+https://github.com/ajsb85/netlistsvg.git"
   },
   "bin": {
     "netlistsvg": "./bin/netlistsvg.js",
@@ -45,9 +45,9 @@
     "netlist"
   ],
   "bugs": {
-    "url": "https://github.com/nturley/netlistsvg/issues"
+    "url": "https://github.com/ajsb85/netlistsvg/issues"
   },
-  "homepage": "https://github.com/nturley/netlistsvg#readme",
+  "homepage": "https://github.com/ajsb85/netlistsvg#readme",
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/jest": "^30.0.0",
