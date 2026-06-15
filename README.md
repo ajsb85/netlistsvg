@@ -7,7 +7,7 @@
 # netlistsvg
 draws an SVG schematic from a [yosys](https://github.com/yosyshq/yosys) JSON netlist. This can be generated [the `write_json` command](https://yosyshq.readthedocs.io/projects/yosys/en/latest/cmd/write_json.html). It uses [elkjs](https://github.com/OpenKieler/elkjs) for layout.
 
-You can see an online demo [here](https://nturley.github.io/netlistsvg)
+You can see an online demo [here](https://ajsb85.github.io/netlistsvg)
 
 # Installation/Usage Instructions
 
@@ -21,7 +21,7 @@ npm install -g netlistsvg
 
 To install the latest version from source:
 ```sh
-git clone https://github.com/nturley/netlistsvg
+git clone https://github.com/ajsb85/netlistsvg
 cd netlistsvg
 npm install # install dependencies
 sudo npm install -g . # install netlistsvg to system
@@ -39,22 +39,22 @@ Should work on Linux, OSX, and Windows. Running the build scripts (makefiles and
 
 ## Web bundle
 
-I have a web bundle hosted on github pages here: https://nturley.github.io/netlistsvg/built/netlistsvg.bundle.js
+I have a web bundle hosted on github pages here: https://ajsb85.github.io/netlistsvg/built/netlistsvg.bundle.js
 It doesn't wrap ELKjs, so you'll need to include it separately. ELK creates a global variable, so you'll need to include ELKjs before netlistsvg.
 
 In HTML it would look something like this
 ```html
-<script type="text/javascript" src="https://nturley.github.io/netlistsvg/elk.bundled.js"></script>
-<script type="text/javascript" src="https://nturley.github.io/netlistsvg/built/netlistsvg.bundle.js"></script>
+<script type="text/javascript" src="https://ajsb85.github.io/netlistsvg/elk.bundled.js"></script>
+<script type="text/javascript" src="https://ajsb85.github.io/netlistsvg/built/netlistsvg.bundle.js"></script>
 ```
 
 On ObservableHQ, you can require it like this.
 
 ```javascript
 netlistsvg = {
-  var ELK = await require('https://nturley.github.io/netlistsvg/elk.bundled.js')
+  var ELK = await require('https://ajsb85.github.io/netlistsvg/elk.bundled.js')
   window.ELK = ELK
-  return require('https://nturley.github.io/netlistsvg/built/netlistsvg.bundle.js')
+  return require('https://ajsb85.github.io/netlistsvg/built/netlistsvg.bundle.js')
 }
 ```
 
@@ -306,7 +306,7 @@ Here's an digital netlist produced by Yosys along with the diagram that netlists
 ```
 </details>
 
-![example](https://raw.githubusercontent.com/nturley/netlistsvg/master/doc/up3down5.svg?sanitize=true)
+![example](https://raw.githubusercontent.com/ajsb85/netlistsvg/main/doc/up3down5.svg?sanitize=true)
 
 You can also write out the JSON by hand, of course. We support [JSON5](https://json5.org) syntax.
 
@@ -459,16 +459,16 @@ Here's an analog example.
 ```
 </details>
 
-![example](https://raw.githubusercontent.com/nturley/netlistsvg/master/doc/and.svg?sanitize=true)
+![example](https://raw.githubusercontent.com/ajsb85/netlistsvg/main/doc/and.svg?sanitize=true)
 
 ## Skin File
 It pulls the node icons and configuration options from a SVG skin file. This our default digital skin file.
 
-<img src="https://raw.githubusercontent.com/nturley/netlistsvg/master/skin/default.svg?sanitize=true">
+<img src="https://raw.githubusercontent.com/ajsb85/netlistsvg/main/skin/default.svg?sanitize=true">
 
 This is our analog skin file.
 
-<img src="https://raw.githubusercontent.com/nturley/netlistsvg/master/skin/analog.svg?sanitize=true">
+<img src="https://raw.githubusercontent.com/ajsb85/netlistsvg/main/skin/analog.svg?sanitize=true">
 
 A skin file can use style tags or inline CSS to style the elements. That will be copied onto the output file. A skin file also defines a library of components to use. Each component has an alias list. It will use that component as a template for any cell with that type that it encounters. Each component defines the position and id of each of its ports so we know where to attach the wires to.
 
