@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:s="https://github.com/ajsb85/netlistsvg" width="44" height="104"><style>svg {
+  stroke:#000;
+  fill:none;
+}
+text {
+  fill:#000;
+  stroke:none;
+  font-size:10px;
+  font-weight: bold;
+  font-family: "Courier New", monospace;
+}
+line {
+    stroke-linecap: round;
+}
+.nodelabel {
+  text-anchor: middle;
+}
+.inputPortLabel {
+  text-anchor: end;
+}
+.splitjoinBody {
+  fill:#000;
+}
+  @media (prefers-color-scheme: dark) {
+    svg {
+      stroke: #fff;
+    }
+    text {
+      fill: #fff !important;
+    }
+    .splitjoinBody {
+      fill: #fff;
+    }
+    [style*="fill:#000"], [style*="fill:#000000"] {
+      fill: #fff !important;
+    }
+  }</style><g s:type="generic" transform="translate(12,12)" s:width="30" s:height="40" id="cell_vcc"><text x="15" y="-4" class="nodelabel cell_vcc" s:attribute="ref">vcc</text><rect width="30" height="20" s:generic="body" class="cell_vcc"/><g transform="translate(30,10)" s:x="30" s:y="10" s:pid="out0" id="port_vcc~A"><text x="5" y="-4" style="fill:#000; stroke:none" class="cell_vcc">A</text></g></g><g s:type="generic" transform="translate(12,62)" s:width="30" s:height="40" id="cell_gnd"><text x="15" y="-4" class="nodelabel cell_gnd" s:attribute="ref">gnd</text><rect width="30" height="20" s:generic="body" class="cell_gnd"/><g transform="translate(0,10)" s:x="0" s:y="10" s:pid="in0" id="port_gnd~A"><text x="-3" y="-4" class="inputPortLabel cell_gnd">A</text></g></g><line x1="22" y1="42" x2="22" y2="47" class="net_2,3,2,3 width_4" style="stroke-width: 2"/></svg>
