@@ -37,22 +37,22 @@ Should work on Linux, OSX, and Windows. Running the build scripts (makefiles and
 
 ## Web bundle
 
-I have a web bundle hosted on github pages here: https://ajsb85.github.io/netlistsvg/built/netlistsvg.bundle.js
+I have a web bundle hosted on github pages here: https://github.com/ajsb85/netlistsvg/releases/latest/download/netlistsvg.bundle.js
 It doesn't wrap ELKjs, so you'll need to include it separately. ELK creates a global variable, so you'll need to include ELKjs before netlistsvg.
 
 In HTML it would look something like this
 ```html
-<script type="text/javascript" src="https://ajsb85.github.io/netlistsvg/elk.bundled.js"></script>
-<script type="text/javascript" src="https://ajsb85.github.io/netlistsvg/built/netlistsvg.bundle.js"></script>
+<script type="text/javascript" src="https://github.com/ajsb85/netlistsvg/releases/latest/download/elk.bundled.js"></script>
+<script type="text/javascript" src="https://github.com/ajsb85/netlistsvg/releases/latest/download/netlistsvg.bundle.js"></script>
 ```
 
 On ObservableHQ, you can require it like this.
 
 ```javascript
 netlistsvg = {
-  var ELK = await require('https://ajsb85.github.io/netlistsvg/elk.bundled.js')
+  var ELK = await require('https://github.com/ajsb85/netlistsvg/releases/latest/download/elk.bundled.js')
   window.ELK = ELK
-  return require('https://ajsb85.github.io/netlistsvg/built/netlistsvg.bundle.js')
+  return require('https://github.com/ajsb85/netlistsvg/releases/latest/download/netlistsvg.bundle.js')
 }
 ```
 
