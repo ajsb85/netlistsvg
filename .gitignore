@@ -7,3 +7,4 @@ examples/**/*.svg
 examples/**/*.png
 .yosys_extra
 built/*.test.js
+.npmrc
