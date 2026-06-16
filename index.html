@@ -3,83 +3,92 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Netlist2SVG Interactive Dashboard</title>
+    <title>netlistsvg — Yosys netlist to SVG schematic</title>
+    <meta name="description" content="Interactive renderer that draws SVG schematics from Yosys JSON netlists, with hierarchical module expansion.">
     <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="index.css">
 </head>
 <body>
-    <header>
-        <div>
-            <h1>Netlist2SVG // WORKSTATION</h1>
-            <p>SCHEMATIC_ENGINE: READY // SOURCE: <a href="https://github.com/ajsb85/netlist2svg" target="_blank">GITHUB.COM/AJSB85/NETLISTSVG</a></p>
+    <header class="site-header">
+        <div class="brand">
+            <h1>netlist<span class="mark">svg</span></h1>
+            <p class="tagline">Render SVG schematics from Yosys JSON netlists &mdash; with hierarchical module expansion.</p>
         </div>
-        <div style="text-align: right;">
-            <p style="color: var(--accent-cyan); font-weight: 700;">SYSTEM STATUS: <span style="color: var(--accent-yellow);">OPERATIONAL</span></p>
-            <p style="font-size: 0.7rem; opacity: 0.5;">DEPT_OF_ELECTRONICS // RD_UNIT_01</p>
+        <div class="header-meta">
+            <span class="version">ELK&nbsp;&middot;&nbsp;Yosys&nbsp;JSON</span>
+            <a href="https://github.com/ajsb85/netlist2svg" target="_blank" rel="noopener">GitHub &nearr;</a>
         </div>
     </header>
 
-    <div class="dashboard">
-        <!-- Input Panel -->
-        <div class="panel">
+    <main class="workbench">
+        <!-- Input -->
+        <section class="panel" id="inputPanel">
             <div class="panel-header">
-                <div class="panel-title">Netlist Code</div>
+                <h2 class="panel-title">Netlist <span class="sub">Yosys JSON</span></h2>
                 <div class="controls">
-                    <select id="exampleSelect">
-                        <option value="" disabled>Load Example...</option>
-                        <option value="test/digital/up3down5.json">UP3DOWN5 (Counter)</option>
-                        <option value="test/digital/generics.json">Generics (Digital)</option>
-                        <option value="test/digital/mux4.json">MUX4 (Multiplexer)</option>
-                        <option value="test/digital/pc.json">PC (Program Counter)</option>
-                        <option value="test/digital/hierarchy.json">Hierarchy (Submodule)</option>
-                        <option value="test/analog/and.json" selected>AND Gate (Analog)</option>
-                        <option value="test/analog/resistor_divider.json">Resistor Divider (Analog)</option>
-                    </select>
-                    <button id="formatButton" class="btn-secondary">BEAUTIFY_CODE</button>
+                    <label class="field" for="exampleSelect">Example
+                        <select id="exampleSelect">
+                            <option value="" disabled>Select…</option>
+                            <option value="test/digital/up3down5.json">up3down5 — counter</option>
+                            <option value="test/digital/generics.json">generics</option>
+                            <option value="test/digital/mux4.json">mux4 — multiplexer</option>
+                            <option value="test/digital/pc.json">pc — program counter</option>
+                            <option value="test/digital/hierarchy.json">hierarchy — submodule</option>
+                            <option value="test/analog/and.json" selected>and — analog</option>
+                            <option value="test/analog/resistor_divider.json">resistor divider — analog</option>
+                        </select>
+                    </label>
+                    <button id="formatButton" class="btn btn-secondary">Format</button>
                 </div>
             </div>
-            <div class="editor-wrapper">
-                <textarea id="editor" placeholder="Paste your Yosys JSON netlist here..."></textarea>
+            <div class="panel-body editor-wrap">
+                <textarea id="editor" spellcheck="false" placeholder="Paste a Yosys JSON netlist, or choose an example above…"></textarea>
             </div>
-            <div style="padding: 8px 20px; font-size: 0.6rem; color: var(--text-secondary); font-family: 'JetBrains Mono', monospace; opacity: 0.5; display: flex; justify-content: space-between;">
-                <span>BUFFER_STATUS: 100%</span>
-                <span>ENC: UTF-8</span>
-            </div>
-        </div>
+        </section>
 
-        <!-- Output Panel -->
-        <div class="panel">
+        <!-- Output -->
+        <section class="panel" id="outputPanel">
             <div class="panel-header">
-                <div class="panel-title">Schematic Preview</div>
+                <h2 class="panel-title">Schematic</h2>
                 <div class="controls">
-                    <label for="skinSelect" style="font-size: 0.7rem; color: var(--text-secondary); font-family: 'JetBrains Mono', monospace;">SKIN_PROFILE:</label>
-                    <select id="skinSelect"></select>
-                    <label for="configSelect" style="font-size: 0.7rem; color: var(--text-secondary); font-family: 'JetBrains Mono', monospace;">HIERARCHY:</label>
-                    <select id="configSelect">
-                        <option value="" selected>OFF</option>
-                        <option value="all">EXPAND_ALL</option>
-                        <option value="level1">EXPAND_LVL_1</option>
-                        <option value="foo">EXPAND_'foo'</option>
-                    </select>
-                    <button id="downloadButton" class="btn-success" style="display: none;">EXPORT_SVG</button>
+                    <label class="field" for="skinSelect">Skin
+                        <select id="skinSelect"></select>
+                    </label>
+                    <label class="field" for="configSelect">Hierarchy
+                        <select id="configSelect">
+                            <option value="" selected>Off</option>
+                            <option value="all">Expand all</option>
+                            <option value="level1">Expand level 1</option>
+                            <option value="foo">Expand &lsquo;foo&rsquo;</option>
+                        </select>
+                    </label>
+                    <button id="downloadButton" class="btn btn-primary" style="display: none;">Download SVG</button>
                 </div>
             </div>
-            <div class="preview-container">
+            <div class="panel-body preview">
                 <div id="emptyState" class="empty-state">
-                    <div class="empty-state-icon">⚡</div>
-                    <div>AWAITING_INPUT // STANDBY_MODE</div>
+                    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <rect x="3" y="7" width="6" height="6" rx="1"/>
+                        <rect x="15" y="4" width="6" height="6" rx="1"/>
+                        <rect x="15" y="14" width="6" height="6" rx="1"/>
+                        <path d="M9 10h3v-3h3M9 10h3v7h3"/>
+                    </svg>
+                    <div>No schematic yet</div>
+                    <div class="hint">choose an example or paste a netlist</div>
                 </div>
-                <img id="svgArea" alt="Rendered SVG">
+                <img id="svgArea" alt="Rendered schematic">
             </div>
-            <div style="padding: 8px 20px; font-size: 0.6rem; color: var(--text-secondary); font-family: 'JetBrains Mono', monospace; opacity: 0.5; display: flex; justify-content: space-between;">
-                <span>RENDER_ENGINE: ELK_LAYERED</span>
-                <span>DPI: 300_VIRTUAL</span>
-            </div>
-        </div>
-    </div>
+        </section>
+    </main>
 
-    <!-- Error Toast -->
-    <div id="toast" class="toast"></div>
+    <footer class="site-footer">
+        <span class="meta">Layout: Eclipse&nbsp;ELK &middot; Renderer: netlistsvg &middot; Input: Yosys&nbsp;JSON</span>
+        <span>Tip: the <strong>Hierarchy</strong> control expands submodules inline.</span>
+    </footer>
+
+    <div id="toast" class="toast" role="alert" aria-live="assertive"></div>
 
     <script type="text/javascript" src="elk.bundled.js"></script>
     <script type="text/javascript" src="bundle.js"></script>

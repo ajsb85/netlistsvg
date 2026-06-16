@@ -73,12 +73,11 @@ async function render() {
         const netlist = JSON5.parse(textarea.value);
         const config = HIERARCHY_CONFIGS[configSelect.value];
         const svgString = await netlistRenderer.render(skinSelect.value, netlist, undefined, undefined, config);
-        // Export keeps the theme-neutral SVG so it adapts (light/dark) wherever it
-        // is embedded. The preview forces the dark theme to match this dashboard.
+        // The schematic renders in its light theme to match the datasheet style;
+        // the SVG is theme-neutral so it still adapts wherever it is embedded.
         currentSvgString = svgString;
-        const darkSvg = svgString.replace('<svg ', '<svg class="dark" ');
 
-        svgImage.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(darkSvg)));
+        svgImage.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgString)));
         svgImage.style.display = 'block';
         emptyState.style.display = 'none';
         downloadButton.style.display = 'block';
