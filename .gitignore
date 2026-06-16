@@ -6,5 +6,4 @@ examples/*.json
 examples/**/*.svg
 examples/**/*.png
 .yosys_extra
-package-lock.json
 built/*.test.js
