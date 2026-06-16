@@ -91,18 +91,82 @@ function processSplitsAndJoins(inputs, outputs, targetSignal, start, end, splits
  */
 class FlatModule {
     /**
-     * Create a new FlatModule from a Yosys netlist
+     * Entry point for building a (possibly hierarchical) FlatModule from a Yosys
+     * netlist and a configuration. Selects the top module, then recursively flattens
+     * it according to the hierarchy settings in the config.
      */
-    constructor(netlist) {
-        // Find the top module or use the first one
-        this.moduleName = Object.keys(netlist.modules).find(name => { var _a; return ((_a = netlist.modules[name].attributes) === null || _a === void 0 ? void 0 : _a.top) === 1; }) || Object.keys(netlist.modules)[0];
-        const topModule = netlist.modules[this.moduleName];
-        // Create nodes from ports and cells
-        this.nodes = [
-            ...Object.entries(topModule.ports).map(([key, portData]) => Cell_1.default.fromPort(portData, key)),
-            ...Object.entries(topModule.cells).map(([key, cellData]) => Cell_1.default.fromYosysCell(cellData, key))
-        ];
-        this.wires = []; // Will be populated by createWires
+    static fromNetlist(netlist, config) {
+        this.layoutProps = Skin_1.default.getProperties();
+        this.modNames = Object.keys(netlist.modules);
+        this.netlist = netlist;
+        this.config = config;
+        let topName = null;
+        if (config.top.enable) {
+            topName = config.top.module;
+            if (!this.modNames.includes(topName)) {
+                throw new Error('Top module in config file not defined in input json file.');
+            }
+        }
+        else {
+            Object.entries(netlist.modules).forEach(([name, mod]) => {
+                if (mod.attributes && Number(mod.attributes.top) === 1) {
+                    topName = name;
+                }
+            });
+            // Otherwise default the first one in the file...
+            if (topName == null) {
+                topName = this.modNames[0];
+            }
+        }
+        const top = netlist.modules[topName];
+        return new FlatModule(top, topName, 0);
+    }
+    /**
+     * Create a FlatModule for a single module. `depth` is the hierarchy depth
+     * (0 for the top module) and `parent` is the name of the enclosing module.
+     */
+    constructor(mod, name, depth, parent = null) {
+        this.parent = parent;
+        this.moduleName = name;
+        const ports = Object.entries(mod.ports).map(([portName, portData]) => Cell_1.default.fromPort(portData, portName, this.moduleName));
+        const cells = Object.entries(mod.cells).map(([key, c]) => this.buildCell(c, key, depth));
+        this.nodes = cells.concat(ports);
+        this.wires = []; // populated by createWires below
+        // this can be skipped if there are no 0's or 1's
+        if (FlatModule.layoutProps.constants !== false) {
+            this.addConstants();
+        }
+        // this can be skipped if there are no splits or joins
+        if (FlatModule.layoutProps.splitsAndJoins !== false) {
+            this.addSplitsJoins();
+        }
+        this.createWires();
+    }
+    /**
+     * Decide whether a child cell should be rendered as an expanded submodule or as
+     * an opaque box, based on the hierarchy configuration and current depth.
+     */
+    buildCell(c, key, depth) {
+        const cfg = FlatModule.config.hierarchy;
+        const isModule = FlatModule.modNames.includes(c.type);
+        const expand = () => Cell_1.default.createSubModule(c, key, this.moduleName, FlatModule.netlist.modules[c.type], depth);
+        const box = () => Cell_1.default.fromYosysCell(c, key, this.moduleName);
+        switch (cfg.enable) {
+            case 'level':
+                return (cfg.expandLevel > depth && isModule) ? expand() : box();
+            case 'all':
+                return isModule ? expand() : box();
+            case 'modules':
+                if (cfg.expandModules.types.includes(c.type) || cfg.expandModules.ids.includes(key)) {
+                    if (!isModule) {
+                        throw new Error('Submodule in config file not defined in input json file.');
+                    }
+                    return expand();
+                }
+                return box();
+            default:
+                return box();
+        }
     }
     /**
      * Add constant value nodes to the module
@@ -132,8 +196,8 @@ class FlatModule {
             processSplitsAndJoins(allOutputs, inputsCopy, input, 0, input.length, splits, joins);
         }
         // Create new cells for joins and splits
-        const joinCells = Object.entries(joins).map(([joinInput, joinOutputs]) => Cell_1.default.fromJoinInfo(joinInput, joinOutputs));
-        const splitCells = Object.entries(splits).map(([splitInput, splitOutputs]) => Cell_1.default.fromSplitInfo(splitInput, splitOutputs));
+        const joinCells = Object.entries(joins).map(([joinInput, joinOutputs]) => Cell_1.default.fromJoinInfo(joinInput, joinOutputs, this.moduleName));
+        const splitCells = Object.entries(splits).map(([splitInput, splitOutputs]) => Cell_1.default.fromSplitInfo(splitInput, splitOutputs, this.moduleName));
         // Add new cells to the module
         this.nodes.push(...joinCells, ...splitCells);
     }

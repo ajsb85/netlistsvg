@@ -23,16 +23,19 @@ export declare namespace ElkModel {
         x?: number;
         y?: number;
         labels?: Label[];
+        layoutOptions?: LayoutOptions;
     }
     interface Cell {
         id: string;
-        width: number;
-        height: number;
+        width?: number;
+        height?: number;
         ports: Port[];
         layoutOptions?: LayoutOptions;
         labels?: Label[];
         x?: number;
         y?: number;
+        children?: Cell[];
+        edges?: Edge[];
     }
     interface Section {
         id?: string;

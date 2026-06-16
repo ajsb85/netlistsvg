@@ -1,4 +1,5 @@
 import Yosys from './YosysModel';
+import Config from './ConfigModel';
 import Cell from './Cell';
 export interface FlatPort {
     key: string;
@@ -41,13 +42,32 @@ export declare function processSplitsAndJoins(inputs: string[], outputs: string[
  * Represents a flattened module from a Yosys netlist
  */
 export declare class FlatModule {
+    static netlist: Yosys.Netlist;
+    static layoutProps: {
+        [x: string]: any;
+    };
+    static modNames: string[];
+    static config: Config;
+    /**
+     * Entry point for building a (possibly hierarchical) FlatModule from a Yosys
+     * netlist and a configuration. Selects the top module, then recursively flattens
+     * it according to the hierarchy settings in the config.
+     */
+    static fromNetlist(netlist: Yosys.Netlist, config: Config): FlatModule;
+    parent: string | null;
     moduleName: string;
     nodes: Cell[];
     wires: Wire[];
     /**
-     * Create a new FlatModule from a Yosys netlist
+     * Create a FlatModule for a single module. `depth` is the hierarchy depth
+     * (0 for the top module) and `parent` is the name of the enclosing module.
      */
-    constructor(netlist: Yosys.Netlist);
+    constructor(mod: Yosys.Module, name: string, depth: number, parent?: string | null);
+    /**
+     * Decide whether a child cell should be rendered as an expanded submodule or as
+     * an opaque box, based on the hierarchy configuration and current depth.
+     */
+    private buildCell;
     /**
      * Add constant value nodes to the module
      */

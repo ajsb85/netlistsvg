@@ -2,6 +2,7 @@ import ELK from 'elkjs';
 import onml = require('onml');
 import { FlatModule } from './FlatModule';
 import Yosys from './YosysModel';
+import Config from './ConfigModel';
 import Skin from './Skin';
 import { ElkModel, buildElkGraph } from './elkGraph';
 import drawModule from './drawModule';
@@ -12,27 +13,26 @@ const elk = new ELK();
 // Type definition for callback functions
 type ICallback = (error: Error | null, result?: string) => void;
 
+// Default configuration: hierarchy disabled, top module taken from the netlist.
+const defaultConfig: Config = {
+  hierarchy: {
+    enable: 'off',
+    expandLevel: 0,
+    expandModules: { types: [], ids: [] },
+  },
+  top: { enable: false, module: '' },
+};
+
 /**
- * Creates a flat module representation from Yosys netlist using skin data
+ * Creates a flat module representation from Yosys netlist using skin data.
+ * The module is flattened recursively according to the supplied configuration
+ * (constants, splits/joins and wires are all built during construction).
  */
-function createFlatModule(skinData: string, yosysNetlist: Yosys.Netlist): FlatModule {
+function createFlatModule(skinData: string, yosysNetlist: Yosys.Netlist, configData?: Config): FlatModule {
   // Parse skin data
   Skin.skin = onml.p(skinData);
-  const layoutProps = Skin.getProperties();
-
-  // Create and configure flat module
-  const flatModule = new FlatModule(yosysNetlist);
-
-  if (layoutProps.constants !== false) {
-    flatModule.addConstants();
-  }
-
-  if (layoutProps.splitsAndJoins !== false) {
-    flatModule.addSplitsJoins();
-  }
-
-  flatModule.createWires();
-  return flatModule;
+  const config = configData || defaultConfig;
+  return FlatModule.fromNetlist(yosysNetlist, config);
 }
 
 /**
@@ -72,10 +72,11 @@ export function render(
   skinData: string,
   yosysNetlist: Yosys.Netlist,
   done?: ICallback,
-  elkData?: ElkModel.Graph
+  elkData?: ElkModel.Graph,
+  configData?: Config
 ): Promise<string> {
   // Create module and build graph
-  const flatModule = createFlatModule(skinData, yosysNetlist);
+  const flatModule = createFlatModule(skinData, yosysNetlist, configData);
   const kgraph: ElkModel.Graph = buildElkGraph(flatModule);
   const layoutProps = Skin.getProperties();
 

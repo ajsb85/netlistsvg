@@ -22,25 +22,25 @@ class Port {
     valString() {
         return ',' + this.value.join() + ',';
     }
-    findConstants(sigsByConstantName, maxNum, constantCollector) {
+    findConstants(sigsByConstantName, maxNum, constantCollector, parent) {
         let constName = '';
         let constNums = [];
         for (let i = 0; i < this.value.length; i++) {
             const portSig = this.value[i];
-            if (portSig === '0' || portSig === '1') {
+            if (portSig === '0' || portSig === '1' || portSig === 'x') {
                 maxNum += 1;
                 constName += portSig;
                 this.value[i] = maxNum;
                 constNums.push(maxNum);
             }
             else if (constName.length > 0) {
-                this.assignConstant(constName, constNums, sigsByConstantName, constantCollector);
+                this.assignConstant(constName, constNums, sigsByConstantName, constantCollector, parent);
                 constName = '';
                 constNums = [];
             }
         }
         if (constName.length > 0) {
-            this.assignConstant(constName, constNums, sigsByConstantName, constantCollector);
+            this.assignConstant(constName, constNums, sigsByConstantName, constantCollector, parent);
         }
         return maxNum;
     }
@@ -48,8 +48,11 @@ class Port {
         if (!this.parentNode) {
             throw new Error('Port has no parentNode');
         }
-        const nodeKey = this.parentNode.Key;
+        // Namespace the port id with the module that owns the parent cell so
+        // that cells of different (recursively expanded) modules never collide.
+        const nodeKey = `${this.parentNode.parent}.${this.parentNode.Key}`;
         const type = this.parentNode.getTemplate()[1]['s:type'];
+        const isSub = type === 'sub_odd' || type === 'sub_even';
         const x = Number(templatePorts[0][1]['s:x']);
         const y = Number(templatePorts[0][1]['s:y']);
         const portId = `${nodeKey}.${this.key}`;
@@ -62,7 +65,7 @@ class Port {
             x,
             y: portY,
         };
-        const needsLabel = (type === 'generic' ||
+        const needsLabel = (type === 'generic' || isSub ||
             (type === 'join' && dir === 'in') ||
             (type === 'split' && dir === 'out'));
         if (needsLabel) {
@@ -75,9 +78,18 @@ class Port {
                     height: 11,
                 }];
         }
+        // Expanded submodules use fixed-side ports laid out by ELK, so they are
+        // pinned to a side rather than an explicit (x, y) position.
+        if (isSub) {
+            elkPort.layoutOptions = {
+                'org.eclipse.elk.port.side': dir === 'in' ? 'WEST' : 'EAST',
+            };
+            delete elkPort.x;
+            delete elkPort.y;
+        }
         return elkPort;
     }
-    assignConstant(name, constants, signalsByConstantName, constantCollector) {
+    assignConstant(name, constants, signalsByConstantName, constantCollector, parent) {
         const reversedName = name.split('').reverse().join('');
         if (signalsByConstantName[reversedName]) {
             const constSigs = signalsByConstantName[reversedName];
@@ -89,7 +101,7 @@ class Port {
             }
         }
         else {
-            constantCollector.push(Cell_1.default.fromConstantInfo(reversedName, constants));
+            constantCollector.push(Cell_1.default.fromConstantInfo(reversedName, constants, parent));
             signalsByConstantName[reversedName] = constants;
         }
     }

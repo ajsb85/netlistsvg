@@ -13,23 +13,25 @@ const elkGraph_1 = require("./elkGraph");
 const drawModule_1 = __importDefault(require("./drawModule"));
 // Initialize ELK engine
 const elk = new elkjs_1.default();
+// Default configuration: hierarchy disabled, top module taken from the netlist.
+const defaultConfig = {
+    hierarchy: {
+        enable: 'off',
+        expandLevel: 0,
+        expandModules: { types: [], ids: [] },
+    },
+    top: { enable: false, module: '' },
+};
 /**
- * Creates a flat module representation from Yosys netlist using skin data
+ * Creates a flat module representation from Yosys netlist using skin data.
+ * The module is flattened recursively according to the supplied configuration
+ * (constants, splits/joins and wires are all built during construction).
  */
-function createFlatModule(skinData, yosysNetlist) {
+function createFlatModule(skinData, yosysNetlist, configData) {
     // Parse skin data
     Skin_1.default.skin = onml.p(skinData);
-    const layoutProps = Skin_1.default.getProperties();
-    // Create and configure flat module
-    const flatModule = new FlatModule_1.FlatModule(yosysNetlist);
-    if (layoutProps.constants !== false) {
-        flatModule.addConstants();
-    }
-    if (layoutProps.splitsAndJoins !== false) {
-        flatModule.addSplitsJoins();
-    }
-    flatModule.createWires();
-    return flatModule;
+    const config = configData || defaultConfig;
+    return FlatModule_1.FlatModule.fromNetlist(yosysNetlist, config);
 }
 /**
  * Generates and returns the ELK graph layout JSON
@@ -56,9 +58,9 @@ async function dumpLayout(skinData, yosysNetlist, prelayout, done) {
 /**
  * Renders the Yosys netlist using the provided skin and optional ELK data
  */
-function render(skinData, yosysNetlist, done, elkData) {
+function render(skinData, yosysNetlist, done, elkData, configData) {
     // Create module and build graph
-    const flatModule = createFlatModule(skinData, yosysNetlist);
+    const flatModule = createFlatModule(skinData, yosysNetlist, configData);
     const kgraph = (0, elkGraph_1.buildElkGraph)(flatModule);
     const layoutProps = Skin_1.default.getProperties();
     // Define rendering process

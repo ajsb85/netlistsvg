@@ -37,7 +37,7 @@
     "test-examples": "npm run build && node --trace-warnings test/test-all.js",
     "lint": "eslint .",
     "test": "npm run -s test-examples && npm run -s lint && jest",
-    "build-demo": "cp docs/index.html . && cp node_modules/elkjs/lib/elk.bundled.js . && esbuild docs/demo.js --bundle --outfile=bundle.js --platform=browser --external:elkjs --banner:js=\"const require = (name) => name === 'elkjs' ? window.ELK : undefined;\"",
+    "build-demo": "cp docs/index.html . && cp docs/index.css . && cp docs/favicon.ico . && cp node_modules/elkjs/lib/elk.bundled.js . && esbuild docs/demo.js --bundle --outfile=bundle.js --platform=browser --external:elkjs --banner:js=\"const require = (name) => name === 'elkjs' ? window.ELK : undefined;\"",
     "build-module": "esbuild jsmodule/index.js --bundle --format=iife --global-name=netlist2svg --outfile=built/netlist2svg.bundle.js --loader:.svg=text --loader:.json5=text --platform=browser --external:elkjs --banner:js=\"const require = (name) => name === 'elkjs' ? window.ELK : undefined;\"",
     "serve": "http-server . -o index.html"
   },

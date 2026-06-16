@@ -4,6 +4,7 @@ import json5 = require('json5');
 import onml = require('onml');
 
 import Yosys from '../lib/YosysModel';
+import Config from '../lib/ConfigModel';
 import Cell from '../lib/Cell';
 import { FlatModule } from '../lib/FlatModule';
 import Skin from '../lib/Skin';
@@ -15,11 +16,13 @@ import Skin from '../lib/Skin';
 function createFlatModule(testFile: string): FlatModule {
     const testPath = path.join(__dirname,'digital', testFile + '.json');
     const defaultSkin = path.join(__dirname, '../skin/default.svg');
+    const defaultConfig = path.join(__dirname, '../lib/config.json');
     const testStr = fs.readFileSync(testPath).toString();
     const netlist: Yosys.Netlist = json5.parse(testStr);
+    const config: Config = json5.parse(fs.readFileSync(defaultConfig).toString());
     const skin = onml.parse(fs.readFileSync(defaultSkin).toString());
     Skin.skin = skin;
-    return new FlatModule(netlist);
+    return FlatModule.fromNetlist(netlist, config);
 }
 
 /**
@@ -27,12 +30,13 @@ function createFlatModule(testFile: string): FlatModule {
  */
 test('split join', () => {
     const flatModule = createFlatModule('ports_splitjoin');
-    // there are 5 external ports
+    // splits and joins are already added during construction (fromNetlist), so the
+    // node count includes the expected one split and two joins.
     const numStartNodes = flatModule.nodes.length;
     flatModule.addSplitsJoins();
     const nodes = flatModule.nodes;
-    // should have 3 more nodes, one split, two joins
-    expect(nodes.length - numStartNodes).toEqual(3);
+    // re-running the pass should not add any new nodes
+    expect(nodes.length - numStartNodes).toEqual(0);
     const splits = nodes.filter( (node: Cell) => node.Type === '$_split_');
     expect(splits.length).toEqual(1);
     const split = splits[0];

@@ -9,6 +9,7 @@ const skinPaths = ['skin/horizontal.svg', 'skin/default.svg'];
 const textarea = document.querySelector('#editor');
 const skinSelect = document.querySelector('#skinSelect');
 const exampleSelect = document.querySelector('#exampleSelect');
+const configSelect = document.querySelector('#configSelect');
 const formatButton = document.querySelector('#formatButton');
 const downloadButton = document.querySelector('#downloadButton');
 const svgImage = document.querySelector('#svgArea');
@@ -16,6 +17,14 @@ const emptyState = document.querySelector('#emptyState');
 const toast = document.querySelector('#toast');
 
 let currentSvgString = '';
+
+// Hierarchy configurations selectable in the UI. An empty selection (key '')
+// means "off" and renders submodules as opaque boxes.
+const HIERARCHY_CONFIGS = {
+    all: { hierarchy: { enable: 'all', expandLevel: 0, expandModules: { types: [], ids: [] } }, top: { enable: false, module: '' } },
+    level1: { hierarchy: { enable: 'level', expandLevel: 1, expandModules: { types: [], ids: [] } }, top: { enable: false, module: '' } },
+    foo: { hierarchy: { enable: 'modules', expandLevel: 0, expandModules: { types: [], ids: ['foo'] } }, top: { enable: false, module: '' } },
+};
 
 function showToast(message) {
     toast.textContent = message;
@@ -62,10 +71,14 @@ async function render() {
 
     try {
         const netlist = JSON5.parse(textarea.value);
-        const svgString = await netlistRenderer.render(skinSelect.value, netlist);
+        const config = HIERARCHY_CONFIGS[configSelect.value];
+        const svgString = await netlistRenderer.render(skinSelect.value, netlist, undefined, undefined, config);
+        // Export keeps the theme-neutral SVG so it adapts (light/dark) wherever it
+        // is embedded. The preview forces the dark theme to match this dashboard.
         currentSvgString = svgString;
+        const darkSvg = svgString.replace('<svg ', '<svg class="dark" ');
 
-        svgImage.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgString)));
+        svgImage.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(darkSvg)));
         svgImage.style.display = 'block';
         emptyState.style.display = 'none';
         downloadButton.style.display = 'block';
@@ -92,6 +105,16 @@ function format() {
     }
 }
 
+// Select the skin option whose label contains the given substring.
+function selectSkinByPath(substr) {
+    for (const option of skinSelect.options) {
+        if (option.text.includes(substr)) {
+            skinSelect.value = option.value;
+            return;
+        }
+    }
+}
+
 async function handleExampleChange() {
     const examplePath = exampleSelect.value;
     if (!examplePath) return;
@@ -99,6 +122,16 @@ async function handleExampleChange() {
     try {
         const res = await superagent.get(examplePath);
         textarea.value = res.text;
+        // Auto-enable hierarchy expansion for the hierarchy example so the new
+        // feature is visible immediately. The default skin is required because it
+        // defines the sub_odd/sub_even templates and the constant/split passes the
+        // hierarchical netlist relies on.
+        if (examplePath.includes('hierarchy')) {
+            selectSkinByPath('default.svg');
+            configSelect.value = 'all';
+        } else {
+            configSelect.value = '';
+        }
         format();
         render();
     } catch (error) {
@@ -142,6 +175,7 @@ async function init() {
     downloadButton.addEventListener('click', handleDownload);
     exampleSelect.addEventListener('change', handleExampleChange);
     skinSelect.addEventListener('change', render);
+    configSelect.addEventListener('change', render);
 
     // Debounced render on textarea input
     const debouncedRender = debounce(render, 300);
