@@ -1,4 +1,4 @@
-# netlistsvg
+# NetlistSVG
 
 > **⚠️ Notice:** This repository is an [orphan fork](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/what-happens-to-forks-when-a-repository-is-deleted-or-changes-visibility) maintained by [@ajsb85](https://github.com/ajsb85). The original upstream repository by nturley is no longer maintained or available.
 
@@ -28,7 +28,7 @@ sudo npm uninstall -g netlistsvg # uninstall from system
 ```
 
 ### Nix
-If you have [Nix](https://nixos.org/) installed, you can run netlistsvg directly without installing nodejs:
+If you have [Nix](https://nixos.org/) installed, you can run NetlistSVG directly without installing nodejs:
 ```sh
 nix run github:ajsb85/netlistsvg
 ```
@@ -37,7 +37,7 @@ Or install it to your profile:
 nix-env -iA netlistsvg -f https://github.com/ajsb85/netlistsvg/archive/main.tar.gz
 ```
 
-You can execute netlistsvg like this.
+You can execute NetlistSVG like this.
 ```
 netlistsvg input_json_file [-o output_svg_file] [--skin skin_file]
 ```
@@ -48,7 +48,7 @@ Should work on Linux, OSX, and Windows. Running the build scripts (makefiles and
 ## Web bundle
 
 I provide a web bundle distributed via GitHub Releases here: https://github.com/ajsb85/netlistsvg/releases/latest/download/netlistsvg.bundle.js
-It doesn't wrap ELKjs, so you'll need to include it separately. ELK creates a global variable, so you'll need to include ELKjs before netlistsvg.
+It doesn't wrap ELKjs, so you'll need to include it separately. ELK creates a global variable, so you'll need to include ELKjs before NetlistSVG.
 
 In HTML it would look something like this
 ```html
@@ -81,7 +81,7 @@ To turn Verilog into YosysJSON in the browser, you can use [YosysJS](https://yos
 
 ## Development
 
-The `lib/` folder contains the main source code for netlistsvg in Typescript. The `built/` folder contains said source code compiled to Javascript. When wanting to make changes to netlistsvg, one should modify the Typescript source, compile to Javascript, then test their modifications.
+The `lib/` folder contains the main source code for NetlistSVG in Typescript. The `built/` folder contains said source code compiled to Javascript. When wanting to make changes to NetlistSVG, one should modify the Typescript source, compile to Javascript, then test their modifications.
 
 To compile, lint, and do self-tests, run
 ```sh
@@ -95,7 +95,7 @@ npm run build-module
 
 # Examples
 
-Here's an digital netlist produced by Yosys along with the diagram that netlistsvg created from it.
+Here's an digital netlist produced by Yosys along with the diagram that NetlistSVG created from it.
 <details>
   <summary>JSON Source</summary>
 

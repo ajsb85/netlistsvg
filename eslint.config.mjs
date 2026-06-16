@@ -7,6 +7,7 @@ export default [
   {
     ignores: [
       "built/**",
+      "docs/**",
       "coverage/**",
       "node_modules/**",
       "examples/**",
