@@ -34,11 +34,15 @@
                         <option value="test/analog/and.json" selected>AND Gate (Analog)</option>
                         <option value="test/analog/resistor_divider.json">Resistor Divider (Analog)</option>
                     </select>
-                    <button id="formatButton" class="btn-secondary">Format JSON</button>
+                    <button id="formatButton" class="btn-secondary">BEAUTIFY_CODE</button>
                 </div>
             </div>
             <div class="editor-wrapper">
                 <textarea id="editor" placeholder="Paste your Yosys JSON netlist here..."></textarea>
+            </div>
+            <div style="padding: 8px 20px; font-size: 0.6rem; color: var(--text-secondary); font-family: 'JetBrains Mono', monospace; opacity: 0.5; display: flex; justify-content: space-between;">
+                <span>BUFFER_STATUS: 100%</span>
+                <span>ENC: UTF-8</span>
             </div>
         </div>
 
@@ -47,17 +51,21 @@
             <div class="panel-header">
                 <div class="panel-title">Schematic Preview</div>
                 <div class="controls">
-                    <label for="skinSelect" style="font-size: 0.85rem; color: var(--text-secondary);">Skin:</label>
+                    <label for="skinSelect" style="font-size: 0.7rem; color: var(--text-secondary); font-family: 'JetBrains Mono', monospace;">SKIN_PROFILE:</label>
                     <select id="skinSelect"></select>
-                    <button id="downloadButton" class="btn-success" style="display: none;">Download SVG</button>
+                    <button id="downloadButton" class="btn-success" style="display: none;">EXPORT_SVG</button>
                 </div>
             </div>
             <div class="preview-container">
                 <div id="emptyState" class="empty-state">
                     <div class="empty-state-icon">⚡</div>
-                    <div>Write some netlist JSON or load an example to render the schematic.</div>
+                    <div>AWAITING_INPUT // STANDBY_MODE</div>
                 </div>
                 <img id="svgArea" alt="Rendered SVG">
+            </div>
+            <div style="padding: 8px 20px; font-size: 0.6rem; color: var(--text-secondary); font-family: 'JetBrains Mono', monospace; opacity: 0.5; display: flex; justify-content: space-between;">
+                <span>RENDER_ENGINE: ELK_LAYERED</span>
+                <span>DPI: 300_VIRTUAL</span>
             </div>
         </div>
     </div>
