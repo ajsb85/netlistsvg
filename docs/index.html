@@ -3,8 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>netlistsvg — Yosys netlist to SVG schematic</title>
+    <title>Netlist2SVG — Yosys netlist to SVG schematic</title>
     <meta name="description" content="Interactive renderer that draws SVG schematics from Yosys JSON netlists, with hierarchical module expansion.">
+    <!-- Resolve the theme before first paint to avoid a flash. -->
+    <script>
+        (function () {
+            try {
+                var mode = localStorage.getItem('netlist2svg-theme') || 'system';
+                var dark = mode === 'dark' ||
+                    (mode === 'system' && window.matchMedia &&
+                     window.matchMedia('(prefers-color-scheme: dark)').matches);
+                document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+            } catch (e) {
+                document.documentElement.dataset.theme = 'light';
+            }
+        })();
+    </script>
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,11 +27,14 @@
 <body>
     <header class="site-header">
         <div class="brand">
-            <h1>netlist<span class="mark">svg</span></h1>
+            <h1>Netlist2<span class="mark">SVG</span></h1>
             <p class="tagline">Render SVG schematics from Yosys JSON netlists &mdash; with hierarchical module expansion.</p>
         </div>
         <div class="header-meta">
             <span class="version">ELK&nbsp;&middot;&nbsp;Yosys&nbsp;JSON</span>
+            <button id="themeToggle" class="theme-toggle" type="button" title="Toggle theme">
+                <span class="ico" aria-hidden="true"></span><span class="label">System</span>
+            </button>
             <a href="https://github.com/ajsb85/netlist2svg" target="_blank" rel="noopener">GitHub &nearr;</a>
         </div>
     </header>

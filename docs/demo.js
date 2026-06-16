@@ -15,8 +15,62 @@ const downloadButton = document.querySelector('#downloadButton');
 const svgImage = document.querySelector('#svgArea');
 const emptyState = document.querySelector('#emptyState');
 const toast = document.querySelector('#toast');
+const themeToggle = document.querySelector('#themeToggle');
 
 let currentSvgString = '';
+
+/* ---------------- Theme (auto + forced via toggle) ----------------
+   The toggle cycles System -> Light -> Dark. "System" follows the OS; Light/Dark
+   force the choice (persisted in localStorage). The active theme is mirrored onto
+   <html data-theme> for the page CSS and onto the rendered SVG (class="light|dark")
+   so the skins honor it regardless of the OS setting. */
+const THEME_KEY = 'netlist2svg-theme';
+const THEME_MODES = ['system', 'light', 'dark'];
+const THEME_LABELS = { system: 'System', light: 'Light', dark: 'Dark' };
+const THEME_ICONS = {
+    system: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3v18" /><path d="M12 3a9 9 0 0 1 0 18" fill="currentColor" stroke="none"/></svg>',
+    light: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
+    dark: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>',
+};
+
+function systemPrefersDark() {
+    return Boolean(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+}
+
+function storedThemeMode() {
+    try { return localStorage.getItem(THEME_KEY) || 'system'; } catch (e) { return 'system'; }
+}
+
+function effectiveTheme(mode) {
+    return mode === 'system' ? (systemPrefersDark() ? 'dark' : 'light') : mode;
+}
+
+function applyTheme(mode) {
+    document.documentElement.dataset.theme = effectiveTheme(mode);
+    if (themeToggle) {
+        const ico = themeToggle.querySelector('.ico');
+        const label = themeToggle.querySelector('.label');
+        if (ico) ico.innerHTML = THEME_ICONS[mode];
+        if (label) label.textContent = THEME_LABELS[mode];
+        themeToggle.setAttribute('aria-label', 'Theme: ' + THEME_LABELS[mode] + ' (click to change)');
+    }
+    applySchematicTheme();
+}
+
+function cycleTheme() {
+    const next = THEME_MODES[(THEME_MODES.indexOf(storedThemeMode()) + 1) % THEME_MODES.length];
+    try { localStorage.setItem(THEME_KEY, next); } catch (e) { /* ignore */ }
+    applyTheme(next);
+}
+
+// Re-skin the already-rendered schematic to the active theme without re-laying it
+// out. The skins honor class="dark" / class="light" on the root <svg>.
+function applySchematicTheme() {
+    if (!currentSvgString) return;
+    const eff = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
+    const themed = currentSvgString.replace('<svg ', '<svg class="' + eff + '" ');
+    svgImage.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(themed)));
+}
 
 // Hierarchy configurations selectable in the UI. An empty selection (key '')
 // means "off" and renders submodules as opaque boxes.
@@ -73,11 +127,11 @@ async function render() {
         const netlist = JSON5.parse(textarea.value);
         const config = HIERARCHY_CONFIGS[configSelect.value];
         const svgString = await netlistRenderer.render(skinSelect.value, netlist, undefined, undefined, config);
-        // The schematic renders in its light theme to match the datasheet style;
-        // the SVG is theme-neutral so it still adapts wherever it is embedded.
+        // Keep the theme-neutral SVG for export; the preview is themed to match the
+        // active light/dark theme via applySchematicTheme().
         currentSvgString = svgString;
+        applySchematicTheme();
 
-        svgImage.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgString)));
         svgImage.style.display = 'block';
         emptyState.style.display = 'none';
         downloadButton.style.display = 'block';
@@ -164,6 +218,10 @@ function debounce(func, delay) {
 }
 
 async function init() {
+    // Reflect the persisted theme on the toggle (the head script already set the
+    // initial data-theme to avoid a flash).
+    applyTheme(storedThemeMode());
+
     const skins = await loadSkins(skinPaths);
     if (skins.length > 0) {
         populateSkinSelect(skins);
@@ -175,6 +233,15 @@ async function init() {
     exampleSelect.addEventListener('change', handleExampleChange);
     skinSelect.addEventListener('change', render);
     configSelect.addEventListener('change', render);
+    if (themeToggle) {
+        themeToggle.addEventListener('click', cycleTheme);
+    }
+    // Follow the OS when in "system" mode.
+    if (window.matchMedia) {
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+            if (storedThemeMode() === 'system') applyTheme('system');
+        });
+    }
 
     // Debounced render on textarea input
     const debouncedRender = debounce(render, 300);

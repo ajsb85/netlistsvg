@@ -18,11 +18,36 @@
     --grid: rgba(27, 79, 138, 0.045);
     --grid-major: rgba(27, 79, 138, 0.08);
     --error: #b3261e;
+    --preview-bg: #ffffff;
+    --plate-bg: #ffffff;
+    --plate-border: #d8dee4;
     --radius: 8px;
     --shadow: 0 1px 2px rgba(27, 33, 39, 0.04), 0 2px 6px rgba(27, 33, 39, 0.05);
 
     --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+}
+
+/* Dark theme. The theme is resolved by a small head script + the toggle button,
+   which set data-theme on <html>; CSS just swaps the palette. */
+:root[data-theme="dark"] {
+    --bg: #0e1116;
+    --panel: #161b22;
+    --panel-header: #1b212a;
+    --border: #2a313c;
+    --border-strong: #3a424f;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --accent: #58a6ff;
+    --accent-hover: #79b8ff;
+    --accent-soft: rgba(88, 166, 255, 0.14);
+    --grid: rgba(120, 160, 210, 0.05);
+    --grid-major: rgba(120, 160, 210, 0.10);
+    --error: #f85149;
+    --preview-bg: #0d1117;
+    --plate-bg: #0d1117;
+    --plate-border: #2a313c;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.35);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -218,6 +243,32 @@ select:focus {
     box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
+/* lighter dropdown chevron for the dark theme */
+:root[data-theme="dark"] select {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%238b949e' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+}
+
+/* ---------- Theme toggle ---------- */
+.theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-ui);
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text);
+    background: var(--panel);
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
+    padding: 3px 12px 3px 10px;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+.theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
+.theme-toggle:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+.theme-toggle .ico { width: 14px; height: 14px; display: inline-block; }
+.theme-toggle .ico svg { display: block; }
+
 /* ---------- Editor ---------- */
 .panel-body { flex: 1; min-height: 0; display: flex; }
 
@@ -247,7 +298,7 @@ select:focus {
     justify-content: center;
     overflow: auto;
     padding: 28px;
-    background-color: #ffffff;
+    background-color: var(--preview-bg);
     background-image:
         linear-gradient(var(--grid-major) 1px, transparent 1px),
         linear-gradient(90deg, var(--grid-major) 1px, transparent 1px),
@@ -261,9 +312,9 @@ select:focus {
     display: none;
     max-width: 100%;
     height: auto;
-    background: #ffffff;
+    background: var(--plate-bg);
     padding: 16px;
-    border: 1px solid var(--border);
+    border: 1px solid var(--plate-border);
     border-radius: 6px;
     box-shadow: var(--shadow);
 }
