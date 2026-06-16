@@ -1,6 +1,6 @@
 {
   "name": "netlist2svg",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "description": "rendering a schematic from a netlist",
   "main": "built/index.js",
   "module": "built/index.esm.js",
@@ -25,7 +25,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/ajsb85/netlist2svg"
+    "url": "git+https://github.com/ajsb85/netlist2svg.git"
   },
   "bin": {
     "netlist2svg": "./bin/netlist2svg.js",
