@@ -1,6 +1,30 @@
 <svg xmlns="http://www.w3.org/2000/svg"
   xmlns:xlink="http://www.w3.org/1999/xlink"
-  xmlns:s="https://github.com/ajsb85/netlist2svg">
+  xmlns:s="https://github.com/ajsb85/netlist2svg"><style>svg{stroke:#000;fill:none}text{fill:#000}
+  @media (prefers-color-scheme: dark) {
+    svg {
+      stroke: #fff !important;
+    }
+    text {
+      fill: #fff !important;
+    }
+    .splitjoinBody {
+      fill: #fff !important;
+    }
+    .detail {
+      fill: #fff !important;
+    }
+    circle, path, rect, line {
+      stroke: #fff;
+    }
+    [style*="fill:#000"], [style*="fill:#000000"] {
+      fill: #fff !important;
+    }
+    [style*="stroke:#000"], [style*="stroke:#000000"] {
+      stroke: #fff !important;
+    }
+  }
+</style>
   <defs id="patterns">
     <pattern id="gridPattern2" x="0" y="0" width="10" height="10" patternUnits="userSpaceOnUse">
       <path id="gridCell2" d="M10 0V10H0" fill="none" stroke="#CCCCCC"
