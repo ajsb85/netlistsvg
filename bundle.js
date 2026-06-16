@@ -8434,7 +8434,7 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
     }
   });
 
-  // demo/demo.js
+  // docs/demo.js
   var superagent = require_client();
   var JSON5 = require_dist();
   var netlistRenderer = require_built();
