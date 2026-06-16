@@ -48,9 +48,19 @@ bend count) and a non-exponential search. As-is it mostly reproduces the manual
 
 This branch adds an **Orientation** control to the demo
 (`As authored` / `All vertical` / `All horizontal` / `Auto — fewest bends`) plus a
-live metric readout (bends, size, parts, orientations evaluated). Load an analog
-example (`resistor divider`, `common emitter`, `charlieplex`) and switch the
-control to see the difference and the numbers.
+live metric readout (bends, size, parts, and for Auto the best-of-N range).
+
+Things to try:
+- **`common emitter (mis-oriented) — try Auto`**: authored all-horizontal (27
+  bends, messy). Switch to `Auto` and it is rescued to 10 bends (clean vertical) —
+  the clearest demonstration of the feature's value: *same input, fixed
+  automatically*.
+- **`resistor divider` / `common emitter`** (authored vertical): `Auto`,
+  `All vertical` and `As authored` all look identical, because the bend-optimum is
+  all-vertical. Only `All horizontal` differs (worse). This is the limitation in
+  one picture — Auto adds nothing over "default to vertical" here.
+- **`charlieplex`** (9 parts): exceeds the 2^6 brute-force cap, so `Auto` falls
+  back to all-vertical. Compare with `All horizontal` to see orientation matters.
 
 Notes on this demonstration (an enhancement over the raw PR):
 - It is **demo-only** — the core library is untouched, so a fragile/exponential

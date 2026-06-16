@@ -8881,13 +8881,14 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
         note: `${count} parts \u2192 2^${count} layouts too many; showing all-vertical`
       };
     }
-    let best = null, bestBends = Infinity, bestArea = Infinity, bestSize = null;
+    let best = null, bestBends = Infinity, bestArea = Infinity, bestSize = null, worstBends = 0;
     const total = 1 << count;
     for (let mask = 0; mask < total; mask++) {
       const nl = orientVariant(netlist, mask);
       const g = await layoutGraph(nl);
       const bends = countBends(g);
       const area = (g.width || 0) * (g.height || 0);
+      worstBends = Math.max(worstBends, bends);
       if (bends < bestBends || bends === bestBends && area < bestArea) {
         best = nl;
         bestBends = bends;
@@ -8895,7 +8896,7 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
         bestSize = graphSize(g);
       }
     }
-    return { netlist: best, bends: bestBends, size: bestSize, layouts: total };
+    return { netlist: best, bends: bestBends, worst: worstBends, size: bestSize, layouts: total };
   }
   async function updateMetrics(netlist, mode, pre) {
     const count = orientableCount(netlist);
@@ -8907,7 +8908,11 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
     if (pre) {
       bends = pre.bends;
       size = pre.size;
-      note = pre.note ? pre.note : pre.layouts ? `evaluated ${pre.layouts} orientations` : "";
+      if (pre.note) {
+        note = pre.note;
+      } else if (pre.layouts) {
+        note = `best of ${pre.layouts} orientations` + (pre.worst > pre.bends ? ` (worst was ${pre.worst} bends)` : "");
+      }
     } else {
       const g = await layoutGraph(netlist);
       bends = countBends(g);
