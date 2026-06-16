@@ -1,0 +1,874 @@
+{
+  "id": "generics",
+  "children": [
+    {
+      "id": "generics.PLL",
+      "width": 30,
+      "height": 80,
+      "ports": [
+        {
+          "id": "generics.PLL.clkin",
+          "width": 1,
+          "height": 1,
+          "x": -1,
+          "y": 10,
+          "labels": [
+            {
+              "id": "generics.PLL.clkin.label",
+              "text": "clkin",
+              "x": -31,
+              "y": 2,
+              "width": 30,
+              "height": 11
+            }
+          ]
+        },
+        {
+          "id": "generics.PLL.clk40",
+          "width": 1,
+          "height": 1,
+          "x": 30,
+          "y": 10,
+          "labels": [
+            {
+              "id": "generics.PLL.clk40.label",
+              "text": "clk40",
+              "x": 2,
+              "y": 2,
+              "width": 30,
+              "height": 11
+            }
+          ]
+        },
+        {
+          "id": "generics.PLL.clk200",
+          "width": 1,
+          "height": 1,
+          "x": 30,
+          "y": 30,
+          "labels": [
+            {
+              "id": "generics.PLL.clk200.label",
+              "text": "clk200",
+              "x": 2,
+              "y": 2,
+              "width": 36,
+              "height": 11
+            }
+          ]
+        },
+        {
+          "id": "generics.PLL.clk125",
+          "width": 1,
+          "height": 1,
+          "x": 30,
+          "y": 50,
+          "labels": [
+            {
+              "id": "generics.PLL.clk125.label",
+              "text": "clk125",
+              "x": 2,
+              "y": 2,
+              "width": 36,
+              "height": 11
+            }
+          ]
+        },
+        {
+          "id": "generics.PLL.locked",
+          "width": 1,
+          "height": 1,
+          "x": 30,
+          "y": 70,
+          "labels": [
+            {
+              "id": "generics.PLL.locked.label",
+              "text": "locked",
+              "x": 2,
+              "y": 2,
+              "width": 36,
+              "height": 11
+            }
+          ]
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "PLL.label.ref",
+          "text": "PLL",
+          "x": 15,
+          "y": -10,
+          "height": 11,
+          "width": 18
+        }
+      ],
+      "x": 109,
+      "y": 12
+    },
+    {
+      "id": "generics.MIG",
+      "width": 30,
+      "height": 60,
+      "ports": [
+        {
+          "id": "generics.MIG.clk_ref",
+          "width": 1,
+          "height": 1,
+          "x": -1,
+          "y": 10,
+          "labels": [
+            {
+              "id": "generics.MIG.clk_ref.label",
+              "text": "clk_ref",
+              "x": -43,
+              "y": 2,
+              "width": 42,
+              "height": 11
+            }
+          ]
+        },
+        {
+          "id": "generics.MIG.clk_sys",
+          "width": 1,
+          "height": 1,
+          "x": -1,
+          "y": 30,
+          "labels": [
+            {
+              "id": "generics.MIG.clk_sys.label",
+              "text": "clk_sys",
+              "x": -43,
+              "y": 2,
+              "width": 42,
+              "height": 11
+            }
+          ]
+        },
+        {
+          "id": "generics.MIG.reset",
+          "width": 1,
+          "height": 1,
+          "x": -1,
+          "y": 50,
+          "labels": [
+            {
+              "id": "generics.MIG.reset.label",
+              "text": "reset",
+              "x": -31,
+              "y": 2,
+              "width": 30,
+              "height": 11
+            }
+          ]
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "MIG.label.ref",
+          "text": "MIG",
+          "x": 15,
+          "y": -10,
+          "height": 11,
+          "width": 18
+        }
+      ],
+      "x": 412,
+      "y": 111
+    },
+    {
+      "id": "generics.counter",
+      "width": 30,
+      "height": 40,
+      "ports": [
+        {
+          "id": "generics.counter.clk",
+          "width": 1,
+          "height": 1,
+          "x": -1,
+          "y": 10,
+          "labels": [
+            {
+              "id": "generics.counter.clk.label",
+              "text": "clk",
+              "x": -19,
+              "y": -12,
+              "width": 18,
+              "height": 11
+            }
+          ]
+        },
+        {
+          "id": "generics.counter.start",
+          "width": 1,
+          "height": 1,
+          "x": -1,
+          "y": 30,
+          "labels": [
+            {
+              "id": "generics.counter.start.label",
+              "text": "start",
+              "x": -31,
+              "y": 2,
+              "width": 30,
+              "height": 11
+            }
+          ]
+        },
+        {
+          "id": "generics.counter.elapsed",
+          "width": 1,
+          "height": 1,
+          "x": 30,
+          "y": 10,
+          "labels": [
+            {
+              "id": "generics.counter.elapsed.label",
+              "text": "elapsed",
+              "x": 2,
+              "y": 2,
+              "width": 42,
+              "height": 11
+            }
+          ]
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "counter.label.ref",
+          "text": "counter",
+          "x": 15,
+          "y": -10,
+          "height": 11,
+          "width": 42
+        }
+      ],
+      "x": 259,
+      "y": 151
+    },
+    {
+      "id": "generics.sync",
+      "width": 30,
+      "height": 40,
+      "ports": [
+        {
+          "id": "generics.sync.clk",
+          "width": 1,
+          "height": 1,
+          "x": -1,
+          "y": 10,
+          "labels": [
+            {
+              "id": "generics.sync.clk.label",
+              "text": "clk",
+              "x": -19,
+              "y": -12,
+              "width": 18,
+              "height": 11
+            }
+          ]
+        },
+        {
+          "id": "generics.sync.in",
+          "width": 1,
+          "height": 1,
+          "x": -1,
+          "y": 30,
+          "labels": [
+            {
+              "id": "generics.sync.in.label",
+              "text": "in",
+              "x": -13,
+              "y": 2,
+              "width": 12,
+              "height": 11
+            }
+          ]
+        },
+        {
+          "id": "generics.sync.out",
+          "width": 1,
+          "height": 1,
+          "x": 30,
+          "y": 10,
+          "labels": [
+            {
+              "id": "generics.sync.out.label",
+              "text": "out",
+              "x": 2,
+              "y": 2,
+              "width": 18,
+              "height": 11
+            }
+          ]
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "sync.label.ref",
+          "text": "sync",
+          "x": 15,
+          "y": -10,
+          "height": 11,
+          "width": 24
+        }
+      ],
+      "x": 388,
+      "y": 33.5
+    },
+    {
+      "id": "generics.businterface",
+      "width": 30,
+      "height": 40,
+      "ports": [
+        {
+          "id": "generics.businterface.clk",
+          "width": 1,
+          "height": 1,
+          "x": -1,
+          "y": 10,
+          "labels": [
+            {
+              "id": "generics.businterface.clk.label",
+              "text": "clk",
+              "x": -19,
+              "y": -12,
+              "width": 18,
+              "height": 11
+            }
+          ]
+        },
+        {
+          "id": "generics.businterface.reset",
+          "width": 1,
+          "height": 1,
+          "x": -1,
+          "y": 30,
+          "labels": [
+            {
+              "id": "generics.businterface.reset.label",
+              "text": "reset",
+              "x": -31,
+              "y": 2,
+              "width": 30,
+              "height": 11
+            }
+          ]
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "businterface.label.ref",
+          "text": "businterface",
+          "x": 15,
+          "y": -10,
+          "height": 11,
+          "width": 72
+        }
+      ],
+      "x": 529,
+      "y": 12
+    },
+    {
+      "id": "generics.clk100",
+      "width": 30,
+      "height": 20,
+      "ports": [
+        {
+          "id": "generics.clk100.Y",
+          "width": 0,
+          "height": 0,
+          "x": 30,
+          "y": 10
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "clk100.label.ref",
+          "text": "clk100",
+          "x": 15,
+          "y": -10,
+          "height": 11,
+          "width": 36
+        }
+      ],
+      "x": 12,
+      "y": 12.5
+    },
+    {
+      "id": "generics.clk40",
+      "width": 30,
+      "height": 20,
+      "ports": [
+        {
+          "id": "generics.clk40.A",
+          "width": 0,
+          "height": 0,
+          "x": 0,
+          "y": 10
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "clk40.label.ref",
+          "text": "clk40",
+          "x": 15,
+          "y": -10,
+          "height": 11,
+          "width": 30
+        }
+      ],
+      "x": 227,
+      "y": 55
+    },
+    {
+      "id": "generics.clk125",
+      "width": 30,
+      "height": 20,
+      "ports": [
+        {
+          "id": "generics.clk125.A",
+          "width": 0,
+          "height": 0,
+          "x": 0,
+          "y": 10
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "clk125.label.ref",
+          "text": "clk125",
+          "x": 15,
+          "y": -10,
+          "height": 11,
+          "width": 36
+        }
+      ],
+      "x": 227,
+      "y": 96
+    }
+  ],
+  "edges": [
+    {
+      "id": "generics.e0",
+      "source": "generics.clk100",
+      "sourcePort": "generics.clk100.Y",
+      "target": "generics.PLL",
+      "targetPort": "generics.PLL.clkin",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 1
+      },
+      "sections": [
+        {
+          "id": "generics.e0_s0",
+          "startPoint": {
+            "x": 42,
+            "y": 22.5
+          },
+          "endPoint": {
+            "x": 108,
+            "y": 22.5
+          }
+        }
+      ]
+    },
+    {
+      "id": "generics.e1",
+      "source": "generics.clk100",
+      "sourcePort": "generics.clk100.Y",
+      "target": "generics.MIG",
+      "targetPort": "generics.MIG.clk_sys",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 1
+      },
+      "sections": [
+        {
+          "id": "generics.e1_s0",
+          "startPoint": {
+            "x": 42,
+            "y": 22.5
+          },
+          "endPoint": {
+            "x": 411,
+            "y": 141.5
+          },
+          "bendPoints": [
+            {
+              "x": 52,
+              "y": 22.5
+            },
+            {
+              "x": 52,
+              "y": 201
+            },
+            {
+              "x": 343,
+              "y": 201
+            },
+            {
+              "x": 343,
+              "y": 141.5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "generics.e2",
+      "source": "generics.clk100",
+      "sourcePort": "generics.clk100.Y",
+      "target": "generics.counter",
+      "targetPort": "generics.counter.clk",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 1
+      },
+      "sections": [
+        {
+          "id": "generics.e2_s0",
+          "startPoint": {
+            "x": 42,
+            "y": 22.5
+          },
+          "endPoint": {
+            "x": 258,
+            "y": 161.5
+          },
+          "bendPoints": [
+            {
+              "x": 52,
+              "y": 22.5
+            },
+            {
+              "x": 52,
+              "y": 161.5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "generics.e3",
+      "source": "generics.PLL",
+      "sourcePort": "generics.PLL.clk200",
+      "target": "generics.MIG",
+      "targetPort": "generics.MIG.clk_ref",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 1
+      },
+      "sections": [
+        {
+          "id": "generics.e3_s0",
+          "startPoint": {
+            "x": 140,
+            "y": 42.5
+          },
+          "endPoint": {
+            "x": 411,
+            "y": 121.5
+          },
+          "bendPoints": [
+            {
+              "x": 207,
+              "y": 42.5
+            },
+            {
+              "x": 207,
+              "y": 85
+            },
+            {
+              "x": 343,
+              "y": 85
+            },
+            {
+              "x": 343,
+              "y": 121.5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "generics.e4",
+      "source": "generics.counter",
+      "sourcePort": "generics.counter.elapsed",
+      "target": "generics.MIG",
+      "targetPort": "generics.MIG.reset",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 1
+      },
+      "sections": [
+        {
+          "id": "generics.e4_s0",
+          "startPoint": {
+            "x": 290,
+            "y": 161.5
+          },
+          "endPoint": {
+            "x": 411,
+            "y": 161.5
+          }
+        }
+      ]
+    },
+    {
+      "id": "generics.e5",
+      "source": "generics.counter",
+      "sourcePort": "generics.counter.elapsed",
+      "target": "generics.sync",
+      "targetPort": "generics.sync.in",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 1
+      },
+      "sections": [
+        {
+          "id": "generics.e5_s0",
+          "startPoint": {
+            "x": 290,
+            "y": 161.5
+          },
+          "endPoint": {
+            "x": 387,
+            "y": 64
+          },
+          "bendPoints": [
+            {
+              "x": 343,
+              "y": 161.5
+            },
+            {
+              "x": 343,
+              "y": 64
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "generics.e6",
+      "source": "generics.PLL",
+      "sourcePort": "generics.PLL.locked",
+      "target": "generics.counter",
+      "targetPort": "generics.counter.start",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 1
+      },
+      "sections": [
+        {
+          "id": "generics.e6_s0",
+          "startPoint": {
+            "x": 140,
+            "y": 82.5
+          },
+          "endPoint": {
+            "x": 258,
+            "y": 181.5
+          },
+          "bendPoints": [
+            {
+              "x": 187,
+              "y": 82.5
+            },
+            {
+              "x": 187,
+              "y": 181.5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "generics.e7",
+      "source": "generics.PLL",
+      "sourcePort": "generics.PLL.clk40",
+      "target": "generics.sync",
+      "targetPort": "generics.sync.clk",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 1
+      },
+      "sections": [
+        {
+          "id": "generics.e7_s0",
+          "startPoint": {
+            "x": 140,
+            "y": 22.5
+          },
+          "endPoint": {
+            "x": 387,
+            "y": 44
+          },
+          "bendPoints": [
+            {
+              "x": 217,
+              "y": 22.5
+            },
+            {
+              "x": 217,
+              "y": 44
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "generics.e8",
+      "source": "generics.PLL",
+      "sourcePort": "generics.PLL.clk40",
+      "target": "generics.businterface",
+      "targetPort": "generics.businterface.clk",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 1
+      },
+      "sections": [
+        {
+          "id": "generics.e8_s0",
+          "startPoint": {
+            "x": 140,
+            "y": 22.5
+          },
+          "endPoint": {
+            "x": 528,
+            "y": 22.5
+          }
+        }
+      ]
+    },
+    {
+      "id": "generics.e9",
+      "source": "generics.PLL",
+      "sourcePort": "generics.PLL.clk40",
+      "target": "generics.clk40",
+      "targetPort": "generics.clk40.A",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 1
+      },
+      "sections": [
+        {
+          "id": "generics.e9_s0",
+          "startPoint": {
+            "x": 140,
+            "y": 22.5
+          },
+          "endPoint": {
+            "x": 227,
+            "y": 65
+          },
+          "bendPoints": [
+            {
+              "x": 217,
+              "y": 22.5
+            },
+            {
+              "x": 217,
+              "y": 65
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "generics.e10",
+      "source": "generics.sync",
+      "sourcePort": "generics.sync.out",
+      "target": "generics.businterface",
+      "targetPort": "generics.businterface.reset",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 1
+      },
+      "sections": [
+        {
+          "id": "generics.e10_s0",
+          "startPoint": {
+            "x": 419,
+            "y": 44
+          },
+          "endPoint": {
+            "x": 528,
+            "y": 42.5
+          },
+          "bendPoints": [
+            {
+              "x": 472,
+              "y": 44
+            },
+            {
+              "x": 472,
+              "y": 42.5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "generics.e11",
+      "source": "generics.PLL",
+      "sourcePort": "generics.PLL.clk125",
+      "target": "generics.clk125",
+      "targetPort": "generics.clk125.A",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 1
+      },
+      "sections": [
+        {
+          "id": "generics.e11_s0",
+          "startPoint": {
+            "x": 140,
+            "y": 62.5
+          },
+          "endPoint": {
+            "x": 227,
+            "y": 106
+          },
+          "bendPoints": [
+            {
+              "x": 197,
+              "y": 62.5
+            },
+            {
+              "x": 197,
+              "y": 106
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "x": 0,
+  "y": 0,
+  "width": 571,
+  "height": 203
+}

@@ -1,1 +1,3 @@
 * text eol=lf
+# Binary artifacts must not be line-ending normalized (repo default is "* text eol=lf").
+*.wasm binary

@@ -1,0 +1,547 @@
+{
+  "id": "PC",
+  "children": [
+    {
+      "id": "PC.\\10",
+      "width": 34,
+      "height": 44,
+      "ports": [
+        {
+          "id": "PC.\\10.Q",
+          "width": 0,
+          "height": 0,
+          "x": 35,
+          "y": 10
+        },
+        {
+          "id": "PC.\\10.CLK",
+          "width": 0,
+          "height": 0,
+          "x": -1,
+          "y": 30
+        },
+        {
+          "id": "PC.\\10.C",
+          "width": 0,
+          "height": 0,
+          "x": -1,
+          "y": 30
+        },
+        {
+          "id": "PC.\\10.D",
+          "width": 0,
+          "height": 0,
+          "x": -1,
+          "y": 10
+        },
+        {
+          "id": "PC.\\10.ARST",
+          "width": 0,
+          "height": 0,
+          "x": 17,
+          "y": 44
+        },
+        {
+          "id": "PC.\\10.SRST",
+          "width": 0,
+          "height": 0,
+          "x": 17,
+          "y": 44
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [],
+      "$H": 16,
+      "x": 367.5,
+      "y": 36
+    },
+    {
+      "id": "PC.\\9",
+      "width": 24,
+      "height": 40,
+      "ports": [
+        {
+          "id": "PC.\\9.A",
+          "width": 0,
+          "height": 0,
+          "x": -1,
+          "y": 10
+        },
+        {
+          "id": "PC.\\9.B",
+          "width": 0,
+          "height": 0,
+          "x": -1,
+          "y": 30
+        },
+        {
+          "id": "PC.\\9.S",
+          "width": 0,
+          "height": 0,
+          "x": 12,
+          "y": 38
+        },
+        {
+          "id": "PC.\\9.Y",
+          "width": 0,
+          "height": 0,
+          "x": 24.5,
+          "y": 20
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [],
+      "$H": 286,
+      "x": 239,
+      "y": 26
+    },
+    {
+      "id": "PC.clk",
+      "width": 30,
+      "height": 20,
+      "ports": [
+        {
+          "id": "PC.clk.Y",
+          "width": 0,
+          "height": 0,
+          "x": 30,
+          "y": 10
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "clk.label.ref",
+          "text": "clk",
+          "x": 15,
+          "y": -10,
+          "height": 11,
+          "width": 18
+        }
+      ],
+      "$H": 292,
+      "x": 298.5,
+      "y": 95
+    },
+    {
+      "id": "PC.write_enable",
+      "width": 30,
+      "height": 20,
+      "ports": [
+        {
+          "id": "PC.write_enable.Y",
+          "width": 0,
+          "height": 0,
+          "x": 30,
+          "y": 10
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "write_enable.label.ref",
+          "text": "write_enable",
+          "x": 15,
+          "y": -10,
+          "height": 11,
+          "width": 72
+        }
+      ],
+      "$H": 297,
+      "x": 116,
+      "y": 105
+    },
+    {
+      "id": "PC.rst",
+      "width": 30,
+      "height": 20,
+      "ports": [
+        {
+          "id": "PC.rst.Y",
+          "width": 0,
+          "height": 0,
+          "x": 30,
+          "y": 10
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "rst.label.ref",
+          "text": "rst",
+          "x": 15,
+          "y": -10,
+          "height": 11,
+          "width": 18
+        }
+      ],
+      "$H": 301,
+      "x": 298.5,
+      "y": 160
+    },
+    {
+      "id": "PC.AddressIn",
+      "width": 30,
+      "height": 20,
+      "ports": [
+        {
+          "id": "PC.AddressIn.Y",
+          "width": 0,
+          "height": 0,
+          "x": 30,
+          "y": 10
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "AddressIn.label.ref",
+          "text": "AddressIn",
+          "x": 15,
+          "y": -10,
+          "height": 11,
+          "width": 54
+        }
+      ],
+      "$H": 305,
+      "x": 12,
+      "y": 46
+    },
+    {
+      "id": "PC.AddressOut",
+      "width": 30,
+      "height": 20,
+      "ports": [
+        {
+          "id": "PC.AddressOut.A",
+          "width": 0,
+          "height": 0,
+          "x": 0,
+          "y": 10
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "AddressOut.label.ref",
+          "text": "AddressOut",
+          "x": 15,
+          "y": -10,
+          "height": 11,
+          "width": 60
+        }
+      ],
+      "$H": 309,
+      "x": 476.5,
+      "y": 36
+    }
+  ],
+  "edges": [
+    {
+      "id": "PC.e0",
+      "source": "PC.rst",
+      "sourcePort": "PC.rst.Y",
+      "target": "PC.\\10",
+      "targetPort": "PC.\\10.ARST",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 1
+      },
+      "sections": [
+        {
+          "id": "PC.e0_s0",
+          "startPoint": {
+            "x": 328.5,
+            "y": 170
+          },
+          "endPoint": {
+            "x": 384.5,
+            "y": 80
+          },
+          "bendPoints": [
+            {
+              "x": 384.5,
+              "y": 170
+            }
+          ],
+          "incomingShape": "PC.rst.Y",
+          "outgoingShape": "PC.\\10.ARST"
+        }
+      ],
+      "container": "PC"
+    },
+    {
+      "id": "PC.e1",
+      "source": "PC.clk",
+      "sourcePort": "PC.clk.Y",
+      "target": "PC.\\10",
+      "targetPort": "PC.\\10.CLK",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 1
+      },
+      "sections": [
+        {
+          "id": "PC.e1_s0",
+          "startPoint": {
+            "x": 328.5,
+            "y": 105
+          },
+          "endPoint": {
+            "x": 366.5,
+            "y": 66
+          },
+          "bendPoints": [
+            {
+              "x": 341.5,
+              "y": 105
+            },
+            {
+              "x": 341.5,
+              "y": 66
+            }
+          ],
+          "incomingShape": "PC.clk.Y",
+          "outgoingShape": "PC.\\10.CLK"
+        }
+      ],
+      "container": "PC"
+    },
+    {
+      "id": "PC.e2",
+      "labels": [
+        {
+          "id": "label_2",
+          "text": "64",
+          "width": 4,
+          "height": 6,
+          "x": 313,
+          "y": 42,
+          "layoutOptions": {
+            "org.eclipse.elk.edgeLabels.inline": true
+          }
+        }
+      ],
+      "source": "PC.\\9",
+      "sourcePort": "PC.\\9.Y",
+      "target": "PC.\\10",
+      "targetPort": "PC.\\10.D",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 2
+      },
+      "sections": [
+        {
+          "id": "PC.e2_s0",
+          "startPoint": {
+            "x": 263.5,
+            "y": 46
+          },
+          "endPoint": {
+            "x": 366.5,
+            "y": 46
+          },
+          "incomingShape": "PC.\\9.Y",
+          "outgoingShape": "PC.\\10.D"
+        }
+      ],
+      "container": "PC"
+    },
+    {
+      "id": "PC.e3",
+      "labels": [
+        {
+          "id": "label_3",
+          "text": "64",
+          "width": 4,
+          "height": 6,
+          "x": 437.5,
+          "y": 42,
+          "layoutOptions": {
+            "org.eclipse.elk.edgeLabels.inline": true
+          }
+        }
+      ],
+      "source": "PC.\\10",
+      "sourcePort": "PC.\\10.Q",
+      "target": "PC.\\9",
+      "targetPort": "PC.\\9.A",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 2
+      },
+      "sections": [
+        {
+          "id": "PC.e3_s0",
+          "startPoint": {
+            "x": 402.5,
+            "y": 46
+          },
+          "endPoint": {
+            "x": 238,
+            "y": 36
+          },
+          "bendPoints": [
+            {
+              "x": 412.5,
+              "y": 46
+            },
+            {
+              "x": 412.5,
+              "y": 16
+            },
+            {
+              "x": 213,
+              "y": 16
+            },
+            {
+              "x": 213,
+              "y": 36
+            }
+          ],
+          "incomingShape": "PC.\\10.Q",
+          "outgoingShape": "PC.\\9.A"
+        }
+      ],
+      "junctionPoints": [
+        {
+          "x": 412.5,
+          "y": 46
+        }
+      ],
+      "container": "PC"
+    },
+    {
+      "id": "PC.e4",
+      "labels": [
+        {
+          "id": "label_3",
+          "text": "64",
+          "width": 4,
+          "height": 6,
+          "x": 437.5,
+          "y": 42,
+          "layoutOptions": {
+            "org.eclipse.elk.edgeLabels.inline": true
+          }
+        }
+      ],
+      "source": "PC.\\10",
+      "sourcePort": "PC.\\10.Q",
+      "target": "PC.AddressOut",
+      "targetPort": "PC.AddressOut.A",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 2
+      },
+      "sections": [
+        {
+          "id": "PC.e4_s0",
+          "startPoint": {
+            "x": 402.5,
+            "y": 46
+          },
+          "endPoint": {
+            "x": 476.5,
+            "y": 46
+          },
+          "incomingShape": "PC.\\10.Q",
+          "outgoingShape": "PC.AddressOut.A"
+        }
+      ],
+      "container": "PC"
+    },
+    {
+      "id": "PC.e5",
+      "labels": [
+        {
+          "id": "label_5",
+          "text": "64",
+          "width": 4,
+          "height": 6,
+          "x": 157.5,
+          "y": 52,
+          "layoutOptions": {
+            "org.eclipse.elk.edgeLabels.inline": true
+          }
+        }
+      ],
+      "source": "PC.AddressIn",
+      "sourcePort": "PC.AddressIn.Y",
+      "target": "PC.\\9",
+      "targetPort": "PC.\\9.B",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 2
+      },
+      "sections": [
+        {
+          "id": "PC.e5_s0",
+          "startPoint": {
+            "x": 42,
+            "y": 56
+          },
+          "endPoint": {
+            "x": 238,
+            "y": 56
+          },
+          "incomingShape": "PC.AddressIn.Y",
+          "outgoingShape": "PC.\\9.B"
+        }
+      ],
+      "container": "PC"
+    },
+    {
+      "id": "PC.e6",
+      "source": "PC.write_enable",
+      "sourcePort": "PC.write_enable.Y",
+      "target": "PC.\\9",
+      "targetPort": "PC.\\9.S",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 1
+      },
+      "sections": [
+        {
+          "id": "PC.e6_s0",
+          "startPoint": {
+            "x": 146,
+            "y": 115
+          },
+          "endPoint": {
+            "x": 251,
+            "y": 64
+          },
+          "bendPoints": [
+            {
+              "x": 251,
+              "y": 115
+            }
+          ],
+          "incomingShape": "PC.write_enable.Y",
+          "outgoingShape": "PC.\\9.S"
+        }
+      ],
+      "container": "PC"
+    }
+  ],
+  "$H": 13,
+  "x": 0,
+  "y": 0,
+  "width": 563.5,
+  "height": 192
+}

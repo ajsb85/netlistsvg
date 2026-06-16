@@ -1,4 +1,4 @@
-import ELK from 'elkjs';
+import ELK from './elkWasmAdapter';
 import onml = require('onml');
 import { FlatModule } from './FlatModule';
 import Yosys from './YosysModel';

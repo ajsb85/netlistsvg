@@ -1,0 +1,280 @@
+{
+  "id": "resistor_divider",
+  "children": [
+    {
+      "id": "resistor_divider.r1",
+      "width": 10,
+      "height": 50,
+      "ports": [
+        {
+          "id": "resistor_divider.r1.A",
+          "width": 0,
+          "height": 0,
+          "x": 0,
+          "y": 25
+        },
+        {
+          "id": "resistor_divider.r1.B",
+          "width": 0,
+          "height": 0,
+          "x": 10,
+          "y": 25
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "r1.label.ref",
+          "text": "r1",
+          "x": 15,
+          "y": 9,
+          "height": 11,
+          "width": 12
+        }
+      ],
+      "x": 52,
+      "y": 47
+    },
+    {
+      "id": "resistor_divider.r2",
+      "width": 10,
+      "height": 50,
+      "ports": [
+        {
+          "id": "resistor_divider.r2.A",
+          "width": 0,
+          "height": 0,
+          "x": 0,
+          "y": 25
+        },
+        {
+          "id": "resistor_divider.r2.B",
+          "width": 0,
+          "height": 0,
+          "x": 10,
+          "y": 25
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "r2.label.ref",
+          "text": "r2",
+          "x": 15,
+          "y": 9,
+          "height": 11,
+          "width": 12
+        }
+      ],
+      "x": 82,
+      "y": 127
+    },
+    {
+      "id": "resistor_divider.vcc",
+      "width": 20,
+      "height": 30,
+      "ports": [
+        {
+          "id": "resistor_divider.vcc.A",
+          "width": 0,
+          "height": 0,
+          "x": 20,
+          "y": 15
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [],
+      "x": 12,
+      "y": 12
+    },
+    {
+      "id": "resistor_divider.gnd",
+      "width": 20,
+      "height": 30,
+      "ports": [
+        {
+          "id": "resistor_divider.gnd.A",
+          "width": 0,
+          "height": 0,
+          "x": 0,
+          "y": 15
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [],
+      "x": 112,
+      "y": 182
+    },
+    {
+      "id": "resistor_divider.vout",
+      "width": 30,
+      "height": 20,
+      "ports": [
+        {
+          "id": "resistor_divider.vout.A",
+          "width": 0,
+          "height": 0,
+          "x": 10,
+          "y": 0
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "vout.label.ref",
+          "text": "vout",
+          "x": 15,
+          "y": -10,
+          "height": 11,
+          "width": 24
+        }
+      ],
+      "x": 62,
+      "y": 102
+    }
+  ],
+  "edges": [
+    {
+      "id": "resistor_divider.e0",
+      "source": "resistor_divider.vcc",
+      "sourcePort": "resistor_divider.vcc.A",
+      "target": "resistor_divider.r1",
+      "targetPort": "resistor_divider.r1.A",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 1
+      },
+      "sections": [
+        {
+          "id": "resistor_divider.e0_s0",
+          "startPoint": {
+            "x": 32,
+            "y": 27
+          },
+          "endPoint": {
+            "x": 52,
+            "y": 72
+          },
+          "bendPoints": [
+            {
+              "x": 42,
+              "y": 27
+            },
+            {
+              "x": 42,
+              "y": 72
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "resistor_divider.e1",
+      "source": "resistor_divider.r1",
+      "sourcePort": "resistor_divider.r1.B",
+      "target": "resistor_divider.vout",
+      "targetPort": "resistor_divider.vout.A",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 1
+      },
+      "sections": [
+        {
+          "id": "resistor_divider.e1_s0",
+          "startPoint": {
+            "x": 62,
+            "y": 72
+          },
+          "endPoint": {
+            "x": 72,
+            "y": 102
+          },
+          "bendPoints": [
+            {
+              "x": 72,
+              "y": 72
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "resistor_divider.e2",
+      "source": "resistor_divider.vout",
+      "sourcePort": "resistor_divider.vout.A",
+      "target": "resistor_divider.r2",
+      "targetPort": "resistor_divider.r2.A",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 1
+      },
+      "sections": [
+        {
+          "id": "resistor_divider.e2_s0",
+          "startPoint": {
+            "x": 72,
+            "y": 102
+          },
+          "endPoint": {
+            "x": 82,
+            "y": 152
+          },
+          "bendPoints": [
+            {
+              "x": 72,
+              "y": 152
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "resistor_divider.e3",
+      "source": "resistor_divider.r2",
+      "sourcePort": "resistor_divider.r2.B",
+      "target": "resistor_divider.gnd",
+      "targetPort": "resistor_divider.gnd.A",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 1
+      },
+      "sections": [
+        {
+          "id": "resistor_divider.e3_s0",
+          "startPoint": {
+            "x": 92,
+            "y": 152
+          },
+          "endPoint": {
+            "x": 112,
+            "y": 197
+          },
+          "bendPoints": [
+            {
+              "x": 102,
+              "y": 152
+            },
+            {
+              "x": 102,
+              "y": 197
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "x": 0,
+  "y": 0,
+  "width": 144,
+  "height": 224
+}

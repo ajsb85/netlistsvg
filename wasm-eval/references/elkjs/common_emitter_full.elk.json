@@ -1,0 +1,939 @@
+{
+  "id": "Common Emitter",
+  "children": [
+    {
+      "id": "Common Emitter.C1",
+      "width": 30,
+      "height": 50,
+      "ports": [
+        {
+          "id": "Common Emitter.C1.A",
+          "width": 0,
+          "height": 0,
+          "x": 15,
+          "y": 0
+        },
+        {
+          "id": "Common Emitter.C1.B",
+          "width": 0,
+          "height": 0,
+          "x": 15,
+          "y": 50
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "C1.label.ref",
+          "text": "C1",
+          "x": 25,
+          "y": 4,
+          "height": 11,
+          "width": 12
+        }
+      ],
+      "$H": 16,
+      "x": 244,
+      "y": 189
+    },
+    {
+      "id": "Common Emitter.C2",
+      "width": 50,
+      "height": 30,
+      "ports": [
+        {
+          "id": "Common Emitter.C2.A",
+          "width": 0,
+          "height": 0,
+          "x": 0,
+          "y": 15
+        },
+        {
+          "id": "Common Emitter.C2.B",
+          "width": 0,
+          "height": 0,
+          "x": 50,
+          "y": 15
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "C2.label.ref",
+          "text": "C2",
+          "x": 35,
+          "y": -1,
+          "height": 11,
+          "width": 12
+        }
+      ],
+      "$H": 284,
+      "x": 65,
+      "y": 103
+    },
+    {
+      "id": "Common Emitter.Q",
+      "width": 32,
+      "height": 32,
+      "ports": [
+        {
+          "id": "Common Emitter.Q.C",
+          "width": 0,
+          "height": 0,
+          "x": 22,
+          "y": 2
+        },
+        {
+          "id": "Common Emitter.Q.B",
+          "width": 0,
+          "height": 0,
+          "x": 0,
+          "y": 16
+        },
+        {
+          "id": "Common Emitter.Q.E",
+          "width": 0,
+          "height": 0,
+          "x": 23,
+          "y": 29
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "Q.label.ref",
+          "text": "Q",
+          "x": 35,
+          "y": 14,
+          "height": 11,
+          "width": 6
+        }
+      ],
+      "$H": 289,
+      "x": 164,
+      "y": 137
+    },
+    {
+      "id": "Common Emitter.R1",
+      "width": 10,
+      "height": 50,
+      "ports": [
+        {
+          "id": "Common Emitter.R1.A",
+          "width": 0,
+          "height": 0,
+          "x": 5,
+          "y": 0
+        },
+        {
+          "id": "Common Emitter.R1.B",
+          "width": 0,
+          "height": 0,
+          "x": 5,
+          "y": 50
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "R1.label.ref",
+          "text": "R1",
+          "x": 15,
+          "y": 9,
+          "height": 11,
+          "width": 12
+        }
+      ],
+      "$H": 295,
+      "x": 181,
+      "y": 47
+    },
+    {
+      "id": "Common Emitter.R2",
+      "width": 10,
+      "height": 50,
+      "ports": [
+        {
+          "id": "Common Emitter.R2.A",
+          "width": 0,
+          "height": 0,
+          "x": 5,
+          "y": 0
+        },
+        {
+          "id": "Common Emitter.R2.B",
+          "width": 0,
+          "height": 0,
+          "x": 5,
+          "y": 50
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "R2.label.ref",
+          "text": "R2",
+          "x": 15,
+          "y": 9,
+          "height": 11,
+          "width": 12
+        }
+      ],
+      "$H": 300,
+      "x": 182,
+      "y": 189
+    },
+    {
+      "id": "Common Emitter.R3",
+      "width": 10,
+      "height": 50,
+      "ports": [
+        {
+          "id": "Common Emitter.R3.A",
+          "width": 0,
+          "height": 0,
+          "x": 5,
+          "y": 0
+        },
+        {
+          "id": "Common Emitter.R3.B",
+          "width": 0,
+          "height": 0,
+          "x": 5,
+          "y": 50
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "R3.label.ref",
+          "text": "R3",
+          "x": 15,
+          "y": 9,
+          "height": 11,
+          "width": 12
+        }
+      ],
+      "$H": 305,
+      "x": 120,
+      "y": 47
+    },
+    {
+      "id": "Common Emitter.R4",
+      "width": 10,
+      "height": 50,
+      "ports": [
+        {
+          "id": "Common Emitter.R4.A",
+          "width": 0,
+          "height": 0,
+          "x": 5,
+          "y": 0
+        },
+        {
+          "id": "Common Emitter.R4.B",
+          "width": 0,
+          "height": 0,
+          "x": 5,
+          "y": 50
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "R4.label.ref",
+          "text": "R4",
+          "x": 15,
+          "y": 9,
+          "height": 11,
+          "width": 12
+        }
+      ],
+      "$H": 310,
+      "x": 120,
+      "y": 163
+    },
+    {
+      "id": "Common Emitter.gnd83",
+      "width": 20,
+      "height": 30,
+      "ports": [
+        {
+          "id": "Common Emitter.gnd83.A",
+          "width": 0,
+          "height": 0,
+          "x": 10,
+          "y": -15
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [],
+      "$H": 315,
+      "x": 177,
+      "y": 259
+    },
+    {
+      "id": "Common Emitter.gnd85",
+      "width": 20,
+      "height": 30,
+      "ports": [
+        {
+          "id": "Common Emitter.gnd85.A",
+          "width": 0,
+          "height": 0,
+          "x": 10,
+          "y": -15
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [],
+      "$H": 318,
+      "x": 249,
+      "y": 259
+    },
+    {
+      "id": "Common Emitter.gnd89",
+      "width": 20,
+      "height": 30,
+      "ports": [
+        {
+          "id": "Common Emitter.gnd89.A",
+          "width": 0,
+          "height": 0,
+          "x": 10,
+          "y": -15
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [],
+      "$H": 321,
+      "x": 115,
+      "y": 233
+    },
+    {
+      "id": "Common Emitter.vcc80",
+      "width": 20,
+      "height": 30,
+      "ports": [
+        {
+          "id": "Common Emitter.vcc80.A",
+          "width": 0,
+          "height": 0,
+          "x": 10,
+          "y": 30
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [],
+      "$H": 324,
+      "x": 176,
+      "y": 12
+    },
+    {
+      "id": "Common Emitter.vcc86",
+      "width": 20,
+      "height": 30,
+      "ports": [
+        {
+          "id": "Common Emitter.vcc86.A",
+          "width": 0,
+          "height": 0,
+          "x": 10,
+          "y": 30
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [],
+      "$H": 327,
+      "x": 115,
+      "y": 12
+    },
+    {
+      "id": "Common Emitter.vin",
+      "width": 30,
+      "height": 20,
+      "ports": [
+        {
+          "id": "Common Emitter.vin.Y",
+          "width": 0,
+          "height": 0,
+          "x": 30,
+          "y": 10
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "vin.label.ref",
+          "text": "vin",
+          "x": 15,
+          "y": -10,
+          "height": 11,
+          "width": 18
+        }
+      ],
+      "$H": 330,
+      "x": 12,
+      "y": 108
+    },
+    {
+      "id": "Common Emitter.vout",
+      "width": 30,
+      "height": 20,
+      "ports": [
+        {
+          "id": "Common Emitter.vout.A",
+          "width": 0,
+          "height": 0,
+          "x": 0,
+          "y": 10
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "vout.label.ref",
+          "text": "vout",
+          "x": 15,
+          "y": -10,
+          "height": 11,
+          "width": 24
+        }
+      ],
+      "$H": 334,
+      "x": 196,
+      "y": 112
+    }
+  ],
+  "edges": [
+    {
+      "id": "Common Emitter.e0",
+      "source": "Common Emitter.Q",
+      "sourcePort": "Common Emitter.Q.E",
+      "target": "Common Emitter.C1",
+      "targetPort": "Common Emitter.C1.A",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 1
+      },
+      "sections": [
+        {
+          "id": "Common Emitter.e0_s0",
+          "startPoint": {
+            "x": 187,
+            "y": 166
+          },
+          "endPoint": {
+            "x": 259,
+            "y": 189
+          },
+          "bendPoints": [
+            {
+              "x": 187,
+              "y": 179
+            },
+            {
+              "x": 259,
+              "y": 179
+            }
+          ],
+          "incomingShape": "Common Emitter.Q.E",
+          "outgoingShape": "Common Emitter.C1.A"
+        }
+      ],
+      "junctionPoints": [
+        {
+          "x": 187,
+          "y": 179
+        }
+      ],
+      "container": "Common Emitter"
+    },
+    {
+      "id": "Common Emitter.e1",
+      "source": "Common Emitter.Q",
+      "sourcePort": "Common Emitter.Q.E",
+      "target": "Common Emitter.R2",
+      "targetPort": "Common Emitter.R2.A",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 1
+      },
+      "sections": [
+        {
+          "id": "Common Emitter.e1_s0",
+          "startPoint": {
+            "x": 187,
+            "y": 166
+          },
+          "endPoint": {
+            "x": 187,
+            "y": 189
+          },
+          "incomingShape": "Common Emitter.Q.E",
+          "outgoingShape": "Common Emitter.R2.A"
+        }
+      ],
+      "container": "Common Emitter"
+    },
+    {
+      "id": "Common Emitter.e2",
+      "source": "Common Emitter.R1",
+      "sourcePort": "Common Emitter.R1.B",
+      "target": "Common Emitter.vout",
+      "targetPort": "Common Emitter.vout.A",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 1
+      },
+      "sections": [
+        {
+          "id": "Common Emitter.e2_s0",
+          "startPoint": {
+            "x": 186,
+            "y": 97
+          },
+          "endPoint": {
+            "x": 196,
+            "y": 122
+          },
+          "bendPoints": [
+            {
+              "x": 186,
+              "y": 122
+            }
+          ],
+          "incomingShape": "Common Emitter.R1.B",
+          "outgoingShape": "Common Emitter.vout.A"
+        }
+      ],
+      "junctionPoints": [
+        {
+          "x": 186,
+          "y": 122
+        }
+      ],
+      "container": "Common Emitter"
+    },
+    {
+      "id": "Common Emitter.e3",
+      "source": "Common Emitter.vout",
+      "sourcePort": "Common Emitter.vout.A",
+      "target": "Common Emitter.Q",
+      "targetPort": "Common Emitter.Q.C",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 1
+      },
+      "sections": [
+        {
+          "id": "Common Emitter.e3_s0",
+          "startPoint": {
+            "x": 196,
+            "y": 122
+          },
+          "endPoint": {
+            "x": 186,
+            "y": 139
+          },
+          "bendPoints": [
+            {
+              "x": 186,
+              "y": 122
+            }
+          ],
+          "incomingShape": "Common Emitter.vout.A",
+          "outgoingShape": "Common Emitter.Q.C"
+        }
+      ],
+      "junctionPoints": [
+        {
+          "x": 186,
+          "y": 122
+        }
+      ],
+      "container": "Common Emitter"
+    },
+    {
+      "id": "Common Emitter.e4",
+      "source": "Common Emitter.vcc80",
+      "sourcePort": "Common Emitter.vcc80.A",
+      "target": "Common Emitter.R1",
+      "targetPort": "Common Emitter.R1.A",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 1
+      },
+      "sections": [
+        {
+          "id": "Common Emitter.e4_s0",
+          "startPoint": {
+            "x": 186,
+            "y": 42
+          },
+          "endPoint": {
+            "x": 186,
+            "y": 47
+          },
+          "incomingShape": "Common Emitter.vcc80.A",
+          "outgoingShape": "Common Emitter.R1.A"
+        }
+      ],
+      "container": "Common Emitter"
+    },
+    {
+      "id": "Common Emitter.e5",
+      "source": "Common Emitter.vcc86",
+      "sourcePort": "Common Emitter.vcc86.A",
+      "target": "Common Emitter.R3",
+      "targetPort": "Common Emitter.R3.A",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 1
+      },
+      "sections": [
+        {
+          "id": "Common Emitter.e5_s0",
+          "startPoint": {
+            "x": 125,
+            "y": 42
+          },
+          "endPoint": {
+            "x": 125,
+            "y": 47
+          },
+          "incomingShape": "Common Emitter.vcc86.A",
+          "outgoingShape": "Common Emitter.R3.A"
+        }
+      ],
+      "container": "Common Emitter"
+    },
+    {
+      "id": "Common Emitter.e6",
+      "source": "Common Emitter.R3",
+      "sourcePort": "Common Emitter.R3.B",
+      "target": "Common Emitter.C2",
+      "targetPort": "Common Emitter.C2.B",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 1
+      },
+      "sections": [
+        {
+          "id": "Common Emitter.e6_s0",
+          "startPoint": {
+            "x": 125,
+            "y": 97
+          },
+          "endPoint": {
+            "x": 115,
+            "y": 118
+          },
+          "bendPoints": [
+            {
+              "x": 125,
+              "y": 118
+            }
+          ],
+          "incomingShape": "Common Emitter.R3.B",
+          "outgoingShape": "Common Emitter.C2.B"
+        }
+      ],
+      "junctionPoints": [
+        {
+          "x": 125,
+          "y": 118
+        }
+      ],
+      "container": "Common Emitter"
+    },
+    {
+      "id": "Common Emitter.e7",
+      "source": "Common Emitter.R3",
+      "sourcePort": "Common Emitter.R3.B",
+      "target": "Common Emitter.Q",
+      "targetPort": "Common Emitter.Q.B",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 1
+      },
+      "sections": [
+        {
+          "id": "Common Emitter.e7_s0",
+          "startPoint": {
+            "x": 125,
+            "y": 97
+          },
+          "endPoint": {
+            "x": 164,
+            "y": 153
+          },
+          "bendPoints": [
+            {
+              "x": 125,
+              "y": 108
+            },
+            {
+              "x": 135,
+              "y": 108
+            },
+            {
+              "x": 135,
+              "y": 153
+            }
+          ],
+          "incomingShape": "Common Emitter.R3.B",
+          "outgoingShape": "Common Emitter.Q.B"
+        }
+      ],
+      "junctionPoints": [
+        {
+          "x": 125,
+          "y": 108
+        },
+        {
+          "x": 135,
+          "y": 153
+        }
+      ],
+      "container": "Common Emitter"
+    },
+    {
+      "id": "Common Emitter.e8",
+      "source": "Common Emitter.C2",
+      "sourcePort": "Common Emitter.C2.B",
+      "target": "Common Emitter.R4",
+      "targetPort": "Common Emitter.R4.A",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 1
+      },
+      "sections": [
+        {
+          "id": "Common Emitter.e8_s0",
+          "startPoint": {
+            "x": 115,
+            "y": 118
+          },
+          "endPoint": {
+            "x": 125,
+            "y": 163
+          },
+          "bendPoints": [
+            {
+              "x": 125,
+              "y": 118
+            }
+          ],
+          "incomingShape": "Common Emitter.C2.B",
+          "outgoingShape": "Common Emitter.R4.A"
+        }
+      ],
+      "junctionPoints": [
+        {
+          "x": 125,
+          "y": 118
+        }
+      ],
+      "container": "Common Emitter"
+    },
+    {
+      "id": "Common Emitter.e9",
+      "source": "Common Emitter.Q",
+      "sourcePort": "Common Emitter.Q.B",
+      "target": "Common Emitter.R4",
+      "targetPort": "Common Emitter.R4.A",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 1
+      },
+      "sections": [
+        {
+          "id": "Common Emitter.e9_s0",
+          "startPoint": {
+            "x": 164,
+            "y": 153
+          },
+          "endPoint": {
+            "x": 125,
+            "y": 163
+          },
+          "bendPoints": [
+            {
+              "x": 135,
+              "y": 153
+            },
+            {
+              "x": 135,
+              "y": 153
+            },
+            {
+              "x": 125,
+              "y": 153
+            }
+          ],
+          "incomingShape": "Common Emitter.Q.B",
+          "outgoingShape": "Common Emitter.R4.A"
+        }
+      ],
+      "junctionPoints": [
+        {
+          "x": 125,
+          "y": 153
+        },
+        {
+          "x": 135,
+          "y": 153
+        }
+      ],
+      "container": "Common Emitter"
+    },
+    {
+      "id": "Common Emitter.e10",
+      "source": "Common Emitter.R2",
+      "sourcePort": "Common Emitter.R2.B",
+      "target": "Common Emitter.gnd83",
+      "targetPort": "Common Emitter.gnd83.A",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 1
+      },
+      "sections": [
+        {
+          "id": "Common Emitter.e10_s0",
+          "startPoint": {
+            "x": 187,
+            "y": 239
+          },
+          "endPoint": {
+            "x": 187,
+            "y": 244
+          },
+          "incomingShape": "Common Emitter.R2.B",
+          "outgoingShape": "Common Emitter.gnd83.A"
+        }
+      ],
+      "container": "Common Emitter"
+    },
+    {
+      "id": "Common Emitter.e11",
+      "source": "Common Emitter.C1",
+      "sourcePort": "Common Emitter.C1.B",
+      "target": "Common Emitter.gnd85",
+      "targetPort": "Common Emitter.gnd85.A",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 1
+      },
+      "sections": [
+        {
+          "id": "Common Emitter.e11_s0",
+          "startPoint": {
+            "x": 259,
+            "y": 239
+          },
+          "endPoint": {
+            "x": 259,
+            "y": 244
+          },
+          "incomingShape": "Common Emitter.C1.B",
+          "outgoingShape": "Common Emitter.gnd85.A"
+        }
+      ],
+      "container": "Common Emitter"
+    },
+    {
+      "id": "Common Emitter.e12",
+      "source": "Common Emitter.R4",
+      "sourcePort": "Common Emitter.R4.B",
+      "target": "Common Emitter.gnd89",
+      "targetPort": "Common Emitter.gnd89.A",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 1
+      },
+      "sections": [
+        {
+          "id": "Common Emitter.e12_s0",
+          "startPoint": {
+            "x": 125,
+            "y": 213
+          },
+          "endPoint": {
+            "x": 125,
+            "y": 218
+          },
+          "incomingShape": "Common Emitter.R4.B",
+          "outgoingShape": "Common Emitter.gnd89.A"
+        }
+      ],
+      "container": "Common Emitter"
+    },
+    {
+      "id": "Common Emitter.e13",
+      "source": "Common Emitter.C2",
+      "sourcePort": "Common Emitter.C2.A",
+      "target": "Common Emitter.vin",
+      "targetPort": "Common Emitter.vin.Y",
+      "sections": [
+        {
+          "id": "Common Emitter.e13_s0",
+          "startPoint": {
+            "x": 65,
+            "y": 118
+          },
+          "endPoint": {
+            "x": 42,
+            "y": 118
+          },
+          "bendPoints": [
+            {
+              "x": 55,
+              "y": 118
+            },
+            {
+              "x": 55,
+              "y": 118
+            }
+          ],
+          "incomingShape": "Common Emitter.C2.A",
+          "outgoingShape": "Common Emitter.vin.Y"
+        }
+      ],
+      "container": "Common Emitter"
+    }
+  ],
+  "$H": 13,
+  "x": 0,
+  "y": 0,
+  "width": 293,
+  "height": 301
+}

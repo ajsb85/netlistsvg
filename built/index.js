@@ -5,14 +5,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.dumpLayout = dumpLayout;
 exports.render = render;
-const elkjs_1 = __importDefault(require("elkjs"));
+const elkWasmAdapter_1 = __importDefault(require("./elkWasmAdapter"));
 const onml = require("onml");
 const FlatModule_1 = require("./FlatModule");
 const Skin_1 = __importDefault(require("./Skin"));
 const elkGraph_1 = require("./elkGraph");
 const drawModule_1 = __importDefault(require("./drawModule"));
 // Initialize ELK engine
-const elk = new elkjs_1.default();
+const elk = new elkWasmAdapter_1.default();
 // Default configuration: hierarchy disabled, top module taken from the netlist.
 const defaultConfig = {
     hierarchy: {

@@ -1,0 +1,588 @@
+{
+  "id": "hyperedges",
+  "children": [
+    {
+      "id": "hyperedges.i0",
+      "width": 30,
+      "height": 20,
+      "ports": [
+        {
+          "id": "hyperedges.i0.Y",
+          "width": 0,
+          "height": 0,
+          "x": 30,
+          "y": 10
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "i0.label.ref",
+          "text": "i0",
+          "x": 15,
+          "y": -10,
+          "height": 11,
+          "width": 12
+        }
+      ],
+      "$H": 16,
+      "x": 127,
+      "y": 152
+    },
+    {
+      "id": "hyperedges.i1",
+      "width": 30,
+      "height": 20,
+      "ports": [
+        {
+          "id": "hyperedges.i1.Y",
+          "width": 0,
+          "height": 0,
+          "x": 30,
+          "y": 10
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "i1.label.ref",
+          "text": "i1",
+          "x": 15,
+          "y": -10,
+          "height": 11,
+          "width": 12
+        }
+      ],
+      "$H": 283,
+      "x": 127,
+      "y": 87
+    },
+    {
+      "id": "hyperedges.i2",
+      "width": 30,
+      "height": 20,
+      "ports": [
+        {
+          "id": "hyperedges.i2.Y",
+          "width": 0,
+          "height": 0,
+          "x": 30,
+          "y": 10
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "i2.label.ref",
+          "text": "i2",
+          "x": 15,
+          "y": -10,
+          "height": 11,
+          "width": 12
+        }
+      ],
+      "$H": 287,
+      "x": 12,
+      "y": 87
+    },
+    {
+      "id": "hyperedges.i3",
+      "width": 30,
+      "height": 20,
+      "ports": [
+        {
+          "id": "hyperedges.i3.Y",
+          "width": 0,
+          "height": 0,
+          "x": 30,
+          "y": 10
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "i3.label.ref",
+          "text": "i3",
+          "x": 15,
+          "y": -10,
+          "height": 11,
+          "width": 12
+        }
+      ],
+      "$H": 291,
+      "x": 12,
+      "y": 22
+    },
+    {
+      "id": "hyperedges.i4",
+      "width": 30,
+      "height": 20,
+      "ports": [
+        {
+          "id": "hyperedges.i4.Y",
+          "width": 0,
+          "height": 0,
+          "x": 30,
+          "y": 10
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "i4.label.ref",
+          "text": "i4",
+          "x": 15,
+          "y": -10,
+          "height": 11,
+          "width": 12
+        }
+      ],
+      "$H": 295,
+      "x": 127,
+      "y": 22
+    },
+    {
+      "id": "hyperedges.o0",
+      "width": 30,
+      "height": 20,
+      "ports": [
+        {
+          "id": "hyperedges.o0.A",
+          "width": 0,
+          "height": 0,
+          "x": 0,
+          "y": 10
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "o0.label.ref",
+          "text": "o0",
+          "x": 15,
+          "y": -10,
+          "height": 11,
+          "width": 12
+        }
+      ],
+      "$H": 299,
+      "x": 77,
+      "y": 22
+    },
+    {
+      "id": "hyperedges.o1",
+      "width": 30,
+      "height": 20,
+      "ports": [
+        {
+          "id": "hyperedges.o1.A",
+          "width": 0,
+          "height": 0,
+          "x": 0,
+          "y": 10
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "o1.label.ref",
+          "text": "o1",
+          "x": 15,
+          "y": -10,
+          "height": 11,
+          "width": 12
+        }
+      ],
+      "$H": 303,
+      "x": 247,
+      "y": 152
+    },
+    {
+      "id": "hyperedges.o2",
+      "width": 30,
+      "height": 20,
+      "ports": [
+        {
+          "id": "hyperedges.o2.A",
+          "width": 0,
+          "height": 0,
+          "x": 0,
+          "y": 10
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "o2.label.ref",
+          "text": "o2",
+          "x": 15,
+          "y": -10,
+          "height": 11,
+          "width": 12
+        }
+      ],
+      "$H": 307,
+      "x": 247,
+      "y": 87
+    },
+    {
+      "id": "hyperedges.o3",
+      "width": 30,
+      "height": 20,
+      "ports": [
+        {
+          "id": "hyperedges.o3.A",
+          "width": 0,
+          "height": 0,
+          "x": 0,
+          "y": 10
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "o3.label.ref",
+          "text": "o3",
+          "x": 15,
+          "y": -10,
+          "height": 11,
+          "width": 12
+        }
+      ],
+      "$H": 311,
+      "x": 247,
+      "y": 22
+    },
+    {
+      "id": "hyperedges.$d_0",
+      "width": 0,
+      "height": 0,
+      "ports": [
+        {
+          "id": "hyperedges.$d_0.p",
+          "width": 0,
+          "height": 0,
+          "x": 0,
+          "y": 0
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_SIDE"
+      },
+      "$H": 315,
+      "x": 212,
+      "y": 32
+    },
+    {
+      "id": "hyperedges.$d_1",
+      "width": 0,
+      "height": 0,
+      "ports": [
+        {
+          "id": "hyperedges.$d_1.p",
+          "width": 0,
+          "height": 0,
+          "x": 0,
+          "y": 0
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_SIDE"
+      },
+      "$H": 318,
+      "x": 192,
+      "y": 97
+    }
+  ],
+  "edges": [
+    {
+      "id": "hyperedges.e0",
+      "source": "hyperedges.i2",
+      "sourcePort": "hyperedges.i2.Y",
+      "target": "hyperedges.o0",
+      "targetPort": "hyperedges.o0.A",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 1
+      },
+      "sections": [
+        {
+          "id": "hyperedges.e0_s0",
+          "startPoint": {
+            "x": 42,
+            "y": 97
+          },
+          "endPoint": {
+            "x": 77,
+            "y": 32
+          },
+          "bendPoints": [
+            {
+              "x": 52,
+              "y": 97
+            },
+            {
+              "x": 52,
+              "y": 32
+            }
+          ],
+          "incomingShape": "hyperedges.i2.Y",
+          "outgoingShape": "hyperedges.o0.A"
+        }
+      ],
+      "junctionPoints": [
+        {
+          "x": 52,
+          "y": 32
+        }
+      ],
+      "container": "hyperedges"
+    },
+    {
+      "id": "hyperedges.e1",
+      "source": "hyperedges.i3",
+      "sourcePort": "hyperedges.i3.Y",
+      "target": "hyperedges.o0",
+      "targetPort": "hyperedges.o0.A",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 1
+      },
+      "sections": [
+        {
+          "id": "hyperedges.e1_s0",
+          "startPoint": {
+            "x": 42,
+            "y": 32
+          },
+          "endPoint": {
+            "x": 77,
+            "y": 32
+          },
+          "incomingShape": "hyperedges.i3.Y",
+          "outgoingShape": "hyperedges.o0.A"
+        }
+      ],
+      "container": "hyperedges"
+    },
+    {
+      "id": "hyperedges.e2",
+      "target": "hyperedges.o1",
+      "targetPort": "hyperedges.o1.A",
+      "source": "hyperedges.$d_0",
+      "sourcePort": "hyperedges.$d_0.p",
+      "sections": [
+        {
+          "id": "hyperedges.e2_s0",
+          "startPoint": {
+            "x": 212,
+            "y": 32
+          },
+          "endPoint": {
+            "x": 247,
+            "y": 162
+          },
+          "bendPoints": [
+            {
+              "x": 222,
+              "y": 32
+            },
+            {
+              "x": 222,
+              "y": 162
+            }
+          ],
+          "incomingShape": "hyperedges.$d_0.p",
+          "outgoingShape": "hyperedges.o1.A"
+        }
+      ],
+      "junctionPoints": [
+        {
+          "x": 222,
+          "y": 32
+        }
+      ],
+      "container": "hyperedges"
+    },
+    {
+      "id": "hyperedges.e3",
+      "target": "hyperedges.o2",
+      "targetPort": "hyperedges.o2.A",
+      "source": "hyperedges.$d_0",
+      "sourcePort": "hyperedges.$d_0.p",
+      "sections": [
+        {
+          "id": "hyperedges.e3_s0",
+          "startPoint": {
+            "x": 212,
+            "y": 32
+          },
+          "endPoint": {
+            "x": 247,
+            "y": 97
+          },
+          "bendPoints": [
+            {
+              "x": 222,
+              "y": 32
+            },
+            {
+              "x": 222,
+              "y": 97
+            }
+          ],
+          "incomingShape": "hyperedges.$d_0.p",
+          "outgoingShape": "hyperedges.o2.A"
+        }
+      ],
+      "junctionPoints": [
+        {
+          "x": 222,
+          "y": 97
+        }
+      ],
+      "container": "hyperedges"
+    },
+    {
+      "id": "hyperedges.e4",
+      "target": "hyperedges.o3",
+      "targetPort": "hyperedges.o3.A",
+      "source": "hyperedges.$d_0",
+      "sourcePort": "hyperedges.$d_0.p",
+      "sections": [
+        {
+          "id": "hyperedges.e4_s0",
+          "startPoint": {
+            "x": 212,
+            "y": 32
+          },
+          "endPoint": {
+            "x": 247,
+            "y": 32
+          },
+          "incomingShape": "hyperedges.$d_0.p",
+          "outgoingShape": "hyperedges.o3.A"
+        }
+      ],
+      "container": "hyperedges"
+    },
+    {
+      "id": "hyperedges.e5",
+      "source": "hyperedges.i0",
+      "sourcePort": "hyperedges.i0.Y",
+      "target": "hyperedges.$d_1",
+      "targetPort": "hyperedges.$d_1.p",
+      "sections": [
+        {
+          "id": "hyperedges.e5_s0",
+          "startPoint": {
+            "x": 157,
+            "y": 162
+          },
+          "endPoint": {
+            "x": 192,
+            "y": 97
+          },
+          "bendPoints": [
+            {
+              "x": 167,
+              "y": 162
+            },
+            {
+              "x": 167,
+              "y": 97
+            }
+          ],
+          "incomingShape": "hyperedges.i0.Y",
+          "outgoingShape": "hyperedges.$d_1.p"
+        }
+      ],
+      "container": "hyperedges"
+    },
+    {
+      "id": "hyperedges.e6",
+      "source": "hyperedges.i1",
+      "sourcePort": "hyperedges.i1.Y",
+      "target": "hyperedges.$d_1",
+      "targetPort": "hyperedges.$d_1.p",
+      "sections": [
+        {
+          "id": "hyperedges.e6_s0",
+          "startPoint": {
+            "x": 157,
+            "y": 97
+          },
+          "endPoint": {
+            "x": 192,
+            "y": 97
+          },
+          "incomingShape": "hyperedges.i1.Y",
+          "outgoingShape": "hyperedges.$d_1.p"
+        }
+      ],
+      "container": "hyperedges"
+    },
+    {
+      "id": "hyperedges.e7",
+      "source": "hyperedges.i4",
+      "sourcePort": "hyperedges.i4.Y",
+      "target": "hyperedges.$d_1",
+      "targetPort": "hyperedges.$d_1.p",
+      "sections": [
+        {
+          "id": "hyperedges.e7_s0",
+          "startPoint": {
+            "x": 157,
+            "y": 32
+          },
+          "endPoint": {
+            "x": 192,
+            "y": 97
+          },
+          "bendPoints": [
+            {
+              "x": 167,
+              "y": 32
+            },
+            {
+              "x": 167,
+              "y": 97
+            }
+          ],
+          "incomingShape": "hyperedges.i4.Y",
+          "outgoingShape": "hyperedges.$d_1.p"
+        }
+      ],
+      "junctionPoints": [
+        {
+          "x": 167,
+          "y": 97
+        }
+      ],
+      "container": "hyperedges"
+    }
+  ],
+  "$H": 13,
+  "x": 0,
+  "y": 0,
+  "width": 289,
+  "height": 184
+}

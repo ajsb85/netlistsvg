@@ -1,0 +1,125 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:s="https://github.com/ajsb85/netlist2svg" width="255" height="321"><style>  svg {
+    stroke: #000;
+    fill: none;
+  }
+  text {
+    fill: #000;
+    stroke: none;
+    font-size: 10px;
+    font-weight: bold;
+    font-family: "Courier New", monospace;
+  }
+  .nodelabel {
+    text-anchor: middle;
+  }
+  .inputPortLabel {
+    text-anchor: end;
+  }
+  .splitjoinBody {
+    fill: #000;
+  }
+  .junction {
+    fill: #000;
+  }
+  .labelBackground {
+    fill: #fff;
+    stroke: none;
+  }
+  .detail, .symbol {
+    stroke-linejoin: round;
+    stroke-linecap: round;
+  }
+  .symbol {
+    stroke-width: 2;
+  }
+  .detail {
+    fill: #000;
+  }
+  @media (prefers-color-scheme: dark) {
+    svg {
+      stroke: #fff !important;
+    }
+    text {
+      fill: #fff !important;
+    }
+    .splitjoinBody {
+      fill: #fff !important;
+    }
+    .junction {
+      fill: #fff !important;
+    }
+    .labelBackground {
+      fill: #0a192f !important; /* Blueprint background or transparent */
+    }
+    .detail {
+      fill: #fff !important;
+    }
+    circle, path, rect, line {
+      stroke: #fff;
+    }
+    [style*="fill:#000"], [style*="fill:#000000"] {
+      fill: #fff !important;
+    }
+    [style*="stroke:#000"], [style*="stroke:#000000"] {
+      stroke: #fff !important;
+    }
+  }
+  /* Forced dark theme (used by the always-dark interactive demo). Mirrors the
+     prefers-color-scheme rules above but is triggered by class="dark" on the
+     root svg, so it works even when the host page/OS is not in dark mode. */
+  svg.dark {
+    stroke: #fff !important;
+  }
+  svg.dark text {
+    fill: #fff !important;
+  }
+  svg.dark .splitjoinBody {
+    fill: #fff !important;
+  }
+  svg.dark .junction {
+    fill: #fff !important;
+  }
+  svg.dark .labelBackground {
+    fill: #0a192f !important;
+  }
+  svg.dark .detail {
+    fill: #fff !important;
+  }
+  svg.dark circle, svg.dark path, svg.dark rect, svg.dark line {
+    stroke: #fff;
+  }
+  svg.dark [style*="fill:#000"], svg.dark [style*="fill:#000000"] {
+    fill: #fff !important;
+  }
+  svg.dark [style*="stroke:#000"], svg.dark [style*="stroke:#000000"] {
+    stroke: #fff !important;
+  }
+  /* Forced light theme: overrides the prefers-color-scheme:dark rules above so a
+     light-forced render (class="light") stays light even on a dark OS. */
+  svg.light {
+    stroke: #000 !important;
+  }
+  svg.light text {
+    fill: #000 !important;
+  }
+  svg.light .splitjoinBody {
+    fill: #000 !important;
+  }
+  svg.light .junction {
+    fill: #000 !important;
+  }
+  svg.light .labelBackground {
+    fill: #fff !important;
+  }
+  svg.light .detail {
+    fill: #000 !important;
+  }
+  svg.light circle, svg.light path, svg.light rect, svg.light line {
+    stroke: #000;
+  }
+  svg.light [style*="fill:#000"], svg.light [style*="fill:#000000"] {
+    fill: #000 !important;
+  }
+  svg.light [style*="stroke:#000"], svg.light [style*="stroke:#000000"] {
+    stroke: #000 !important;
+  }</style><g s:type="capacitor_v" s:width="30" s:height="50" transform="translate(148,224)" id="cell_C1"><s:alias val="c_v"/><text x="25" y="10" s:attribute="ref" class="cell_C1">C1</text><text x="25" y="45" s:attribute="value" class="cell_C1"></text><path d="M0,20 H30 M0,30 H30" class="symbol cell_C1"/><path d="M15,0 V20 M15,30 V50" class="connect cell_C1"/><g s:x="15" s:y="0" s:pid="A" s:position="top"/><g s:x="15" s:y="50" s:pid="B" s:position="bottom"/></g><g s:type="capacitor_h" s:width="50" s:height="30" transform="translate(193,173.33333333333334)" id="cell_C2"><s:alias val="c_h"/><text x="35" y="5" s:attribute="ref" class="cell_C2">C2</text><text x="35" y="30" s:attribute="value" class="cell_C2"></text><path d="M20,0 V30 M30,0 V30" class="symbol cell_C2"/><path d="M0,15 H20 M30,15 H50" class="connect cell_C2"/><g s:x="0" s:y="15" s:pid="A" s:position="left"/><g s:x="50" s:y="15" s:pid="B" s:position="right"/></g><g s:type="transistor_npn" s:width="32" s:height="32" transform="translate(82,172)" id="cell_Q"><s:alias val="q_npn"/><text x="35" y="20" s:attribute="ref" class="cell_Q">Q</text><circle r="16" cx="16" cy="16" class="symbol cell_Q"/><path d="M0,16 H12 M12,6 V26" class="detail cell_Q"/><path d="m12,10 11,-8" class="detail cell_Q"/><path d="m12,21 11,8" class="detail cell_Q"/><path d="m23,29 -6,-1 3,-5 z" style="fill:#000000" class="cell_Q"/><g s:x="22" s:y="2" s:pid="C" s:position="top"/><g s:x="0" s:y="16" s:pid="B" s:position="left"/><g s:x="23" s:y="29" s:pid="E" s:position="bottom"/></g><g s:type="resistor_v" s:width="10" s:height="50" transform="translate(52,47)" id="cell_R1"><s:alias val="r_v"/><text x="15" y="15" s:attribute="ref" class="cell_R1">R1</text><text x="15" y="30" s:attribute="value" class="cell_R1"></text><path d="M0,10 V40 H10 V10 Z" class="symbol cell_R1"/><path d="M5,0 V10 M5,40 V50" class="connect cell_R1"/><g s:x="5" s:y="0" s:pid="A" s:position="top"/><g s:x="5" s:y="50" s:pid="B" s:position="bottom"/></g><g s:type="resistor_v" s:width="10" s:height="50" transform="translate(68,224)" id="cell_R2"><s:alias val="r_v"/><text x="15" y="15" s:attribute="ref" class="cell_R2">R2</text><text x="15" y="30" s:attribute="value" class="cell_R2"></text><path d="M0,10 V40 H10 V10 Z" class="symbol cell_R2"/><path d="M5,0 V10 M5,40 V50" class="connect cell_R2"/><g s:x="5" s:y="0" s:pid="A" s:position="top"/><g s:x="5" s:y="50" s:pid="B" s:position="bottom"/></g><g s:type="resistor_v" s:width="10" s:height="50" transform="translate(188,102)" id="cell_R3"><s:alias val="r_v"/><text x="15" y="15" s:attribute="ref" class="cell_R3">R3</text><text x="15" y="30" s:attribute="value" class="cell_R3"></text><path d="M0,10 V40 H10 V10 Z" class="symbol cell_R3"/><path d="M5,0 V10 M5,40 V50" class="connect cell_R3"/><g s:x="5" s:y="0" s:pid="A" s:position="top"/><g s:x="5" s:y="50" s:pid="B" s:position="bottom"/></g><g s:type="resistor_v" s:width="10" s:height="50" transform="translate(108,224)" id="cell_R4"><s:alias val="r_v"/><text x="15" y="15" s:attribute="ref" class="cell_R4">R4</text><text x="15" y="30" s:attribute="value" class="cell_R4"></text><path d="M0,10 V40 H10 V10 Z" class="symbol cell_R4"/><path d="M5,0 V10 M5,40 V50" class="connect cell_R4"/><g s:x="5" s:y="0" s:pid="A" s:position="top"/><g s:x="5" s:y="50" s:pid="B" s:position="bottom"/></g><g s:type="gnd" s:width="20" s:height="30" transform="translate(98,279)" id="cell_gnd83"><s:alias val="gnd"/><text x="30" y="20" class="nodelabel cell_gnd83" s:attribute="name"></text><path d="M0,0 H20 M3,5 H17 M7,10 H13 M10,0 V-15" class="cell_gnd83"/><g s:x="10" s:y="-15" s:pid="A" s:position="top"/></g><g s:type="gnd" s:width="20" s:height="30" transform="translate(198,279)" id="cell_gnd85"><s:alias val="gnd"/><text x="30" y="20" class="nodelabel cell_gnd85" s:attribute="name"></text><path d="M0,0 H20 M3,5 H17 M7,10 H13 M10,0 V-15" class="cell_gnd85"/><g s:x="10" s:y="-15" s:pid="A" s:position="top"/></g><g s:type="gnd" s:width="20" s:height="30" transform="translate(158,279)" id="cell_gnd89"><s:alias val="gnd"/><text x="30" y="20" class="nodelabel cell_gnd89" s:attribute="name"></text><path d="M0,0 H20 M3,5 H17 M7,10 H13 M10,0 V-15" class="cell_gnd89"/><g s:x="10" s:y="-15" s:pid="A" s:position="top"/></g><g s:type="vcc" s:width="20" s:height="30" transform="translate(12,12)" id="cell_vcc80"><s:alias val="vcc"/><text x="10" y="-4" class="nodelabel cell_vcc80" s:attribute="name"></text><path d="M0,0 H20 L10,15 Z M10,15 V30" class="cell_vcc80"/><g s:x="10" s:y="30" s:pid="A" s:position="bottom"/></g><g s:type="vcc" s:width="20" s:height="30" transform="translate(148,57)" id="cell_vcc86"><s:alias val="vcc"/><text x="10" y="-4" class="nodelabel cell_vcc86" s:attribute="name"></text><path d="M0,0 H20 L10,15 Z M10,15 V30" class="cell_vcc86"/><g s:x="10" s:y="30" s:pid="A" s:position="bottom"/></g><g s:type="inputExt" s:width="30" s:height="20" transform="translate(198,224)" id="cell_vin"><text x="15" y="-4" class="cell_vin" s:attribute="ref">vin</text><s:alias val="$_inputExt_"/><path d="M0,0 V20 H15 L30,10 15,0 Z" class="cell_vin"/><g s:x="30" s:y="10" s:pid="Y" s:position="right"/></g><g s:type="outputExt" s:width="30" s:height="20" transform="translate(62,117)" id="cell_vout"><text x="15" y="-4" class="cell_vout" s:attribute="ref">vout</text><s:alias val="$_outputExt_"/><path d="M30,0 V20 H15 L0,10 15,0 Z" class="cell_vout"/><g s:x="0" s:y="10" s:pid="A" s:position="left"/></g><line x1="114" y1="188" x2="138" y2="188" class="net_12 width_1" style="stroke-width: 1"/><line x1="138" y1="188" x2="138" y2="249" class="net_12 width_1" style="stroke-width: 1"/><line x1="138" y1="249" x2="148" y2="249" class="net_12 width_1" style="stroke-width: 1"/><line x1="114" y1="188" x2="138" y2="188" class="net_12 width_1" style="stroke-width: 1"/><line x1="138" y1="188" x2="138" y2="214" class="net_12 width_1" style="stroke-width: 1"/><line x1="138" y1="214" x2="58" y2="214" class="net_12 width_1" style="stroke-width: 1"/><line x1="58" y1="214" x2="58" y2="249" class="net_12 width_1" style="stroke-width: 1"/><line x1="58" y1="249" x2="68" y2="249" class="net_12 width_1" style="stroke-width: 1"/><line x1="62" y1="72" x2="72" y2="72" class="net_18 width_1" style="stroke-width: 1"/><line x1="72" y1="72" x2="72" y2="117" class="net_18 width_1" style="stroke-width: 1"/><line x1="72" y1="117" x2="72" y2="188" class="net_18 width_1" style="stroke-width: 1"/><line x1="72" y1="188" x2="82" y2="188" class="net_18 width_1" style="stroke-width: 1"/><line x1="32" y1="27" x2="42" y2="27" class="net_80 width_1" style="stroke-width: 1"/><line x1="42" y1="27" x2="42" y2="72" class="net_80 width_1" style="stroke-width: 1"/><line x1="42" y1="72" x2="52" y2="72" class="net_80 width_1" style="stroke-width: 1"/><line x1="168" y1="72" x2="178" y2="72" class="net_86 width_1" style="stroke-width: 1"/><line x1="178" y1="72" x2="178" y2="127" class="net_86 width_1" style="stroke-width: 1"/><line x1="178" y1="127" x2="188" y2="127" class="net_86 width_1" style="stroke-width: 1"/><line x1="198" y1="127" x2="208" y2="127" class="net_10 width_1" style="stroke-width: 1"/><line x1="208" y1="127" x2="208" y2="203.33333333333334" class="net_10 width_1" style="stroke-width: 1"/><line x1="198" y1="127" x2="208" y2="127" class="net_10 width_1" style="stroke-width: 1"/><line x1="208" y1="127" x2="208" y2="162" class="net_10 width_1" style="stroke-width: 1"/><line x1="208" y1="162" x2="98" y2="162" class="net_10 width_1" style="stroke-width: 1"/><line x1="98" y1="162" x2="208" y2="214" class="net_10 width_1" style="stroke-width: 1"/><line x1="208" y1="214" x2="98" y2="214" class="net_10 width_1" style="stroke-width: 1"/><line x1="98" y1="214" x2="98" y2="172" class="net_10 width_1" style="stroke-width: 1"/><line x1="208" y1="203.33333333333334" x2="208" y2="162" class="net_10 width_1" style="stroke-width: 1"/><line x1="208" y1="162" x2="98" y2="162" class="net_10 width_1" style="stroke-width: 1"/><line x1="98" y1="162" x2="208" y2="214" class="net_10 width_1" style="stroke-width: 1"/><line x1="208" y1="214" x2="98" y2="214" class="net_10 width_1" style="stroke-width: 1"/><line x1="98" y1="214" x2="98" y2="249" class="net_10 width_1" style="stroke-width: 1"/><line x1="98" y1="249" x2="108" y2="249" class="net_10 width_1" style="stroke-width: 1"/><line x1="98" y1="172" x2="98" y2="249" class="net_10 width_1" style="stroke-width: 1"/><line x1="98" y1="249" x2="108" y2="249" class="net_10 width_1" style="stroke-width: 1"/><line x1="78" y1="249" x2="88" y2="249" class="net_83 width_1" style="stroke-width: 1"/><line x1="88" y1="249" x2="88" y2="294" class="net_83 width_1" style="stroke-width: 1"/><line x1="88" y1="294" x2="98" y2="294" class="net_83 width_1" style="stroke-width: 1"/><line x1="178" y1="249" x2="188" y2="249" class="net_85 width_1" style="stroke-width: 1"/><line x1="188" y1="249" x2="188" y2="294" class="net_85 width_1" style="stroke-width: 1"/><line x1="188" y1="294" x2="198" y2="294" class="net_85 width_1" style="stroke-width: 1"/><line x1="118" y1="249" x2="128" y2="249" class="net_89 width_1" style="stroke-width: 1"/><line x1="128" y1="249" x2="128" y2="294" class="net_89 width_1" style="stroke-width: 1"/><line x1="128" y1="294" x2="158" y2="294" class="net_89 width_1" style="stroke-width: 1"/><line x1="208" y1="173.33333333333334" x2="208" y2="244" class="net_70 width_1" style="stroke-width: 1"/></svg>

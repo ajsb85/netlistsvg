@@ -1,0 +1,85 @@
+{
+  "id": "test",
+  "children": [
+    {
+      "id": "test.vcc",
+      "width": 20,
+      "height": 30,
+      "ports": [
+        {
+          "id": "test.vcc.A",
+          "width": 0,
+          "height": 0,
+          "x": 20,
+          "y": 15
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [],
+      "x": 12,
+      "y": 12
+    },
+    {
+      "id": "test.gnd",
+      "width": 20,
+      "height": 30,
+      "ports": [
+        {
+          "id": "test.gnd.A",
+          "width": 0,
+          "height": 0,
+          "x": 0,
+          "y": 15
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [],
+      "x": 52,
+      "y": 47
+    }
+  ],
+  "edges": [
+    {
+      "id": "test.e0",
+      "source": "test.vcc",
+      "sourcePort": "test.vcc.A",
+      "target": "test.gnd",
+      "targetPort": "test.gnd.A",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 1
+      },
+      "sections": [
+        {
+          "id": "test.e0_s0",
+          "startPoint": {
+            "x": 32,
+            "y": 27
+          },
+          "endPoint": {
+            "x": 52,
+            "y": 62
+          },
+          "bendPoints": [
+            {
+              "x": 42,
+              "y": 27
+            },
+            {
+              "x": 42,
+              "y": 62
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "x": 0,
+  "y": 0,
+  "width": 84,
+  "height": 89
+}

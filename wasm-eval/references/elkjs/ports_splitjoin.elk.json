@@ -1,0 +1,736 @@
+{
+  "id": "ports_splitjoin",
+  "children": [
+    {
+      "id": "ports_splitjoin.inthing",
+      "width": 30,
+      "height": 20,
+      "ports": [
+        {
+          "id": "ports_splitjoin.inthing.Y",
+          "width": 0,
+          "height": 0,
+          "x": 30,
+          "y": 10
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "inthing.label.ref",
+          "text": "inthing",
+          "x": 15,
+          "y": -10,
+          "height": 11,
+          "width": 42
+        }
+      ],
+      "$H": 16,
+      "x": 12,
+      "y": 164.5
+    },
+    {
+      "id": "ports_splitjoin.outthing",
+      "width": 30,
+      "height": 20,
+      "ports": [
+        {
+          "id": "ports_splitjoin.outthing.A",
+          "width": 0,
+          "height": 0,
+          "x": 0,
+          "y": 10
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "outthing.label.ref",
+          "text": "outthing",
+          "x": 15,
+          "y": -10,
+          "height": 11,
+          "width": 48
+        }
+      ],
+      "$H": 283,
+      "x": 340,
+      "y": 24.5
+    },
+    {
+      "id": "ports_splitjoin.outthing2",
+      "width": 30,
+      "height": 20,
+      "ports": [
+        {
+          "id": "ports_splitjoin.outthing2.A",
+          "width": 0,
+          "height": 0,
+          "x": 0,
+          "y": 10
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "outthing2.label.ref",
+          "text": "outthing2",
+          "x": 15,
+          "y": -10,
+          "height": 11,
+          "width": 54
+        }
+      ],
+      "$H": 287,
+      "x": 340,
+      "y": 154.5
+    },
+    {
+      "id": "ports_splitjoin.outthing3",
+      "width": 30,
+      "height": 20,
+      "ports": [
+        {
+          "id": "ports_splitjoin.outthing3.A",
+          "width": 0,
+          "height": 0,
+          "x": 0,
+          "y": 10
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "outthing3.label.ref",
+          "text": "outthing3",
+          "x": 15,
+          "y": -10,
+          "height": 11,
+          "width": 54
+        }
+      ],
+      "$H": 291,
+      "x": 340,
+      "y": 89.5
+    },
+    {
+      "id": "ports_splitjoin.outthing4",
+      "width": 30,
+      "height": 20,
+      "ports": [
+        {
+          "id": "ports_splitjoin.outthing4.A",
+          "width": 0,
+          "height": 0,
+          "x": 0,
+          "y": 10
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "outthing4.label.ref",
+          "text": "outthing4",
+          "x": 15,
+          "y": -10,
+          "height": 11,
+          "width": 54
+        }
+      ],
+      "$H": 295,
+      "x": 340,
+      "y": 219.5
+    },
+    {
+      "id": "ports_splitjoin.$join$,2,3,2,3,",
+      "width": 4,
+      "height": 40,
+      "ports": [
+        {
+          "id": "ports_splitjoin.$join$,2,3,2,3,.0:1",
+          "width": 1,
+          "height": 1,
+          "x": 0,
+          "y": 10,
+          "labels": [
+            {
+              "id": "ports_splitjoin.$join$,2,3,2,3,.0:1.label",
+              "text": "0:1",
+              "x": -19,
+              "y": -12,
+              "width": 18,
+              "height": 11
+            }
+          ]
+        },
+        {
+          "id": "ports_splitjoin.$join$,2,3,2,3,.2:3",
+          "width": 1,
+          "height": 1,
+          "x": 0,
+          "y": 30,
+          "labels": [
+            {
+              "id": "ports_splitjoin.$join$,2,3,2,3,.2:3.label",
+              "text": "2:3",
+              "x": -19,
+              "y": 2,
+              "width": 18,
+              "height": 11
+            }
+          ]
+        },
+        {
+          "id": "ports_splitjoin.$join$,2,3,2,3,.Y",
+          "width": 1,
+          "height": 1,
+          "x": 5,
+          "y": 20
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [],
+      "$H": 299,
+      "x": 260,
+      "y": 14
+    },
+    {
+      "id": "ports_splitjoin.$join$,2,3,5,",
+      "width": 4,
+      "height": 40,
+      "ports": [
+        {
+          "id": "ports_splitjoin.$join$,2,3,5,.0:1",
+          "width": 1,
+          "height": 1,
+          "x": 0,
+          "y": 10,
+          "labels": [
+            {
+              "id": "ports_splitjoin.$join$,2,3,5,.0:1.label",
+              "text": "0:1",
+              "x": -19,
+              "y": -12,
+              "width": 18,
+              "height": 11
+            }
+          ]
+        },
+        {
+          "id": "ports_splitjoin.$join$,2,3,5,.2",
+          "width": 1,
+          "height": 1,
+          "x": 0,
+          "y": 30,
+          "labels": [
+            {
+              "id": "ports_splitjoin.$join$,2,3,5,.2.label",
+              "text": "2",
+              "x": -7,
+              "y": 2,
+              "width": 6,
+              "height": 11
+            }
+          ]
+        },
+        {
+          "id": "ports_splitjoin.$join$,2,3,5,.Y",
+          "width": 1,
+          "height": 1,
+          "x": 5,
+          "y": 20
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [],
+      "$H": 306,
+      "x": 260,
+      "y": 144
+    },
+    {
+      "id": "ports_splitjoin.$split$,2,3,4,5,",
+      "width": 5,
+      "height": 60,
+      "ports": [
+        {
+          "id": "ports_splitjoin.$split$,2,3,4,5,.A",
+          "width": 1,
+          "height": 1,
+          "x": 0,
+          "y": 30
+        },
+        {
+          "id": "ports_splitjoin.$split$,2,3,4,5,.0:1",
+          "width": 1,
+          "height": 1,
+          "x": 4,
+          "y": 10,
+          "labels": [
+            {
+              "id": "ports_splitjoin.$split$,2,3,4,5,.0:1.label",
+              "text": "0:1",
+              "x": 2,
+              "y": 2,
+              "width": 18,
+              "height": 11
+            }
+          ]
+        },
+        {
+          "id": "ports_splitjoin.$split$,2,3,4,5,.3",
+          "width": 1,
+          "height": 1,
+          "x": 4,
+          "y": 30,
+          "labels": [
+            {
+              "id": "ports_splitjoin.$split$,2,3,4,5,.3.label",
+              "text": "3",
+              "x": 2,
+              "y": 2,
+              "width": 6,
+              "height": 11
+            }
+          ]
+        },
+        {
+          "id": "ports_splitjoin.$split$,2,3,4,5,.0",
+          "width": 1,
+          "height": 1,
+          "x": 4,
+          "y": 50,
+          "labels": [
+            {
+              "id": "ports_splitjoin.$split$,2,3,4,5,.0.label",
+              "text": "0",
+              "x": 2,
+              "y": 2,
+              "width": 6,
+              "height": 11
+            }
+          ]
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [],
+      "$H": 313,
+      "x": 143,
+      "y": 144
+    }
+  ],
+  "edges": [
+    {
+      "id": "ports_splitjoin.e0",
+      "labels": [
+        {
+          "id": "label_0",
+          "text": "4",
+          "width": 4,
+          "height": 6,
+          "x": 301,
+          "y": 30.5,
+          "layoutOptions": {
+            "org.eclipse.elk.edgeLabels.inline": true
+          }
+        }
+      ],
+      "source": "ports_splitjoin.$join$,2,3,2,3,",
+      "sourcePort": "ports_splitjoin.$join$,2,3,2,3,.Y",
+      "target": "ports_splitjoin.outthing",
+      "targetPort": "ports_splitjoin.outthing.A",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 2
+      },
+      "sections": [
+        {
+          "id": "ports_splitjoin.e0_s0",
+          "startPoint": {
+            "x": 266,
+            "y": 34.5
+          },
+          "endPoint": {
+            "x": 340,
+            "y": 34.5
+          },
+          "incomingShape": "ports_splitjoin.$join$,2,3,2,3,.Y",
+          "outgoingShape": "ports_splitjoin.outthing.A"
+        }
+      ],
+      "container": "ports_splitjoin"
+    },
+    {
+      "id": "ports_splitjoin.e1",
+      "labels": [
+        {
+          "id": "label_1",
+          "text": "3",
+          "width": 4,
+          "height": 6,
+          "x": 301,
+          "y": 95.5,
+          "layoutOptions": {
+            "org.eclipse.elk.edgeLabels.inline": true
+          }
+        }
+      ],
+      "source": "ports_splitjoin.$join$,2,3,5,",
+      "sourcePort": "ports_splitjoin.$join$,2,3,5,.Y",
+      "target": "ports_splitjoin.outthing2",
+      "targetPort": "ports_splitjoin.outthing2.A",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 2
+      },
+      "sections": [
+        {
+          "id": "ports_splitjoin.e1_s0",
+          "startPoint": {
+            "x": 266,
+            "y": 164.5
+          },
+          "endPoint": {
+            "x": 340,
+            "y": 164.5
+          },
+          "incomingShape": "ports_splitjoin.$join$,2,3,5,.Y",
+          "outgoingShape": "ports_splitjoin.outthing2.A"
+        }
+      ],
+      "container": "ports_splitjoin"
+    },
+    {
+      "id": "ports_splitjoin.e2",
+      "labels": [
+        {
+          "id": "label_1",
+          "text": "3",
+          "width": 4,
+          "height": 6,
+          "x": 301,
+          "y": 95.5,
+          "layoutOptions": {
+            "org.eclipse.elk.edgeLabels.inline": true
+          }
+        }
+      ],
+      "source": "ports_splitjoin.$join$,2,3,5,",
+      "sourcePort": "ports_splitjoin.$join$,2,3,5,.Y",
+      "target": "ports_splitjoin.outthing3",
+      "targetPort": "ports_splitjoin.outthing3.A",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 2
+      },
+      "sections": [
+        {
+          "id": "ports_splitjoin.e2_s0",
+          "startPoint": {
+            "x": 266,
+            "y": 164.5
+          },
+          "endPoint": {
+            "x": 340,
+            "y": 99.5
+          },
+          "bendPoints": [
+            {
+              "x": 276,
+              "y": 164.5
+            },
+            {
+              "x": 276,
+              "y": 99.5
+            }
+          ],
+          "incomingShape": "ports_splitjoin.$join$,2,3,5,.Y",
+          "outgoingShape": "ports_splitjoin.outthing3.A"
+        }
+      ],
+      "junctionPoints": [
+        {
+          "x": 276,
+          "y": 164.5
+        }
+      ],
+      "container": "ports_splitjoin"
+    },
+    {
+      "id": "ports_splitjoin.e3",
+      "source": "ports_splitjoin.$split$,2,3,4,5,",
+      "sourcePort": "ports_splitjoin.$split$,2,3,4,5,.0",
+      "target": "ports_splitjoin.outthing4",
+      "targetPort": "ports_splitjoin.outthing4.A",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 1
+      },
+      "sections": [
+        {
+          "id": "ports_splitjoin.e3_s0",
+          "startPoint": {
+            "x": 148,
+            "y": 194.5
+          },
+          "endPoint": {
+            "x": 340,
+            "y": 229.5
+          },
+          "bendPoints": [
+            {
+              "x": 177,
+              "y": 194.5
+            },
+            {
+              "x": 177,
+              "y": 229.5
+            }
+          ],
+          "incomingShape": "ports_splitjoin.$split$,2,3,4,5,.0",
+          "outgoingShape": "ports_splitjoin.outthing4.A"
+        }
+      ],
+      "container": "ports_splitjoin"
+    },
+    {
+      "id": "ports_splitjoin.e4",
+      "labels": [
+        {
+          "id": "label_4",
+          "text": "2",
+          "width": 4,
+          "height": 6,
+          "x": 202,
+          "y": 150.5,
+          "layoutOptions": {
+            "org.eclipse.elk.edgeLabels.inline": true
+          }
+        }
+      ],
+      "source": "ports_splitjoin.$split$,2,3,4,5,",
+      "sourcePort": "ports_splitjoin.$split$,2,3,4,5,.0:1",
+      "target": "ports_splitjoin.$join$,2,3,2,3,",
+      "targetPort": "ports_splitjoin.$join$,2,3,2,3,.0:1",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 2
+      },
+      "sections": [
+        {
+          "id": "ports_splitjoin.e4_s0",
+          "startPoint": {
+            "x": 148,
+            "y": 154.5
+          },
+          "endPoint": {
+            "x": 260,
+            "y": 24.5
+          },
+          "bendPoints": [
+            {
+              "x": 177,
+              "y": 154.5
+            },
+            {
+              "x": 177,
+              "y": 24.5
+            }
+          ],
+          "incomingShape": "ports_splitjoin.$split$,2,3,4,5,.0:1",
+          "outgoingShape": "ports_splitjoin.$join$,2,3,2,3,.0:1"
+        }
+      ],
+      "junctionPoints": [
+        {
+          "x": 177,
+          "y": 154.5
+        }
+      ],
+      "container": "ports_splitjoin"
+    },
+    {
+      "id": "ports_splitjoin.e5",
+      "labels": [
+        {
+          "id": "label_4",
+          "text": "2",
+          "width": 4,
+          "height": 6,
+          "x": 202,
+          "y": 150.5,
+          "layoutOptions": {
+            "org.eclipse.elk.edgeLabels.inline": true
+          }
+        }
+      ],
+      "source": "ports_splitjoin.$split$,2,3,4,5,",
+      "sourcePort": "ports_splitjoin.$split$,2,3,4,5,.0:1",
+      "target": "ports_splitjoin.$join$,2,3,2,3,",
+      "targetPort": "ports_splitjoin.$join$,2,3,2,3,.2:3",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 2
+      },
+      "sections": [
+        {
+          "id": "ports_splitjoin.e5_s0",
+          "startPoint": {
+            "x": 148,
+            "y": 154.5
+          },
+          "endPoint": {
+            "x": 260,
+            "y": 44.5
+          },
+          "bendPoints": [
+            {
+              "x": 177,
+              "y": 154.5
+            },
+            {
+              "x": 177,
+              "y": 44.5
+            }
+          ],
+          "incomingShape": "ports_splitjoin.$split$,2,3,4,5,.0:1",
+          "outgoingShape": "ports_splitjoin.$join$,2,3,2,3,.2:3"
+        }
+      ],
+      "junctionPoints": [
+        {
+          "x": 177,
+          "y": 44.5
+        }
+      ],
+      "container": "ports_splitjoin"
+    },
+    {
+      "id": "ports_splitjoin.e6",
+      "labels": [
+        {
+          "id": "label_4",
+          "text": "2",
+          "width": 4,
+          "height": 6,
+          "x": 202,
+          "y": 150.5,
+          "layoutOptions": {
+            "org.eclipse.elk.edgeLabels.inline": true
+          }
+        }
+      ],
+      "source": "ports_splitjoin.$split$,2,3,4,5,",
+      "sourcePort": "ports_splitjoin.$split$,2,3,4,5,.0:1",
+      "target": "ports_splitjoin.$join$,2,3,5,",
+      "targetPort": "ports_splitjoin.$join$,2,3,5,.0:1",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 2
+      },
+      "sections": [
+        {
+          "id": "ports_splitjoin.e6_s0",
+          "startPoint": {
+            "x": 148,
+            "y": 154.5
+          },
+          "endPoint": {
+            "x": 260,
+            "y": 154.5
+          },
+          "incomingShape": "ports_splitjoin.$split$,2,3,4,5,.0:1",
+          "outgoingShape": "ports_splitjoin.$join$,2,3,5,.0:1"
+        }
+      ],
+      "container": "ports_splitjoin"
+    },
+    {
+      "id": "ports_splitjoin.e7",
+      "source": "ports_splitjoin.$split$,2,3,4,5,",
+      "sourcePort": "ports_splitjoin.$split$,2,3,4,5,.3",
+      "target": "ports_splitjoin.$join$,2,3,5,",
+      "targetPort": "ports_splitjoin.$join$,2,3,5,.2",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 1
+      },
+      "sections": [
+        {
+          "id": "ports_splitjoin.e7_s0",
+          "startPoint": {
+            "x": 148,
+            "y": 174.5
+          },
+          "endPoint": {
+            "x": 260,
+            "y": 174.5
+          },
+          "incomingShape": "ports_splitjoin.$split$,2,3,4,5,.3",
+          "outgoingShape": "ports_splitjoin.$join$,2,3,5,.2"
+        }
+      ],
+      "container": "ports_splitjoin"
+    },
+    {
+      "id": "ports_splitjoin.e8",
+      "labels": [
+        {
+          "id": "label_8",
+          "text": "4",
+          "width": 4,
+          "height": 6,
+          "x": 104,
+          "y": 170.5,
+          "layoutOptions": {
+            "org.eclipse.elk.edgeLabels.inline": true
+          }
+        }
+      ],
+      "source": "ports_splitjoin.inthing",
+      "sourcePort": "ports_splitjoin.inthing.Y",
+      "target": "ports_splitjoin.$split$,2,3,4,5,",
+      "targetPort": "ports_splitjoin.$split$,2,3,4,5,.A",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 2
+      },
+      "sections": [
+        {
+          "id": "ports_splitjoin.e8_s0",
+          "startPoint": {
+            "x": 42,
+            "y": 174.5
+          },
+          "endPoint": {
+            "x": 143,
+            "y": 174.5
+          },
+          "incomingShape": "ports_splitjoin.inthing.Y",
+          "outgoingShape": "ports_splitjoin.$split$,2,3,4,5,.A"
+        }
+      ],
+      "container": "ports_splitjoin"
+    }
+  ],
+  "$H": 13,
+  "x": 0,
+  "y": 0,
+  "width": 421,
+  "height": 251.5
+}

@@ -1,0 +1,831 @@
+{
+  "id": "MUX4",
+  "children": [
+    {
+      "id": "MUX4.mux0",
+      "width": 30,
+      "height": 60,
+      "ports": [
+        {
+          "id": "MUX4.mux0.I0",
+          "width": 1,
+          "height": 1,
+          "x": 0,
+          "y": 10,
+          "labels": [
+            {
+              "id": "MUX4.mux0.I0.label",
+              "text": "I0",
+              "x": -13,
+              "y": 2,
+              "width": 12,
+              "height": 11
+            }
+          ]
+        },
+        {
+          "id": "MUX4.mux0.I1",
+          "width": 1,
+          "height": 1,
+          "x": 0,
+          "y": 30,
+          "labels": [
+            {
+              "id": "MUX4.mux0.I1.label",
+              "text": "I1",
+              "x": -13,
+              "y": 2,
+              "width": 12,
+              "height": 11
+            }
+          ]
+        },
+        {
+          "id": "MUX4.mux0.S0",
+          "width": 1,
+          "height": 1,
+          "x": 0,
+          "y": 50,
+          "labels": [
+            {
+              "id": "MUX4.mux0.S0.label",
+              "text": "S0",
+              "x": -13,
+              "y": 2,
+              "width": 12,
+              "height": 11
+            }
+          ]
+        },
+        {
+          "id": "MUX4.mux0.O",
+          "width": 1,
+          "height": 1,
+          "x": 30,
+          "y": 10,
+          "labels": [
+            {
+              "id": "MUX4.mux0.O.label",
+              "text": "O",
+              "x": 2,
+              "y": 2,
+              "width": 6,
+              "height": 11
+            }
+          ]
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "mux0.label.ref",
+          "text": "mux0",
+          "x": 15,
+          "y": -10,
+          "height": 11,
+          "width": 24
+        }
+      ],
+      "$H": 16,
+      "x": 95,
+      "y": 22
+    },
+    {
+      "id": "MUX4.mux1",
+      "width": 30,
+      "height": 60,
+      "ports": [
+        {
+          "id": "MUX4.mux1.I0",
+          "width": 1,
+          "height": 1,
+          "x": 0,
+          "y": 10,
+          "labels": [
+            {
+              "id": "MUX4.mux1.I0.label",
+              "text": "I0",
+              "x": -13,
+              "y": 2,
+              "width": 12,
+              "height": 11
+            }
+          ]
+        },
+        {
+          "id": "MUX4.mux1.I1",
+          "width": 1,
+          "height": 1,
+          "x": 0,
+          "y": 30,
+          "labels": [
+            {
+              "id": "MUX4.mux1.I1.label",
+              "text": "I1",
+              "x": -13,
+              "y": 2,
+              "width": 12,
+              "height": 11
+            }
+          ]
+        },
+        {
+          "id": "MUX4.mux1.S0",
+          "width": 1,
+          "height": 1,
+          "x": 0,
+          "y": 50,
+          "labels": [
+            {
+              "id": "MUX4.mux1.S0.label",
+              "text": "S0",
+              "x": -13,
+              "y": 2,
+              "width": 12,
+              "height": 11
+            }
+          ]
+        },
+        {
+          "id": "MUX4.mux1.O",
+          "width": 1,
+          "height": 1,
+          "x": 30,
+          "y": 10,
+          "labels": [
+            {
+              "id": "MUX4.mux1.O.label",
+              "text": "O",
+              "x": 2,
+              "y": 2,
+              "width": 6,
+              "height": 11
+            }
+          ]
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "mux1.label.ref",
+          "text": "mux1",
+          "x": 15,
+          "y": -10,
+          "height": 11,
+          "width": 24
+        }
+      ],
+      "$H": 290,
+      "x": 95,
+      "y": 152
+    },
+    {
+      "id": "MUX4.mux_out",
+      "width": 30,
+      "height": 60,
+      "ports": [
+        {
+          "id": "MUX4.mux_out.I0",
+          "width": 1,
+          "height": 1,
+          "x": 0,
+          "y": 10,
+          "labels": [
+            {
+              "id": "MUX4.mux_out.I0.label",
+              "text": "I0",
+              "x": -13,
+              "y": 2,
+              "width": 12,
+              "height": 11
+            }
+          ]
+        },
+        {
+          "id": "MUX4.mux_out.I1",
+          "width": 1,
+          "height": 1,
+          "x": 0,
+          "y": 30,
+          "labels": [
+            {
+              "id": "MUX4.mux_out.I1.label",
+              "text": "I1",
+              "x": -13,
+              "y": 2,
+              "width": 12,
+              "height": 11
+            }
+          ]
+        },
+        {
+          "id": "MUX4.mux_out.S0",
+          "width": 1,
+          "height": 1,
+          "x": 0,
+          "y": 50,
+          "labels": [
+            {
+              "id": "MUX4.mux_out.S0.label",
+              "text": "S0",
+              "x": -13,
+              "y": 2,
+              "width": 12,
+              "height": 11
+            }
+          ]
+        },
+        {
+          "id": "MUX4.mux_out.O",
+          "width": 1,
+          "height": 1,
+          "x": 30,
+          "y": 10,
+          "labels": [
+            {
+              "id": "MUX4.mux_out.O.label",
+              "text": "O",
+              "x": 2,
+              "y": 2,
+              "width": 6,
+              "height": 11
+            }
+          ]
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "mux_out.label.ref",
+          "text": "mux_out",
+          "x": 15,
+          "y": -10,
+          "height": 11,
+          "width": 42
+        }
+      ],
+      "$H": 301,
+      "x": 182,
+      "y": 22
+    },
+    {
+      "id": "MUX4.I0",
+      "width": 30,
+      "height": 20,
+      "ports": [
+        {
+          "id": "MUX4.I0.Y",
+          "width": 0,
+          "height": 0,
+          "x": 30,
+          "y": 10
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "I0.label.ref",
+          "text": "I0",
+          "x": 15,
+          "y": -10,
+          "height": 11,
+          "width": 12
+        }
+      ],
+      "$H": 312,
+      "x": 12,
+      "y": 22.5
+    },
+    {
+      "id": "MUX4.I1",
+      "width": 30,
+      "height": 20,
+      "ports": [
+        {
+          "id": "MUX4.I1.Y",
+          "width": 0,
+          "height": 0,
+          "x": 30,
+          "y": 10
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "I1.label.ref",
+          "text": "I1",
+          "x": 15,
+          "y": -10,
+          "height": 11,
+          "width": 12
+        }
+      ],
+      "$H": 316,
+      "x": 12,
+      "y": 87.5
+    },
+    {
+      "id": "MUX4.I2",
+      "width": 30,
+      "height": 20,
+      "ports": [
+        {
+          "id": "MUX4.I2.Y",
+          "width": 0,
+          "height": 0,
+          "x": 30,
+          "y": 10
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "I2.label.ref",
+          "text": "I2",
+          "x": 15,
+          "y": -10,
+          "height": 11,
+          "width": 12
+        }
+      ],
+      "$H": 320,
+      "x": 12,
+      "y": 152.5
+    },
+    {
+      "id": "MUX4.I3",
+      "width": 30,
+      "height": 20,
+      "ports": [
+        {
+          "id": "MUX4.I3.Y",
+          "width": 0,
+          "height": 0,
+          "x": 30,
+          "y": 10
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "I3.label.ref",
+          "text": "I3",
+          "x": 15,
+          "y": -10,
+          "height": 11,
+          "width": 12
+        }
+      ],
+      "$H": 324,
+      "x": 12,
+      "y": 282.5
+    },
+    {
+      "id": "MUX4.S0",
+      "width": 30,
+      "height": 20,
+      "ports": [
+        {
+          "id": "MUX4.S0.Y",
+          "width": 0,
+          "height": 0,
+          "x": 30,
+          "y": 10
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "S0.label.ref",
+          "text": "S0",
+          "x": 15,
+          "y": -10,
+          "height": 11,
+          "width": 12
+        }
+      ],
+      "$H": 328,
+      "x": 12,
+      "y": 217.5
+    },
+    {
+      "id": "MUX4.S1",
+      "width": 30,
+      "height": 20,
+      "ports": [
+        {
+          "id": "MUX4.S1.Y",
+          "width": 0,
+          "height": 0,
+          "x": 30,
+          "y": 10
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "S1.label.ref",
+          "text": "S1",
+          "x": 15,
+          "y": -10,
+          "height": 11,
+          "width": 12
+        }
+      ],
+      "$H": 332,
+      "x": 95,
+      "y": 260
+    },
+    {
+      "id": "MUX4.O",
+      "width": 30,
+      "height": 20,
+      "ports": [
+        {
+          "id": "MUX4.O.A",
+          "width": 0,
+          "height": 0,
+          "x": 0,
+          "y": 10
+        }
+      ],
+      "layoutOptions": {
+        "org.eclipse.elk.portConstraints": "FIXED_POS"
+      },
+      "labels": [
+        {
+          "id": "O.label.ref",
+          "text": "O",
+          "x": 15,
+          "y": -10,
+          "height": 11,
+          "width": 6
+        }
+      ],
+      "$H": 336,
+      "x": 274,
+      "y": 22.5
+    }
+  ],
+  "edges": [
+    {
+      "id": "MUX4.e0",
+      "source": "MUX4.I0",
+      "sourcePort": "MUX4.I0.Y",
+      "target": "MUX4.mux0",
+      "targetPort": "MUX4.mux0.I0",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 1
+      },
+      "sections": [
+        {
+          "id": "MUX4.e0_s0",
+          "startPoint": {
+            "x": 42,
+            "y": 32.5
+          },
+          "endPoint": {
+            "x": 95,
+            "y": 32.5
+          },
+          "incomingShape": "MUX4.I0.Y",
+          "outgoingShape": "MUX4.mux0.I0"
+        }
+      ],
+      "container": "MUX4"
+    },
+    {
+      "id": "MUX4.e1",
+      "source": "MUX4.I1",
+      "sourcePort": "MUX4.I1.Y",
+      "target": "MUX4.mux0",
+      "targetPort": "MUX4.mux0.I1",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 1
+      },
+      "sections": [
+        {
+          "id": "MUX4.e1_s0",
+          "startPoint": {
+            "x": 42,
+            "y": 97.5
+          },
+          "endPoint": {
+            "x": 95,
+            "y": 52.5
+          },
+          "bendPoints": [
+            {
+              "x": 52,
+              "y": 97.5
+            },
+            {
+              "x": 52,
+              "y": 52.5
+            }
+          ],
+          "incomingShape": "MUX4.I1.Y",
+          "outgoingShape": "MUX4.mux0.I1"
+        }
+      ],
+      "container": "MUX4"
+    },
+    {
+      "id": "MUX4.e2",
+      "source": "MUX4.S0",
+      "sourcePort": "MUX4.S0.Y",
+      "target": "MUX4.mux0",
+      "targetPort": "MUX4.mux0.S0",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 1
+      },
+      "sections": [
+        {
+          "id": "MUX4.e2_s0",
+          "startPoint": {
+            "x": 42,
+            "y": 227.5
+          },
+          "endPoint": {
+            "x": 95,
+            "y": 72.5
+          },
+          "bendPoints": [
+            {
+              "x": 62,
+              "y": 227.5
+            },
+            {
+              "x": 62,
+              "y": 72.5
+            }
+          ],
+          "incomingShape": "MUX4.S0.Y",
+          "outgoingShape": "MUX4.mux0.S0"
+        }
+      ],
+      "container": "MUX4"
+    },
+    {
+      "id": "MUX4.e3",
+      "source": "MUX4.S0",
+      "sourcePort": "MUX4.S0.Y",
+      "target": "MUX4.mux1",
+      "targetPort": "MUX4.mux1.S0",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 1
+      },
+      "sections": [
+        {
+          "id": "MUX4.e3_s0",
+          "startPoint": {
+            "x": 42,
+            "y": 227.5
+          },
+          "endPoint": {
+            "x": 95,
+            "y": 202.5
+          },
+          "bendPoints": [
+            {
+              "x": 62,
+              "y": 227.5
+            },
+            {
+              "x": 62,
+              "y": 202.5
+            }
+          ],
+          "incomingShape": "MUX4.S0.Y",
+          "outgoingShape": "MUX4.mux1.S0"
+        }
+      ],
+      "junctionPoints": [
+        {
+          "x": 62,
+          "y": 202.5
+        }
+      ],
+      "container": "MUX4"
+    },
+    {
+      "id": "MUX4.e4",
+      "source": "MUX4.I2",
+      "sourcePort": "MUX4.I2.Y",
+      "target": "MUX4.mux1",
+      "targetPort": "MUX4.mux1.I0",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 1
+      },
+      "sections": [
+        {
+          "id": "MUX4.e4_s0",
+          "startPoint": {
+            "x": 42,
+            "y": 162.5
+          },
+          "endPoint": {
+            "x": 95,
+            "y": 162.5
+          },
+          "incomingShape": "MUX4.I2.Y",
+          "outgoingShape": "MUX4.mux1.I0"
+        }
+      ],
+      "container": "MUX4"
+    },
+    {
+      "id": "MUX4.e5",
+      "source": "MUX4.I3",
+      "sourcePort": "MUX4.I3.Y",
+      "target": "MUX4.mux1",
+      "targetPort": "MUX4.mux1.I1",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 1
+      },
+      "sections": [
+        {
+          "id": "MUX4.e5_s0",
+          "startPoint": {
+            "x": 42,
+            "y": 292.5
+          },
+          "endPoint": {
+            "x": 95,
+            "y": 182.5
+          },
+          "bendPoints": [
+            {
+              "x": 72,
+              "y": 292.5
+            },
+            {
+              "x": 72,
+              "y": 182.5
+            }
+          ],
+          "incomingShape": "MUX4.I3.Y",
+          "outgoingShape": "MUX4.mux1.I1"
+        }
+      ],
+      "container": "MUX4"
+    },
+    {
+      "id": "MUX4.e6",
+      "source": "MUX4.mux0",
+      "sourcePort": "MUX4.mux0.O",
+      "target": "MUX4.mux_out",
+      "targetPort": "MUX4.mux_out.I0",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 1
+      },
+      "sections": [
+        {
+          "id": "MUX4.e6_s0",
+          "startPoint": {
+            "x": 126,
+            "y": 32.5
+          },
+          "endPoint": {
+            "x": 182,
+            "y": 32.5
+          },
+          "incomingShape": "MUX4.mux0.O",
+          "outgoingShape": "MUX4.mux_out.I0"
+        }
+      ],
+      "container": "MUX4"
+    },
+    {
+      "id": "MUX4.e7",
+      "source": "MUX4.mux1",
+      "sourcePort": "MUX4.mux1.O",
+      "target": "MUX4.mux_out",
+      "targetPort": "MUX4.mux_out.I1",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 1
+      },
+      "sections": [
+        {
+          "id": "MUX4.e7_s0",
+          "startPoint": {
+            "x": 126,
+            "y": 162.5
+          },
+          "endPoint": {
+            "x": 182,
+            "y": 52.5
+          },
+          "bendPoints": [
+            {
+              "x": 144,
+              "y": 162.5
+            },
+            {
+              "x": 144,
+              "y": 52.5
+            }
+          ],
+          "incomingShape": "MUX4.mux1.O",
+          "outgoingShape": "MUX4.mux_out.I1"
+        }
+      ],
+      "container": "MUX4"
+    },
+    {
+      "id": "MUX4.e8",
+      "source": "MUX4.S1",
+      "sourcePort": "MUX4.S1.Y",
+      "target": "MUX4.mux_out",
+      "targetPort": "MUX4.mux_out.S0",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 1
+      },
+      "sections": [
+        {
+          "id": "MUX4.e8_s0",
+          "startPoint": {
+            "x": 125,
+            "y": 270
+          },
+          "endPoint": {
+            "x": 182,
+            "y": 72.5
+          },
+          "bendPoints": [
+            {
+              "x": 154,
+              "y": 270
+            },
+            {
+              "x": 154,
+              "y": 72.5
+            }
+          ],
+          "incomingShape": "MUX4.S1.Y",
+          "outgoingShape": "MUX4.mux_out.S0"
+        }
+      ],
+      "container": "MUX4"
+    },
+    {
+      "id": "MUX4.e9",
+      "source": "MUX4.mux_out",
+      "sourcePort": "MUX4.mux_out.O",
+      "target": "MUX4.O",
+      "targetPort": "MUX4.O.A",
+      "layoutOptions": {
+        "org.eclipse.elk.layered.priority.direction": 10,
+        "org.eclipse.elk.edge.thickness": 1
+      },
+      "sections": [
+        {
+          "id": "MUX4.e9_s0",
+          "startPoint": {
+            "x": 213,
+            "y": 32.5
+          },
+          "endPoint": {
+            "x": 274,
+            "y": 32.5
+          },
+          "incomingShape": "MUX4.mux_out.O",
+          "outgoingShape": "MUX4.O.A"
+        }
+      ],
+      "container": "MUX4"
+    }
+  ],
+  "$H": 13,
+  "x": 0,
+  "y": 0,
+  "width": 316,
+  "height": 314.5
+}
