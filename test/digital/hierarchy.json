@@ -1,0 +1,186 @@
+{
+  "creator": "Yosys 0.9+1706 (git sha1 e069259a, clang 6.0.0-1ubuntu2 -fPIC -Os)",
+  "modules": {
+    "$paramod\\submod\\c=3'111\\d=3'111": {
+      "attributes": {
+        "gentb_skip": "00000000000000000000000000000001",
+        "src": "hierarchy.v:17"
+      },
+      "ports": {
+        "a": {
+          "direction": "input",
+          "bits": [ 2, 3, 4, 5 ]
+        },
+        "b": {
+          "direction": "input",
+          "bits": [ 6, 7, 8, 9 ]
+        },
+        "y1": {
+          "direction": "output",
+          "bits": [ 2, 3, 4, 5, "0", "0", "0", "0" ]
+        },
+        "y2": {
+          "direction": "output",
+          "bits": [ 6, 7, 8, 9, "0", "0", "0", "0" ]
+        },
+        "y3": {
+          "direction": "output",
+          "bits": [ "1", "1", "1", "1", "1", "1", "1", "1" ]
+        },
+        "y4": {
+          "direction": "output",
+          "bits": [ "1", "1", "1", "1", "1", "1", "1", "1" ]
+        }
+      },
+      "cells": {
+      },
+      "netnames": {
+        "a": {
+          "hide_name": 0,
+          "bits": [ 2, 3, 4, 5 ],
+          "attributes": {
+            "src": "hierarchy.v:20"
+          }
+        },
+        "b": {
+          "hide_name": 0,
+          "bits": [ 6, 7, 8, 9 ],
+          "attributes": {
+            "src": "hierarchy.v:20"
+          }
+        },
+        "y1": {
+          "hide_name": 0,
+          "bits": [ 2, 3, 4, 5, "0", "0", "0", "0" ],
+          "attributes": {
+            "src": "hierarchy.v:21"
+          }
+        },
+        "y2": {
+          "hide_name": 0,
+          "bits": [ 6, 7, 8, 9, "0", "0", "0", "0" ],
+          "attributes": {
+            "src": "hierarchy.v:21"
+          }
+        },
+        "y3": {
+          "hide_name": 0,
+          "bits": [ "1", "1", "1", "1", "1", "1", "1", "1" ],
+          "attributes": {
+            "src": "hierarchy.v:21"
+          }
+        },
+        "y4": {
+          "hide_name": 0,
+          "bits": [ "1", "1", "1", "1", "1", "1", "1", "1" ],
+          "attributes": {
+            "src": "hierarchy.v:21"
+          }
+        }
+      }
+    },
+    "top": {
+      "attributes": {
+        "top": "00000000000000000000000000000001",
+        "src": "hierarchy.v:3"
+      },
+      "ports": {
+        "a": {
+          "direction": "input",
+          "bits": [ 2, 3, 4, 5 ]
+        },
+        "b": {
+          "direction": "input",
+          "bits": [ 6, 7, 8, 9 ]
+        },
+        "y1": {
+          "direction": "output",
+          "bits": [ 10, 11, 12, 13, 14, 15, 16, 17 ]
+        },
+        "y2": {
+          "direction": "output",
+          "bits": [ 18, 19, 20, 21, 22, 23, 24, 25 ]
+        },
+        "y3": {
+          "direction": "output",
+          "bits": [ 26, 27, 28, 29, 30, 31, 32, 33 ]
+        },
+        "y4": {
+          "direction": "output",
+          "bits": [ 34, 35, 36, 37, 38, 39, 40, 41 ]
+        }
+      },
+      "cells": {
+        "foo": {
+          "hide_name": 0,
+          "type": "$paramod\\submod\\c=3'111\\d=3'111",
+          "parameters": {
+          },
+          "attributes": {
+            "src": "hierarchy.v:12"
+          },
+          "port_directions": {
+            "a": "input",
+            "b": "input",
+            "y1": "output",
+            "y2": "output",
+            "y3": "output",
+            "y4": "output"
+          },
+          "connections": {
+            "a": [ 2, 3, 4, 5 ],
+            "b": [ 6, 7, 8, 9 ],
+            "y1": [ 10, 11, 12, 13, 14, 15, 16, 17 ],
+            "y2": [ 18, 19, 20, 21, 22, 23, 24, 25 ],
+            "y3": [ 26, 27, 28, 29, 30, 31, 32, 33 ],
+            "y4": [ 34, 35, 36, 37, 38, 39, 40, 41 ]
+          }
+        }
+      },
+      "netnames": {
+        "a": {
+          "hide_name": 0,
+          "bits": [ 2, 3, 4, 5 ],
+          "attributes": {
+            "src": "hierarchy.v:4"
+          }
+        },
+        "b": {
+          "hide_name": 0,
+          "bits": [ 6, 7, 8, 9 ],
+          "attributes": {
+            "src": "hierarchy.v:5"
+          }
+        },
+        "y1": {
+          "hide_name": 0,
+          "bits": [ 10, 11, 12, 13, 14, 15, 16, 17 ],
+          "attributes": {
+            "src": "hierarchy.v:6"
+          }
+        },
+        "y2": {
+          "hide_name": 0,
+          "bits": [ 18, 19, 20, 21, 22, 23, 24, 25 ],
+          "attributes": {
+            "src": "hierarchy.v:6"
+          }
+        },
+        "y3": {
+          "hide_name": 0,
+          "bits": [ 26, 27, 28, 29, 30, 31, 32, 33 ],
+          "attributes": {
+            "src": "hierarchy.v:6"
+          }
+        },
+        "y4": {
+          "hide_name": 0,
+          "bits": [ 34, 35, 36, 37, 38, 39, 40, 41 ],
+          "attributes": {
+            "src": "hierarchy.v:6"
+          }
+        }
+      }
+    }
+  }
+}

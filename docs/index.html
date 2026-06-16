@@ -31,6 +31,7 @@
                         <option value="test/digital/generics.json">Generics (Digital)</option>
                         <option value="test/digital/mux4.json">MUX4 (Multiplexer)</option>
                         <option value="test/digital/pc.json">PC (Program Counter)</option>
+                        <option value="test/digital/hierarchy.json">Hierarchy (Submodule)</option>
                         <option value="test/analog/and.json" selected>AND Gate (Analog)</option>
                         <option value="test/analog/resistor_divider.json">Resistor Divider (Analog)</option>
                     </select>
@@ -53,6 +54,13 @@
                 <div class="controls">
                     <label for="skinSelect" style="font-size: 0.7rem; color: var(--text-secondary); font-family: 'JetBrains Mono', monospace;">SKIN_PROFILE:</label>
                     <select id="skinSelect"></select>
+                    <label for="configSelect" style="font-size: 0.7rem; color: var(--text-secondary); font-family: 'JetBrains Mono', monospace;">HIERARCHY:</label>
+                    <select id="configSelect">
+                        <option value="" selected>OFF</option>
+                        <option value="all">EXPAND_ALL</option>
+                        <option value="level1">EXPAND_LVL_1</option>
+                        <option value="foo">EXPAND_'foo'</option>
+                    </select>
                     <button id="downloadButton" class="btn-success" style="display: none;">EXPORT_SVG</button>
                 </div>
             </div>

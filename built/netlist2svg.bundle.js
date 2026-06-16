@@ -1951,7 +1951,7 @@ var netlist2svg = (() => {
           return filterPortPids(template, (attrs) => attrs["s:dir"] === "lateral" || ["left", "right"].includes(attrs["s:position"]));
         }
         Skin2.getLateralPortPids = getLateralPortPids;
-        function findSkinType(type) {
+        function findSkinType(type, depth = null) {
           if (!Skin2.skin) {
             return null;
           }
@@ -1965,9 +1965,10 @@ var netlist2svg = (() => {
             }
           });
           if (!foundNode) {
+            const fallbackType = depth == null ? "generic" : ["sub_odd", "sub_even"][depth % 2];
             onml.traverse(Skin2.skin, {
               enter: (node) => {
-                if (node.attr["s:type"] === "generic") {
+                if (node.attr["s:type"] === fallbackType) {
                   foundNode = node;
                   return true;
                 }
@@ -2088,24 +2089,24 @@ var netlist2svg = (() => {
         valString() {
           return "," + this.value.join() + ",";
         }
-        findConstants(sigsByConstantName, maxNum, constantCollector) {
+        findConstants(sigsByConstantName, maxNum, constantCollector, parent) {
           let constName = "";
           let constNums = [];
           for (let i = 0; i < this.value.length; i++) {
             const portSig = this.value[i];
-            if (portSig === "0" || portSig === "1") {
+            if (portSig === "0" || portSig === "1" || portSig === "x") {
               maxNum += 1;
               constName += portSig;
               this.value[i] = maxNum;
               constNums.push(maxNum);
             } else if (constName.length > 0) {
-              this.assignConstant(constName, constNums, sigsByConstantName, constantCollector);
+              this.assignConstant(constName, constNums, sigsByConstantName, constantCollector, parent);
               constName = "";
               constNums = [];
             }
           }
           if (constName.length > 0) {
-            this.assignConstant(constName, constNums, sigsByConstantName, constantCollector);
+            this.assignConstant(constName, constNums, sigsByConstantName, constantCollector, parent);
           }
           return maxNum;
         }
@@ -2113,8 +2114,9 @@ var netlist2svg = (() => {
           if (!this.parentNode) {
             throw new Error("Port has no parentNode");
           }
-          const nodeKey = this.parentNode.Key;
+          const nodeKey = `${this.parentNode.parent}.${this.parentNode.Key}`;
           const type = this.parentNode.getTemplate()[1]["s:type"];
+          const isSub = type === "sub_odd" || type === "sub_even";
           const x = Number(templatePorts[0][1]["s:x"]);
           const y = Number(templatePorts[0][1]["s:y"]);
           const portId = `${nodeKey}.${this.key}`;
@@ -2126,7 +2128,7 @@ var netlist2svg = (() => {
             x,
             y: portY
           };
-          const needsLabel = type === "generic" || type === "join" && dir === "in" || type === "split" && dir === "out";
+          const needsLabel = type === "generic" || isSub || type === "join" && dir === "in" || type === "split" && dir === "out";
           if (needsLabel) {
             elkPort.labels = [{
               id: `${portId}.label`,
@@ -2137,9 +2139,16 @@ var netlist2svg = (() => {
               height: 11
             }];
           }
+          if (isSub) {
+            elkPort.layoutOptions = {
+              "org.eclipse.elk.port.side": dir === "in" ? "WEST" : "EAST"
+            };
+            delete elkPort.x;
+            delete elkPort.y;
+          }
           return elkPort;
         }
-        assignConstant(name, constants, signalsByConstantName, constantCollector) {
+        assignConstant(name, constants, signalsByConstantName, constantCollector, parent) {
           const reversedName = name.split("").reverse().join("");
           if (signalsByConstantName[reversedName]) {
             const constSigs = signalsByConstantName[reversedName];
@@ -2150,12 +2159,340 @@ var netlist2svg = (() => {
               }
             }
           } else {
-            constantCollector.push(Cell_1.default.fromConstantInfo(reversedName, constants));
+            constantCollector.push(Cell_1.default.fromConstantInfo(reversedName, constants, parent));
             signalsByConstantName[reversedName] = constants;
           }
         }
       };
       exports.Port = Port;
+    }
+  });
+
+  // built/elkGraph.js
+  var require_elkGraph = __commonJS({
+    "built/elkGraph.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.ElkModel = void 0;
+      exports.buildElkGraph = buildElkGraph;
+      var ElkModel;
+      (function(ElkModel2) {
+        ElkModel2.wireNameLookup = {};
+        ElkModel2.dummyNum = 0;
+        ElkModel2.edgeIndex = 0;
+      })(ElkModel || (exports.ElkModel = ElkModel = {}));
+      function buildElkGraph(module2) {
+        const moduleName = module2.moduleName;
+        const children = module2.nodes.map((n) => n.buildElkChild());
+        ElkModel.edgeIndex = 0;
+        ElkModel.dummyNum = 0;
+        const edges = [];
+        module2.wires.forEach((wire) => {
+          const numWires = wire.netName.split(",").length - 2;
+          const { drivers, riders, laterals } = wire;
+          if (drivers.length > 0 && riders.length > 0 && laterals.length === 0) {
+            createEdges(drivers, riders, edges, numWires, moduleName);
+          } else if (drivers.concat(riders).length > 0 && laterals.length > 0) {
+            createEdges(drivers, laterals, edges, numWires, moduleName);
+            createEdges(laterals, riders, edges, numWires, moduleName);
+          } else if (riders.length === 0 && drivers.length > 1) {
+            const dummyId = addDummy(children, moduleName);
+            drivers.forEach((driver) => {
+              edges.push(createDummyEdge(driver, dummyId, "source", driver.wire.netName, moduleName));
+            });
+          } else if (riders.length > 1 && drivers.length === 0) {
+            const dummyId = addDummy(children, moduleName);
+            riders.forEach((rider) => {
+              edges.push(createDummyEdge(rider, dummyId, "target", rider.wire.netName, moduleName));
+            });
+          } else if (laterals.length > 1) {
+            const [source, ...otherLaterals] = laterals;
+            const sourceParentKey = source.parentNode.Key;
+            otherLaterals.forEach((lateral) => {
+              const lateralParentKey = lateral.parentNode.Key;
+              const id = `${moduleName}.e${ElkModel.edgeIndex++}`;
+              edges.push({
+                id,
+                source: `${moduleName}.${sourceParentKey}`,
+                sourcePort: `${moduleName}.${sourceParentKey}.${source.key}`,
+                target: `${moduleName}.${lateralParentKey}`,
+                targetPort: `${moduleName}.${lateralParentKey}.${lateral.key}`
+              });
+              ElkModel.wireNameLookup[id] = lateral.wire.netName;
+            });
+          }
+        });
+        return {
+          id: moduleName,
+          children,
+          edges
+        };
+      }
+      function createEdges(sourcePorts, targetPorts, edges, numWires, moduleName) {
+        for (const sourcePort of sourcePorts) {
+          const sourceParentKey = sourcePort.parentNode.Key;
+          const source = `${moduleName}.${sourceParentKey}`;
+          const sourceKey = `${source}.${sourcePort.key}`;
+          const edgeLabel = numWires > 1 ? [{
+            id: `label_${ElkModel.edgeIndex}`,
+            text: String(numWires),
+            width: 4,
+            height: 6,
+            x: 0,
+            y: 0,
+            layoutOptions: { "org.eclipse.elk.edgeLabels.inline": true }
+          }] : void 0;
+          for (const targetPort of targetPorts) {
+            const targetParentKey = targetPort.parentNode.Key;
+            const target = `${moduleName}.${targetParentKey}`;
+            const targetKey = `${target}.${targetPort.key}`;
+            const id = `${moduleName}.e${ElkModel.edgeIndex++}`;
+            edges.push({
+              id,
+              labels: edgeLabel,
+              source,
+              sourcePort: sourceKey,
+              target,
+              targetPort: targetKey,
+              layoutOptions: {
+                "org.eclipse.elk.layered.priority.direction": sourcePort.parentNode.type !== "$dff" ? 10 : void 0,
+                "org.eclipse.elk.edge.thickness": numWires > 1 ? 2 : 1
+              }
+            });
+            ElkModel.wireNameLookup[id] = targetPort.wire.netName;
+          }
+        }
+      }
+      function addDummy(children, moduleName) {
+        const dummyId = `${moduleName}.$d_${ElkModel.dummyNum++}`;
+        children.push({
+          id: dummyId,
+          width: 0,
+          height: 0,
+          ports: [{ id: `${dummyId}.p`, width: 0, height: 0 }],
+          layoutOptions: { "org.eclipse.elk.portConstraints": "FIXED_SIDE" }
+        });
+        return dummyId;
+      }
+      function createDummyEdge(port, dummyId, type, netName, moduleName) {
+        const parentKey = `${moduleName}.${port.parentNode.Key}`;
+        const id = `${moduleName}.e${ElkModel.edgeIndex++}`;
+        const edge = {
+          id,
+          [type === "source" ? "source" : "target"]: parentKey,
+          [type === "source" ? "sourcePort" : "targetPort"]: `${parentKey}.${port.key}`,
+          [type === "source" ? "target" : "source"]: dummyId,
+          [type === "source" ? "targetPort" : "sourcePort"]: `${dummyId}.p`
+        };
+        ElkModel.wireNameLookup[id] = netName;
+        return edge;
+      }
+    }
+  });
+
+  // built/drawModule.js
+  var require_drawModule = __commonJS({
+    "built/drawModule.js"(exports) {
+      "use strict";
+      var __importDefault = exports && exports.__importDefault || function(mod) {
+        return mod && mod.__esModule ? mod : { "default": mod };
+      };
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.removeDummyEdges = removeDummyEdges;
+      exports.default = drawModule;
+      exports.drawSubModule = drawSubModule;
+      var elkGraph_1 = require_elkGraph();
+      var Skin_1 = __importDefault(require_Skin());
+      var onml = require_onml();
+      var WireDirection;
+      (function(WireDirection2) {
+        WireDirection2[WireDirection2["Up"] = 0] = "Up";
+        WireDirection2[WireDirection2["Down"] = 1] = "Down";
+        WireDirection2[WireDirection2["Left"] = 2] = "Left";
+        WireDirection2[WireDirection2["Right"] = 3] = "Right";
+      })(WireDirection || (WireDirection = {}));
+      function getWireDirection(start, end) {
+        if (end.x === start.x && end.y === start.y) {
+          throw new Error("Points cannot be identical");
+        }
+        if (end.x !== start.x && end.y !== start.y) {
+          throw new Error("Points must be orthogonal");
+        }
+        if (end.x > start.x)
+          return WireDirection.Right;
+        if (end.x < start.x)
+          return WireDirection.Left;
+        if (end.y > start.y)
+          return WireDirection.Down;
+        return WireDirection.Up;
+      }
+      function findNearestBend(edges, dummyIsSource, dummyLocation) {
+        const candidates = edges.map((edge) => {
+          const bends = edge.sections[0].bendPoints || [];
+          return dummyIsSource ? bends[0] : bends[bends.length - 1];
+        }).filter((p) => p !== void 0);
+        if (candidates.length === 0)
+          return void 0;
+        return candidates.reduce((closest, current) => {
+          const closestDist = (closest.x - dummyLocation.x) ** 2 + (closest.y - dummyLocation.y) ** 2;
+          const currentDist = (current.x - dummyLocation.x) ** 2 + (current.y - dummyLocation.y) ** 2;
+          return currentDist < closestDist ? current : closest;
+        });
+      }
+      function isJunctionDummy(id) {
+        return typeof id === "string" && /\$d_\d+$/.test(id);
+      }
+      function removeDummyEdges(graph) {
+        var _a, _b;
+        const edges = graph.edges || [];
+        const dummyIds = [];
+        for (const e of edges) {
+          for (const endpoint of [e.source, e.target]) {
+            if (isJunctionDummy(endpoint) && !dummyIds.includes(endpoint)) {
+              dummyIds.push(endpoint);
+            }
+          }
+        }
+        for (const dummyId of dummyIds) {
+          const edgesWithDummy = edges.filter((e) => e.source === dummyId || e.target === dummyId);
+          if (edgesWithDummy.length === 0)
+            continue;
+          const firstEdge = edgesWithDummy[0];
+          const dummyIsSource = firstEdge.source === dummyId;
+          const dummyLocation = dummyIsSource ? firstEdge.sections[0].startPoint : firstEdge.sections[0].endPoint;
+          const newEndpoint = findNearestBend(edgesWithDummy, dummyIsSource, dummyLocation);
+          if (!newEndpoint) {
+            continue;
+          }
+          for (const edge of edgesWithDummy) {
+            const section = edge.sections[0];
+            if (dummyIsSource) {
+              section.startPoint = newEndpoint;
+              (_a = section.bendPoints) === null || _a === void 0 ? void 0 : _a.shift();
+            } else {
+              section.endPoint = newEndpoint;
+              (_b = section.bendPoints) === null || _b === void 0 ? void 0 : _b.pop();
+            }
+          }
+          const directions = new Set(edgesWithDummy.map((edge) => {
+            var _a2, _b2;
+            const section = edge.sections[0];
+            const point = dummyIsSource ? ((_a2 = section.bendPoints) === null || _a2 === void 0 ? void 0 : _a2[0]) || section.endPoint : ((_b2 = section.bendPoints) === null || _b2 === void 0 ? void 0 : _b2[section.bendPoints.length - 1]) || section.startPoint;
+            return getWireDirection(newEndpoint, point);
+          }));
+          if (directions.size < 3) {
+            for (const edge of edgesWithDummy) {
+              edge.junctionPoints = (edge.junctionPoints || []).filter((junction) => !(junction.x === newEndpoint.x && junction.y === newEndpoint.y));
+            }
+          }
+        }
+      }
+      function drawModule(graph, module2) {
+        const nodes = module2.nodes.map((node) => {
+          const matchedChild = graph.children.find((child) => child.id === node.parent + "." + node.Key);
+          return node.render(matchedChild);
+        });
+        removeDummyEdges(graph);
+        const lines = renderWireLines(graph.edges);
+        const labels = renderWireLabels(graph.edges);
+        if (labels.length > 0) {
+          lines.push(...labels);
+        }
+        const svgAttributes = { ...Skin_1.default.skin[1] };
+        svgAttributes.width = String(graph.width);
+        svgAttributes.height = String(graph.height);
+        const styles = ["style", {}, ""];
+        onml.traverse(Skin_1.default.skin, {
+          enter: (node) => {
+            if (node.name === "style") {
+              styles[2] += node.full[2];
+            }
+          }
+        });
+        const svgElement = ["svg", svgAttributes, styles, ...nodes, ...lines];
+        return onml.s(svgElement);
+      }
+      function drawSubModule(cell, subModule) {
+        const nodes = [];
+        subModule.nodes.forEach((node) => {
+          const matchedChild = (cell.children || []).find((child) => child.id === node.parent + "." + node.Key);
+          if (matchedChild) {
+            nodes.push(node.render(matchedChild));
+          }
+        });
+        removeDummyEdges(cell);
+        const lines = renderWireLines(cell.edges || []);
+        const svgAttributes = { ...Skin_1.default.skin[1] };
+        svgAttributes.width = String(cell.width);
+        svgAttributes.height = String(cell.height);
+        return ["svg", svgAttributes, ...nodes, ...lines];
+      }
+      function renderWireLines(edges) {
+        return edges.flatMap((edge) => {
+          const netId = elkGraph_1.ElkModel.wireNameLookup[edge.id];
+          const numWires = netId.split(",").length - 2;
+          const lineWidth = numWires > 1 ? 2 : 1;
+          const netClass = `net_${netId.slice(1, -1)} width_${numWires}`;
+          return (edge.sections || []).flatMap((section) => {
+            let currentPoint = section.startPoint;
+            const wireSegments = [];
+            const bendPoints = section.bendPoints || [];
+            bendPoints.forEach((bendPoint) => {
+              wireSegments.push(["line", {
+                x1: currentPoint.x,
+                y1: currentPoint.y,
+                x2: bendPoint.x,
+                y2: bendPoint.y,
+                class: netClass,
+                style: `stroke-width: ${lineWidth}`
+              }]);
+              currentPoint = bendPoint;
+            });
+            const junctions = (edge.junctionPoints || []).map((junction) => ["circle", {
+              cx: junction.x,
+              cy: junction.y,
+              r: numWires > 1 ? 3 : 2,
+              class: `${netClass} junction`
+            }]);
+            wireSegments.push(["line", {
+              x1: currentPoint.x,
+              y1: currentPoint.y,
+              x2: section.endPoint.x,
+              y2: section.endPoint.y,
+              class: netClass,
+              style: `stroke-width: ${lineWidth}`
+            }]);
+            return [...wireSegments, ...junctions];
+          });
+        });
+      }
+      function renderWireLabels(edges) {
+        return edges.flatMap((edge) => {
+          var _a, _b;
+          if (!((_b = (_a = edge.labels) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.text))
+            return [];
+          const label = edge.labels[0];
+          const netId = elkGraph_1.ElkModel.wireNameLookup[edge.id];
+          const numWires = netId.split(",").length - 2;
+          const labelClass = `net_${netId.slice(1, -1)} width_${numWires} busLabel_${numWires}`;
+          return [
+            // Label background
+            ["rect", {
+              x: label.x + 1,
+              y: label.y - 1,
+              width: (label.text.length + 2) * 6 - 2,
+              height: 9,
+              class: `${labelClass} labelBackground`
+            }],
+            // Label text
+            ["text", {
+              x: label.x,
+              y: label.y + 7,
+              class: labelClass
+            }, `/${label.text}/`]
+          ];
+        });
+      }
     }
   });
 
@@ -2367,6 +2704,8 @@ var netlist2svg = (() => {
       var YosysModel_1 = __importDefault(require_YosysModel());
       var Skin_1 = __importDefault(require_Skin());
       var Port_1 = require_Port();
+      var drawModule_1 = require_drawModule();
+      var elkGraph_1 = require_elkGraph();
       var clone = require_clone();
       var onml = require_onml();
       var Cell = class _Cell {
@@ -2375,14 +2714,14 @@ var netlist2svg = (() => {
          * @param yPort the Yosys Port with our port data
          * @param name the name of the port
          */
-        static fromPort(yPort, name) {
+        static fromPort(yPort, name, parent = "") {
           const isInput = yPort.direction === YosysModel_1.default.Direction.Input;
           if (isInput) {
-            return new _Cell(name, "$_inputExt_", [], [new Port_1.Port("Y", yPort.bits)], {});
+            return new _Cell(name, "$_inputExt_", [], [new Port_1.Port("Y", yPort.bits)], {}, parent);
           }
-          return new _Cell(name, "$_outputExt_", [new Port_1.Port("A", yPort.bits)], [], {});
+          return new _Cell(name, "$_outputExt_", [new Port_1.Port("A", yPort.bits)], [], {}, parent);
         }
-        static fromYosysCell(yCell, name) {
+        static fromYosysCell(yCell, name, parent = "") {
           this.setAlternateCellType(yCell);
           const template = Skin_1.default.findSkinType(yCell.type) || [];
           const templateInputPids = Skin_1.default.getInputPids(template);
@@ -2396,31 +2735,52 @@ var netlist2svg = (() => {
             inputPorts = ports.filter((port) => port.keyIn(inputPids));
             outputPorts = ports.filter((port) => port.keyIn(outputPids));
           }
-          return new _Cell(name, yCell.type, inputPorts, outputPorts, yCell.attributes || {});
+          return new _Cell(name, yCell.type, inputPorts, outputPorts, yCell.attributes || {}, parent);
         }
-        static fromConstantInfo(name, constants) {
-          return new _Cell(name, "$_constant_", [], [new Port_1.Port("Y", constants)], {});
+        /**
+         * creates a Cell that represents an expanded submodule. The inner module is
+         * flattened recursively into its own FlatModule (one level deeper) so it can be
+         * rendered as a nested schematic inside this cell.
+         */
+        static createSubModule(yCell, name, parent, subModule, depth) {
+          const template = Skin_1.default.findSkinType(yCell.type) || [];
+          const templateInputPids = Skin_1.default.getInputPids(template);
+          const templateOutputPids = Skin_1.default.getOutputPids(template);
+          const ports = Object.entries(yCell.connections).map(([portName, conn]) => new Port_1.Port(portName, conn));
+          let inputPorts = ports.filter((port) => port.keyIn(templateInputPids));
+          let outputPorts = ports.filter((port) => port.keyIn(templateOutputPids));
+          if (inputPorts.length + outputPorts.length !== ports.length) {
+            const inputPids = YosysModel_1.default.getInputPortPids(yCell);
+            const outputPids = YosysModel_1.default.getOutputPortPids(yCell);
+            inputPorts = ports.filter((port) => port.keyIn(inputPids));
+            outputPorts = ports.filter((port) => port.keyIn(outputPids));
+          }
+          const mod = new FlatModule_1.FlatModule(subModule, name, depth + 1, parent);
+          return new _Cell(name, yCell.type, inputPorts, outputPorts, yCell.attributes || {}, parent, mod, depth);
+        }
+        static fromConstantInfo(name, constants, parent = "") {
+          return new _Cell(name, "$_constant_", [], [new Port_1.Port("Y", constants)], {}, parent);
         }
         /**
          * creates a join cell
          * @param target string name of net (starts and ends with and delimited by commas)
          * @param sources list of index strings (one number, or two numbers separated by a colon)
          */
-        static fromJoinInfo(target, sources) {
+        static fromJoinInfo(target, sources, parent = "") {
           const signalStrs = target.slice(1, -1).split(",");
           const signals = signalStrs.map((ss) => Number(ss));
           const joinOutPorts = [new Port_1.Port("Y", signals)];
           const inPorts = sources.map((name) => {
             return new Port_1.Port(name, getBits(signals, name));
           });
-          return new _Cell("$join$" + target, "$_join_", inPorts, joinOutPorts, {});
+          return new _Cell("$join$" + target, "$_join_", inPorts, joinOutPorts, {}, parent);
         }
         /**
          * creates a split cell
          * @param source string name of net (starts and ends with and delimited by commas)
          * @param targets list of index strings (one number, or two numbers separated by a colon)
          */
-        static fromSplitInfo(source, targets) {
+        static fromSplitInfo(source, targets, parent = "") {
           const sigStrs = source.slice(1, -1).split(",");
           const signals = sigStrs.map((s) => Number(s));
           const inPorts = [new Port_1.Port("A", signals)];
@@ -2428,7 +2788,7 @@ var netlist2svg = (() => {
             const sigs = getBits(signals, name);
             return new Port_1.Port(name, sigs);
           });
-          return new _Cell("$split$" + source, "$_split_", inPorts, splitOutPorts, {});
+          return new _Cell("$split$" + source, "$_split_", inPorts, splitOutPorts, {}, parent);
         }
         // Set cells to alternate types/tags based on their parameters
         static setAlternateCellType(yCell) {
@@ -2438,12 +2798,15 @@ var netlist2svg = (() => {
             }
           }
         }
-        constructor(key, type, inputPorts, outputPorts, attributes) {
+        constructor(key, type, inputPorts, outputPorts, attributes, parent = "", subModule = null, depth = null) {
           this.key = key;
           this.type = type;
           this.inputPorts = inputPorts;
           this.outputPorts = outputPorts;
           this.attributes = attributes || {};
+          this.parent = parent;
+          this.subModule = subModule;
+          this.depth = depth;
           inputPorts.forEach((ip) => {
             ip.parentNode = this;
           });
@@ -2469,7 +2832,7 @@ var netlist2svg = (() => {
         }
         findConstants(sigsByConstantName, maxNum, constantCollector) {
           this.inputPorts.forEach((ip) => {
-            maxNum = ip.findConstants(sigsByConstantName, maxNum, constantCollector);
+            maxNum = ip.findConstants(sigsByConstantName, maxNum, constantCollector, this.parent);
           });
           return maxNum;
         }
@@ -2508,7 +2871,7 @@ var netlist2svg = (() => {
           return "";
         }
         getTemplate() {
-          return Skin_1.default.findSkinType(this.type);
+          return Skin_1.default.findSkinType(this.type, this.depth);
         }
         buildElkChild() {
           const template = this.getTemplate();
@@ -2535,13 +2898,19 @@ var netlist2svg = (() => {
             const inPorts = this.inputPorts.map((ip, i) => ip.getGenericElkPort(i, inTemplates, "in"));
             const outPorts = this.outputPorts.map((op, i) => op.getGenericElkPort(i, outTemplates, "out"));
             const cell = {
-              id: this.key,
+              id: this.parent + "." + this.key,
               width: Number(template[1]["s:width"]),
               height: Number(this.getGenericHeight()),
               ports: inPorts.concat(outPorts),
               layoutOptions: layoutAttrs,
               labels: []
             };
+            if (type === "split") {
+              cell.ports[0].y = cell.height / 2;
+            }
+            if (type === "join") {
+              cell.ports[cell.ports.length - 1].y = cell.height / 2;
+            }
             if (fixedPosX) {
               cell.x = fixedPosX;
             }
@@ -2551,9 +2920,12 @@ var netlist2svg = (() => {
             this.addLabels(template, cell);
             return cell;
           }
+          if (type === "sub_odd" || type === "sub_even") {
+            return this.buildElkSubModule(template, fixedPosX, fixedPosY);
+          }
           const ports = Skin_1.default.getPortsWithPrefix(template, "").map((tp) => {
             return {
-              id: this.key + "." + tp[1]["s:pid"],
+              id: this.parent + "." + this.key + "." + tp[1]["s:pid"],
               width: 0,
               height: 0,
               x: Number(tp[1]["s:x"]),
@@ -2562,7 +2934,7 @@ var netlist2svg = (() => {
           });
           const nodeWidth = Number(template[1]["s:width"]);
           const ret = {
-            id: this.key,
+            id: this.parent + "." + this.key,
             width: nodeWidth,
             height: Number(template[1]["s:height"]),
             ports,
@@ -2577,6 +2949,87 @@ var netlist2svg = (() => {
           }
           this.addLabels(template, ret);
           return ret;
+        }
+        /**
+         * Builds an ELK node for an expanded submodule. The inner module is laid out as
+         * a nested ELK graph (children + edges), and the submodule's own external-port
+         * cells are folded into this node's ports so wires connect through.
+         */
+        buildElkSubModule(template, fixedPosX, fixedPosY) {
+          const subModule = this.subModule;
+          const inTemplates = Skin_1.default.getPortsWithPrefix(template, "in");
+          const outTemplates = Skin_1.default.getPortsWithPrefix(template, "out");
+          const inPorts = this.inputPorts.map((ip, i) => ip.getGenericElkPort(i, inTemplates, "in"));
+          const outPorts = this.outputPorts.map((op, i) => op.getGenericElkPort(i, outTemplates, "out"));
+          const elk = (0, elkGraph_1.buildElkGraph)(subModule);
+          const cell = {
+            id: this.parent + "." + this.key,
+            layoutOptions: { "org.eclipse.elk.portConstraints": "FIXED_SIDE" },
+            labels: [],
+            ports: inPorts.concat(outPorts),
+            children: [],
+            edges: []
+          };
+          elk.children.forEach((child) => {
+            const isPort = cell.ports.some((port) => this.parent + "." + child.id === port.id);
+            if (!isPort) {
+              cell.children.push(child);
+            }
+          });
+          elk.edges.forEach((edge) => {
+            cell.ports.forEach((port) => {
+              if (inPorts.indexOf(port) !== -1) {
+                if (edge.sourcePort === port.id.slice(this.parent.length + 1) + ".Y") {
+                  const source = port.id.split(".");
+                  source.pop();
+                  edge.source = source.join(".");
+                  edge.sourcePort = port.id;
+                }
+              } else {
+                if (edge.targetPort === port.id.slice(this.parent.length + 1) + ".A") {
+                  const target = port.id.split(".");
+                  target.pop();
+                  edge.target = target.join(".");
+                  edge.targetPort = port.id;
+                }
+              }
+            });
+            if (edge.source === edge.target) {
+              const dummyId = subModule.moduleName + ".$d_" + edge.sourcePort + "_" + edge.targetPort;
+              const dummy = {
+                id: dummyId,
+                width: 0,
+                height: 0,
+                ports: [
+                  { id: dummyId + ".pin", width: 0, height: 0 },
+                  { id: dummyId + ".pout", width: 0, height: 0 }
+                ],
+                layoutOptions: { "org.eclipse.elk.portConstraints": "FIXED_SIDE" }
+              };
+              const edgeId = edge.id;
+              const edgeCopy = { ...edge };
+              edge.target = dummyId;
+              edge.targetPort = dummyId + ".pin";
+              edge.id = subModule.moduleName + ".e_" + edge.sourcePort + "_" + edge.targetPort;
+              elkGraph_1.ElkModel.wireNameLookup[edge.id] = elkGraph_1.ElkModel.wireNameLookup[edgeId];
+              edgeCopy.source = dummyId;
+              edgeCopy.sourcePort = dummyId + ".pout";
+              edgeCopy.id = subModule.moduleName + ".e_" + edgeCopy.sourcePort + "_" + edgeCopy.targetPort;
+              elkGraph_1.ElkModel.wireNameLookup[edgeCopy.id] = elkGraph_1.ElkModel.wireNameLookup[edgeId];
+              cell.edges.push(edge, edgeCopy);
+              cell.children.push(dummy);
+            } else {
+              cell.edges.push(edge);
+            }
+          });
+          if (fixedPosX) {
+            cell.x = fixedPosX;
+          }
+          if (fixedPosY) {
+            cell.y = fixedPosY;
+          }
+          this.addLabels(template, cell);
+          return cell;
         }
         render(cell) {
           const template = this.getTemplate();
@@ -2649,7 +3102,38 @@ var netlist2svg = (() => {
               portClone[1].id = "port_" + port.parentNode.Key + "~" + port.Key;
               tempclone.push(portClone);
             });
-            tempclone[2][2] = this.type;
+            tempclone[2][2] = cleanType(this.type);
+          } else if (template[1]["s:type"] === "sub_odd" || template[1]["s:type"] === "sub_even") {
+            const subModuleSvg = (0, drawModule_1.drawSubModule)(cell, this.subModule);
+            tempclone[3][1].width = subModuleSvg[1].width;
+            tempclone[3][1].height = subModuleSvg[1].height;
+            tempclone[2][1].x = Number(tempclone[3][1].width) / 2;
+            tempclone[2][2] = cleanType(this.type);
+            tempclone.pop();
+            tempclone.pop();
+            tempclone.pop();
+            tempclone.pop();
+            subModuleSvg.shift();
+            subModuleSvg.shift();
+            subModuleSvg.forEach((child) => tempclone.push(child));
+            const inPorts = Skin_1.default.getPortsWithPrefix(template, "in");
+            const outPorts = Skin_1.default.getPortsWithPrefix(template, "out");
+            this.inputPorts.forEach((port) => {
+              const portElk = cell.ports.find((p) => p.id === cell.id + "." + port.Key);
+              const portClone = clone(inPorts[0]);
+              portClone[portClone.length - 1][2] = port.Key;
+              portClone[1].transform = "translate(" + portElk.x + "," + portElk.y + ")";
+              portClone[1].id = "port_" + port.parentNode.Key + "~" + port.Key;
+              tempclone.push(portClone);
+            });
+            this.outputPorts.forEach((port) => {
+              const portElk = cell.ports.find((p) => p.id === cell.id + "." + port.Key);
+              const portClone = clone(outPorts[0]);
+              portClone[portClone.length - 1][2] = port.Key;
+              portClone[1].transform = "translate(" + portElk.x + "," + portElk.y + ")";
+              portClone[1].id = "port_" + port.parentNode.Key + "~" + port.Key;
+              tempclone.push(portClone);
+            });
           }
           setClass(tempclone, "$cell_id", "cell_" + this.key);
           return tempclone;
@@ -2729,6 +3213,19 @@ var netlist2svg = (() => {
             }
           }
         });
+      }
+      function cleanType(type) {
+        if (typeof type === "string" && type.startsWith("$paramod")) {
+          const named = type.match(/^\$paramod\\([^\\]+)/);
+          if (named) {
+            return named[1];
+          }
+          const hashed = type.match(/^\$paramod\$[^\\]+\\([^\\]+)/);
+          if (hashed) {
+            return hashed[1];
+          }
+        }
+        return type;
       }
       function getBits(signals, indicesString) {
         const index = indicesString.indexOf(":");
@@ -2817,21 +3314,80 @@ var netlist2svg = (() => {
         const newEnd = targetSignal.substring(0, end - 1).lastIndexOf(",") + 1;
         processSplitsAndJoins(inputs, outputs, targetSignal, start, newEnd, splits, joins);
       }
-      var FlatModule = class {
+      var FlatModule = class _FlatModule {
         /**
-         * Create a new FlatModule from a Yosys netlist
+         * Entry point for building a (possibly hierarchical) FlatModule from a Yosys
+         * netlist and a configuration. Selects the top module, then recursively flattens
+         * it according to the hierarchy settings in the config.
          */
-        constructor(netlist) {
-          this.moduleName = Object.keys(netlist.modules).find((name) => {
-            var _a;
-            return ((_a = netlist.modules[name].attributes) === null || _a === void 0 ? void 0 : _a.top) === 1;
-          }) || Object.keys(netlist.modules)[0];
-          const topModule = netlist.modules[this.moduleName];
-          this.nodes = [
-            ...Object.entries(topModule.ports).map(([key, portData]) => Cell_1.default.fromPort(portData, key)),
-            ...Object.entries(topModule.cells).map(([key, cellData]) => Cell_1.default.fromYosysCell(cellData, key))
-          ];
+        static fromNetlist(netlist, config) {
+          this.layoutProps = Skin_1.default.getProperties();
+          this.modNames = Object.keys(netlist.modules);
+          this.netlist = netlist;
+          this.config = config;
+          let topName = null;
+          if (config.top.enable) {
+            topName = config.top.module;
+            if (!this.modNames.includes(topName)) {
+              throw new Error("Top module in config file not defined in input json file.");
+            }
+          } else {
+            Object.entries(netlist.modules).forEach(([name, mod]) => {
+              if (mod.attributes && Number(mod.attributes.top) === 1) {
+                topName = name;
+              }
+            });
+            if (topName == null) {
+              topName = this.modNames[0];
+            }
+          }
+          const top = netlist.modules[topName];
+          return new _FlatModule(top, topName, 0);
+        }
+        /**
+         * Create a FlatModule for a single module. `depth` is the hierarchy depth
+         * (0 for the top module) and `parent` is the name of the enclosing module.
+         */
+        constructor(mod, name, depth, parent = null) {
+          this.parent = parent;
+          this.moduleName = name;
+          const ports = Object.entries(mod.ports).map(([portName, portData]) => Cell_1.default.fromPort(portData, portName, this.moduleName));
+          const cells = Object.entries(mod.cells).map(([key, c]) => this.buildCell(c, key, depth));
+          this.nodes = cells.concat(ports);
           this.wires = [];
+          if (_FlatModule.layoutProps.constants !== false) {
+            this.addConstants();
+          }
+          if (_FlatModule.layoutProps.splitsAndJoins !== false) {
+            this.addSplitsJoins();
+          }
+          this.createWires();
+        }
+        /**
+         * Decide whether a child cell should be rendered as an expanded submodule or as
+         * an opaque box, based on the hierarchy configuration and current depth.
+         */
+        buildCell(c, key, depth) {
+          const cfg = _FlatModule.config.hierarchy;
+          const isModule = _FlatModule.modNames.includes(c.type);
+          const expand = () => Cell_1.default.createSubModule(c, key, this.moduleName, _FlatModule.netlist.modules[c.type], depth);
+          const box = () => Cell_1.default.fromYosysCell(c, key, this.moduleName);
+          switch (cfg.enable) {
+            case "level":
+              return cfg.expandLevel > depth && isModule ? expand() : box();
+            case "all":
+              return isModule ? expand() : box();
+            case "modules":
+              if (cfg.expandModules.types.includes(c.type) || cfg.expandModules.ids.includes(key)) {
+                if (!isModule) {
+                  throw new Error("Submodule in config file not defined in input json file.");
+                }
+                return expand();
+              }
+              return box();
+            default:
+              return box();
+          }
         }
         /**
          * Add constant value nodes to the module
@@ -2857,8 +3413,8 @@ var netlist2svg = (() => {
           for (const input of allInputs) {
             processSplitsAndJoins(allOutputs, inputsCopy, input, 0, input.length, splits, joins);
           }
-          const joinCells = Object.entries(joins).map(([joinInput, joinOutputs]) => Cell_1.default.fromJoinInfo(joinInput, joinOutputs));
-          const splitCells = Object.entries(splits).map(([splitInput, splitOutputs]) => Cell_1.default.fromSplitInfo(splitInput, splitOutputs));
+          const joinCells = Object.entries(joins).map(([joinInput, joinOutputs]) => Cell_1.default.fromJoinInfo(joinInput, joinOutputs, this.moduleName));
+          const splitCells = Object.entries(splits).map(([splitInput, splitOutputs]) => Cell_1.default.fromSplitInfo(splitInput, splitOutputs, this.moduleName));
           this.nodes.push(...joinCells, ...splitCells);
         }
         /**
@@ -2892,296 +3448,6 @@ var netlist2svg = (() => {
     }
   });
 
-  // built/elkGraph.js
-  var require_elkGraph = __commonJS({
-    "built/elkGraph.js"(exports) {
-      "use strict";
-      Object.defineProperty(exports, "__esModule", { value: true });
-      exports.ElkModel = void 0;
-      exports.buildElkGraph = buildElkGraph;
-      var ElkModel;
-      (function(ElkModel2) {
-        ElkModel2.wireNameLookup = {};
-        ElkModel2.dummyNum = 0;
-        ElkModel2.edgeIndex = 0;
-      })(ElkModel || (exports.ElkModel = ElkModel = {}));
-      function buildElkGraph(module2) {
-        const children = module2.nodes.map((n) => n.buildElkChild());
-        ElkModel.edgeIndex = 0;
-        ElkModel.dummyNum = 0;
-        const edges = [];
-        module2.wires.forEach((wire) => {
-          const numWires = wire.netName.split(",").length - 2;
-          const { drivers, riders, laterals } = wire;
-          if (drivers.length > 0 && riders.length > 0 && laterals.length === 0) {
-            createEdges(drivers, riders, edges, numWires);
-          } else if (drivers.concat(riders).length > 0 && laterals.length > 0) {
-            createEdges(drivers, laterals, edges, numWires);
-            createEdges(laterals, riders, edges, numWires);
-          } else if (riders.length === 0 && drivers.length > 1) {
-            const dummyId = addDummy(children);
-            drivers.forEach((driver) => {
-              edges.push(createDummyEdge(driver, dummyId, "source", driver.wire.netName));
-            });
-          } else if (riders.length > 1 && drivers.length === 0) {
-            const dummyId = addDummy(children);
-            riders.forEach((rider) => {
-              edges.push(createDummyEdge(rider, dummyId, "target", rider.wire.netName));
-            });
-          } else if (laterals.length > 1) {
-            const [source, ...otherLaterals] = laterals;
-            otherLaterals.forEach((lateral) => {
-              const id = `e${ElkModel.edgeIndex++}`;
-              edges.push({
-                id,
-                source: source.parentNode.Key,
-                sourcePort: `${source.parentNode.Key}.${source.key}`,
-                target: lateral.parentNode.Key,
-                targetPort: `${lateral.parentNode.Key}.${lateral.key}`
-              });
-              ElkModel.wireNameLookup[id] = lateral.wire.netName;
-            });
-          }
-        });
-        return {
-          id: module2.moduleName,
-          children,
-          edges
-        };
-      }
-      function createEdges(sourcePorts, targetPorts, edges, numWires) {
-        for (const sourcePort of sourcePorts) {
-          const sourceParentKey = sourcePort.parentNode.Key;
-          const sourceKey = `${sourceParentKey}.${sourcePort.key}`;
-          const edgeLabel = numWires > 1 ? [{
-            id: `label_${ElkModel.edgeIndex}`,
-            text: String(numWires),
-            width: 4,
-            height: 6,
-            x: 0,
-            y: 0,
-            layoutOptions: { "org.eclipse.elk.edgeLabels.inline": true }
-          }] : void 0;
-          for (const targetPort of targetPorts) {
-            const targetParentKey = targetPort.parentNode.Key;
-            const targetKey = `${targetParentKey}.${targetPort.key}`;
-            const id = `e${ElkModel.edgeIndex++}`;
-            edges.push({
-              id,
-              labels: edgeLabel,
-              sources: [sourceKey],
-              targets: [targetKey],
-              layoutOptions: {
-                "org.eclipse.elk.layered.priority.direction": sourcePort.parentNode.type !== "$dff" ? 10 : void 0,
-                "org.eclipse.elk.edge.thickness": numWires > 1 ? 2 : 1
-              }
-            });
-            ElkModel.wireNameLookup[id] = targetPort.wire.netName;
-          }
-        }
-      }
-      function addDummy(children) {
-        const dummyId = `$d_${ElkModel.dummyNum++}`;
-        children.push({
-          id: dummyId,
-          width: 0,
-          height: 0,
-          ports: [{ id: `${dummyId}.p`, width: 0, height: 0 }],
-          layoutOptions: { "org.eclipse.elk.portConstraints": "FIXED_SIDE" }
-        });
-        return dummyId;
-      }
-      function createDummyEdge(port, dummyId, type, netName) {
-        const parentKey = port.parentNode.Key;
-        const id = `e${ElkModel.edgeIndex++}`;
-        const edge = {
-          id,
-          [type === "source" ? "source" : "target"]: parentKey,
-          [type === "source" ? "sourcePort" : "targetPort"]: `${parentKey}.${port.key}`,
-          [type === "source" ? "target" : "source"]: dummyId,
-          [type === "source" ? "targetPort" : "sourcePort"]: `${dummyId}.p`
-        };
-        ElkModel.wireNameLookup[id] = netName;
-        return edge;
-      }
-    }
-  });
-
-  // built/drawModule.js
-  var require_drawModule = __commonJS({
-    "built/drawModule.js"(exports) {
-      "use strict";
-      var __importDefault = exports && exports.__importDefault || function(mod) {
-        return mod && mod.__esModule ? mod : { "default": mod };
-      };
-      Object.defineProperty(exports, "__esModule", { value: true });
-      exports.removeDummyEdges = removeDummyEdges;
-      exports.default = drawModule;
-      var elkGraph_1 = require_elkGraph();
-      var Skin_1 = __importDefault(require_Skin());
-      var onml = require_onml();
-      var WireDirection;
-      (function(WireDirection2) {
-        WireDirection2[WireDirection2["Up"] = 0] = "Up";
-        WireDirection2[WireDirection2["Down"] = 1] = "Down";
-        WireDirection2[WireDirection2["Left"] = 2] = "Left";
-        WireDirection2[WireDirection2["Right"] = 3] = "Right";
-      })(WireDirection || (WireDirection = {}));
-      function getWireDirection(start, end) {
-        if (end.x === start.x && end.y === start.y) {
-          throw new Error("Points cannot be identical");
-        }
-        if (end.x !== start.x && end.y !== start.y) {
-          throw new Error("Points must be orthogonal");
-        }
-        if (end.x > start.x)
-          return WireDirection.Right;
-        if (end.x < start.x)
-          return WireDirection.Left;
-        if (end.y > start.y)
-          return WireDirection.Down;
-        return WireDirection.Up;
-      }
-      function findNearestBend(edges, dummyIsSource, dummyLocation) {
-        const candidates = edges.map((edge) => {
-          const bends = edge.sections[0].bendPoints || [];
-          return dummyIsSource ? bends[0] : bends[bends.length - 1];
-        }).filter((p) => p !== void 0);
-        if (candidates.length === 0)
-          return void 0;
-        return candidates.reduce((closest, current) => {
-          const closestDist = (closest.x - dummyLocation.x) ** 2 + (closest.y - dummyLocation.y) ** 2;
-          const currentDist = (current.x - dummyLocation.x) ** 2 + (current.y - dummyLocation.y) ** 2;
-          return currentDist < closestDist ? current : closest;
-        });
-      }
-      function removeDummyEdges(graph) {
-        var _a, _b;
-        while (true) {
-          const dummyId = `$d_${elkGraph_1.ElkModel.dummyNum}`;
-          const edgesWithDummy = graph.edges.filter((e) => e.source === dummyId || e.target === dummyId);
-          if (edgesWithDummy.length === 0)
-            break;
-          const firstEdge = edgesWithDummy[0];
-          const dummyIsSource = firstEdge.source === dummyId;
-          const dummyLocation = dummyIsSource ? firstEdge.sections[0].startPoint : firstEdge.sections[0].endPoint;
-          const newEndpoint = findNearestBend(edgesWithDummy, dummyIsSource, dummyLocation);
-          if (!newEndpoint) {
-            elkGraph_1.ElkModel.dummyNum += 1;
-            continue;
-          }
-          for (const edge of edgesWithDummy) {
-            const section = edge.sections[0];
-            if (dummyIsSource) {
-              section.startPoint = newEndpoint;
-              (_a = section.bendPoints) === null || _a === void 0 ? void 0 : _a.shift();
-            } else {
-              section.endPoint = newEndpoint;
-              (_b = section.bendPoints) === null || _b === void 0 ? void 0 : _b.pop();
-            }
-          }
-          const directions = new Set(edgesWithDummy.map((edge) => {
-            var _a2, _b2;
-            const section = edge.sections[0];
-            const point = dummyIsSource ? ((_a2 = section.bendPoints) === null || _a2 === void 0 ? void 0 : _a2[0]) || section.endPoint : ((_b2 = section.bendPoints) === null || _b2 === void 0 ? void 0 : _b2[section.bendPoints.length - 1]) || section.startPoint;
-            return getWireDirection(newEndpoint, point);
-          }));
-          if (directions.size < 3) {
-            for (const edge of edgesWithDummy) {
-              edge.junctionPoints = (edge.junctionPoints || []).filter((junction) => !(junction.x === newEndpoint.x && junction.y === newEndpoint.y));
-            }
-          }
-          elkGraph_1.ElkModel.dummyNum += 1;
-        }
-      }
-      function drawModule(graph, module2) {
-        const nodes = module2.nodes.map((node) => {
-          const matchedChild = graph.children.find((child) => child.id === node.Key);
-          return node.render(matchedChild);
-        });
-        removeDummyEdges(graph);
-        const lines = graph.edges.flatMap((edge) => {
-          const netId = elkGraph_1.ElkModel.wireNameLookup[edge.id];
-          const numWires = netId.split(",").length - 2;
-          const lineWidth = numWires > 1 ? 2 : 1;
-          const netClass = `net_${netId.slice(1, -1)} width_${numWires}`;
-          return edge.sections.flatMap((section) => {
-            let currentPoint = section.startPoint;
-            const wireSegments = [];
-            const bendPoints = section.bendPoints || [];
-            bendPoints.forEach((bendPoint) => {
-              wireSegments.push(["line", {
-                x1: currentPoint.x,
-                y1: currentPoint.y,
-                x2: bendPoint.x,
-                y2: bendPoint.y,
-                class: netClass,
-                style: `stroke-width: ${lineWidth}`
-              }]);
-              currentPoint = bendPoint;
-            });
-            const junctions = (edge.junctionPoints || []).map((junction) => ["circle", {
-              cx: junction.x,
-              cy: junction.y,
-              r: numWires > 1 ? 3 : 2,
-              class: `${netClass} junction`
-            }]);
-            wireSegments.push(["line", {
-              x1: currentPoint.x,
-              y1: currentPoint.y,
-              x2: section.endPoint.x,
-              y2: section.endPoint.y,
-              class: netClass,
-              style: `stroke-width: ${lineWidth}`
-            }]);
-            return [...wireSegments, ...junctions];
-          });
-        });
-        const labels = graph.edges.flatMap((edge) => {
-          var _a, _b;
-          if (!((_b = (_a = edge.labels) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.text))
-            return [];
-          const label = edge.labels[0];
-          const netId = elkGraph_1.ElkModel.wireNameLookup[edge.id];
-          const numWires = netId.split(",").length - 2;
-          const labelClass = `net_${netId.slice(1, -1)} width_${numWires} busLabel_${numWires}`;
-          return [
-            // Label background
-            ["rect", {
-              x: label.x + 1,
-              y: label.y - 1,
-              width: (label.text.length + 2) * 6 - 2,
-              height: 9,
-              class: `${labelClass} labelBackground`
-            }],
-            // Label text
-            ["text", {
-              x: label.x,
-              y: label.y + 7,
-              class: labelClass
-            }, `/${label.text}/`]
-          ];
-        });
-        if (labels.length > 0) {
-          lines.push(...labels);
-        }
-        const svgAttributes = { ...Skin_1.default.skin[1] };
-        svgAttributes.width = String(graph.width);
-        svgAttributes.height = String(graph.height);
-        const styles = ["style", {}, ""];
-        onml.traverse(Skin_1.default.skin, {
-          enter: (node) => {
-            if (node.name === "style") {
-              styles[2] += node.full[2];
-            }
-          }
-        });
-        const svgElement = ["svg", svgAttributes, styles, ...nodes, ...lines];
-        return onml.s(svgElement);
-      }
-    }
-  });
-
   // built/index.js
   var require_built = __commonJS({
     "built/index.js"(exports) {
@@ -3199,18 +3465,18 @@ var netlist2svg = (() => {
       var elkGraph_1 = require_elkGraph();
       var drawModule_1 = __importDefault(require_drawModule());
       var elk = new elkjs_1.default();
-      function createFlatModule(skinData, yosysNetlist) {
+      var defaultConfig = {
+        hierarchy: {
+          enable: "off",
+          expandLevel: 0,
+          expandModules: { types: [], ids: [] }
+        },
+        top: { enable: false, module: "" }
+      };
+      function createFlatModule(skinData, yosysNetlist, configData) {
         Skin_1.default.skin = onml.p(skinData);
-        const layoutProps = Skin_1.default.getProperties();
-        const flatModule = new FlatModule_1.FlatModule(yosysNetlist);
-        if (layoutProps.constants !== false) {
-          flatModule.addConstants();
-        }
-        if (layoutProps.splitsAndJoins !== false) {
-          flatModule.addSplitsJoins();
-        }
-        flatModule.createWires();
-        return flatModule;
+        const config = configData || defaultConfig;
+        return FlatModule_1.FlatModule.fromNetlist(yosysNetlist, config);
       }
       async function dumpLayout(skinData, yosysNetlist, prelayout, done) {
         try {
@@ -3227,8 +3493,8 @@ var netlist2svg = (() => {
           done(error instanceof Error ? error : new Error(String(error)));
         }
       }
-      function render(skinData, yosysNetlist, done, elkData) {
-        const flatModule = createFlatModule(skinData, yosysNetlist);
+      function render(skinData, yosysNetlist, done, elkData, configData) {
+        const flatModule = createFlatModule(skinData, yosysNetlist, configData);
         const kgraph = (0, elkGraph_1.buildElkGraph)(flatModule);
         const layoutProps = Skin_1.default.getProperties();
         const renderPromise = (async () => {
@@ -11455,7 +11721,7 @@ var netlist2svg = (() => {
   // skin/default.svg
   var require_default = __commonJS({
     "skin/default.svg"(exports, module) {
-      module.exports = '<svg  xmlns="http://www.w3.org/2000/svg"\n  xmlns:xlink="http://www.w3.org/1999/xlink"\n  xmlns:s="https://github.com/ajsb85/netlist2svg"\n  width="800" height="500"><style>\n  svg {\n    stroke: #000;\n    fill: none;\n  }\n  text {\n    fill: #000;\n    stroke: none;\n    font-size: 10px;\n    font-weight: bold;\n    font-family: "Courier New", monospace;\n  }\n  .nodelabel {\n    text-anchor: middle;\n  }\n  .inputPortLabel {\n    text-anchor: end;\n  }\n  .splitjoinBody {\n    fill: #000;\n  }\n  .junction {\n    fill: #000;\n  }\n  .labelBackground {\n    fill: #fff;\n    stroke: none;\n  }\n  .detail, .symbol {\n    stroke-linejoin: round;\n    stroke-linecap: round;\n  }\n  .symbol {\n    stroke-width: 2;\n  }\n  .detail {\n    fill: #000;\n  }\n\n  @media (prefers-color-scheme: dark) {\n    svg {\n      stroke: #fff !important;\n    }\n    text {\n      fill: #fff !important;\n    }\n    .splitjoinBody {\n      fill: #fff !important;\n    }\n    .junction {\n      fill: #fff !important;\n    }\n    .labelBackground {\n      fill: #0a192f !important; /* Blueprint background or transparent */\n    }\n    .detail {\n      fill: #fff !important;\n    }\n    circle, path, rect, line {\n      stroke: #fff;\n    }\n    [style*="fill:#000"], [style*="fill:#000000"] {\n      fill: #fff !important;\n    }\n    [style*="stroke:#000"], [style*="stroke:#000000"] {\n      stroke: #fff !important;\n    }\n  }\n</style>\n  <s:properties>\n    <s:layoutEngine\n      org.eclipse.elk.layered.spacing.nodeNodeBetweenLayers="35"\n      org.eclipse.elk.spacing.nodeNode= "35"\n      org.eclipse.elk.layered.layering.strategy= "LONGEST_PATH"\n    />\n    <s:low_priority_alias val="$dff" />\n  </s:properties>\n\n\n  <g s:type="mux" transform="translate(50, 50)" s:width="20" s:height="40">\n    <s:alias val="$pmux"/>\n    <s:alias val="$mux"/>\n    <s:alias val="$_MUX_"/>\n\n    <path d="M0,0 L20,10 L20,30 L0,40 Z" class="$cell_id"/>\n\n    <text x="5" y="32" class="nodelabel $cell_id" s:attribute="">1</text>\n    <text x="5" y="13" class="nodelabel $cell_id" s:attribute="">0</text>\n    <g s:x="0" s:y="10" s:pid="A"/>\n    <g s:x="0" s:y="30" s:pid="B"/>\n    <g s:x="10" s:y="35" s:pid="S"/>\n    <g s:x="20" s:y="20" s:pid="Y"/>\n  </g>\n\n  <g s:type="mux-bus" transform="translate(100, 50)" s:width="24" s:height="40">\n    <s:alias val="$pmux-bus"/>\n    <s:alias val="$mux-bus"/>\n    <s:alias val="$_MUX_-bus"/>\n\n    <path d="M0,0 L20,10 L20,30 L0,40 Z" class="$cell_id"/>\n    <path d="M4,2 L4,0 L22,9 L22,31 L4,40 L4,38" class="$cell_id"/>\n    <path d="M8,2 L8,0 L24,8 L24,32 L8,40 L8,38" class="$cell_id"/>\n\n    <text x="5" y="32" class="nodelabel $cell_id" s:attribute="">1</text>\n    <text x="5" y="13" class="nodelabel $cell_id" s:attribute="">0</text>\n    <g s:x="-1" s:y="10" s:pid="A"/>\n    <g s:x="-1" s:y="30" s:pid="B"/>\n    <g s:x="12" s:y="38" s:pid="S"/>\n    <g s:x="24.5" s:y="20" s:pid="Y"/>\n  </g>\n\n  <!-- and -->\n  <g s:type="and" transform="translate(150,50)" s:width="30" s:height="25">\n    <s:alias val="$and"/>\n    <s:alias val="$logic_and"/>\n    <s:alias val="$_AND_"/>\n    <s:alias val="$reduce_and"/>\n\n    <path d="M0,0 L0,25 L15,25 A15 12.5 0 0 0 15,0 Z" class="$cell_id"/>\n\n    <g s:x="0" s:y="5" s:pid="A"/>\n    <g s:x="0" s:y="20" s:pid="B"/>\n    <g s:x="30" s:y="12.5" s:pid="Y"/>\n  </g>\n  <g s:type="nand" transform="translate(150,100)" s:width="30" s:height="25">\n    <s:alias val="$nand"/>\n    <s:alias val="$logic_nand"/>\n    <s:alias val="$_NAND_"/>\n\n    <path d="M0,0 L0,25 L15,25 A15 12.5 0 0 0 15,0 Z" class="$cell_id"/>\n    <circle cx="34" cy="12.5" r="3" class="$cell_id"/>\n\n    <g s:x="0" s:y="5" s:pid="A"/>\n    <g s:x="0" s:y="20" s:pid="B"/>\n    <g s:x="36" s:y="12.5" s:pid="Y"/>\n  </g>\n  <g s:type="andnot" transform="translate(200,50)" s:width="30" s:height="25">\n    <s:alias val="$_ANDNOT_"/>\n\n    <path d="M0,0 L0,25 L15,25 A15 12.5 0 0 0 15,0 Z" class="$cell_id"/>\n    <circle cx="-3" cy="20" r="3"/>\n\n    <g s:x="0" s:y="5" s:pid="A"/>\n    <g s:x="-6" s:y="20" s:pid="B"/>\n    <!-- <path d="M -10,20 L -6,20"/> -->\n    <g s:x="30" s:y="12.5" s:pid="Y"/>\n  </g>\n\n  <!-- or -->\n  <g s:type="or" transform="translate(250,50)" s:width="30" s:height="25">\n    <s:alias val="$or"/>\n    <s:alias val="$logic_or"/>\n    <s:alias val="$_OR_"/>\n    <s:alias val="$reduce_or"/>\n    <s:alias val="$reduce_bool"/>\n\n    <path d="M0,0 A30 25 0 0 1 0,25 A30 25 0 0 0 30,12.5 A30 25 0 0 0 0,0" class="$cell_id"/>\n \n    <g s:x="2" s:y="5" s:pid="A"/>\n    <g s:x="2" s:y="20" s:pid="B"/>\n    <g s:x="30" s:y="12.5" s:pid="Y"/>\n  </g>\n  <g s:type="reduce_nor" transform="translate(250, 100)" s:width="33" s:height="25">\n    <s:alias val="$nor"/>\n    <s:alias val="$reduce_nor"/>\n    <s:alias val="$_NOR_"/>\n    <s:alias val="$_ORNOT_"/>\n\n    <path d="M0,0 A30 25 0 0 1 0,25 A30 25 0 0 0 30,12.5 A30 25 0 0 0 0,0" class="$cell_id"/>\n    <circle cx="33" cy="12.5" r="3" class="$cell_id"/>\n\n    <g s:x="2" s:y="5" s:pid="A"/>\n    <g s:x="2" s:y="20" s:pid="B"/>\n    <g s:x="36" s:y="12.5" s:pid="Y"/>\n  </g>\n  <g s:type="ornot" transform="translate(300,50)" s:width="30" s:height="25">\n    <s:alias val="$_ORNOT_"/>\n\n    <path d="M0,0 A30 25 0 0 1 0,25 A30 25 0 0 0 30,12.5 A30 25 0 0 0 0,0" class="$cell_id"/>\n    <circle cx="-1" cy="20" r="3"/>\n \n    <g s:x="2" s:y="5" s:pid="A"/>\n    <g s:x="-4" s:y="20" s:pid="B"/>\n    <!-- <path d="M -8,20 L -4,20"/> -->\n    <g s:x="30" s:y="12.5" s:pid="Y"/>\n  </g>\n\n  <!--xor -->\n  <g s:type="reduce_xor" transform="translate(350, 50)" s:width="33" s:height="25">\n    <s:alias val="$xor"/>\n    <s:alias val="$reduce_xor"/>\n    <s:alias val="$_XOR_"/>\n\n    <path d="M3,0 A30 25 0 0 1 3,25 A30 25 0 0 0 33,12.5 A30 25 0 0 0 3,0" class="$cell_id"/>\n    <path d="M0,0 A30 25 0 0 1 0,25" class="$cell_id"/>\n\n    <g s:x="2" s:y="5" s:pid="A"/>\n    <g s:x="2" s:y="20" s:pid="B"/>\n    <g s:x="33" s:y="12.5" s:pid="Y"/>\n  </g>\n\n  <g s:type="reduce_nxor" transform="translate(350, 100)" s:width="33" s:height="25">\n    <s:alias val="$xnor"/>\n    <s:alias val="$reduce_xnor"/>\n    <s:alias val="$_XNOR_"/>\n\n    <path d="M3,0 A30 25 0 0 1 3,25 A30 25 0 0 0 33,12.5 A30 25 0 0 0 3,0" class="$cell_id"/>\n    <path d="M0,0 A30 25 0 0 1 0,25" class="$cell_id"/>\n    <circle cx="36" cy="12.5" r="3" class="$cell_id"/>\n\n    <g s:x="2" s:y="5" s:pid="A"/>\n    <g s:x="2" s:y="20" s:pid="B"/>\n    <g s:x="38" s:y="12.5" s:pid="Y"/>\n  </g>\n\n  <g s:type="tribuf" transform="translate(550, 50)" s:width="15" s:height="30">\n    <s:alias val="$tribuf"/>\n    <s:alias val="$_TRIBUF_"/>\n\n    <s:alias val="tribuf-bus"/>\n    <s:alias val="$tribuf-bus"/>\n    <s:alias val="$_TRIBUF_-bus"/>\n\n    <path d="M0,0 L25,15 L0,30 Z" class="$cell_id"/>\n\n    <g s:x="0" s:y="15" s:pid="A"/>\n    <g s:x="11" s:y="6" s:pid="EN"/>\n    <g s:x="25" s:y="15" s:pid="Y"/>\n    <!-- <path d="M -5,15 L 0,15" /> -->\n    <!-- <path d="M 11,0 L 11,6" /> -->\n    <!-- <path d="M 30,15 L 25,15" /> -->\n  </g>\n\n  <!--buffer -->\n  <g s:type="not" transform="translate(450,100)" s:width="30" s:height="20">\n    <s:alias val="$_NOT_"/>\n    <s:alias val="$not"/>\n    <s:alias val="$logic_not"/>\n\n    <path d="M0,0 L0,20 L20,10 Z" class="$cell_id"/>\n    <circle cx="24" cy="10" r="3" class="$cell_id"/>\n\n    <g s:x="-1" s:y="10" s:pid="A"/>\n    <g s:x="27" s:y="10" s:pid="Y"/>\n  </g>\n  <g s:type="buf" transform="translate(450,50)" s:width="30" s:height="20">\n    <s:alias val="$_BUF_"/>\n\n    <path d="M0,0 L0,20 L20,10 Z" class="$cell_id"/>\n\n    <g s:x="0" s:y="10" s:pid="A"/>\n    <g s:x="20" s:y="10" s:pid="Y"/>\n    <!-- <path d="M -5,10 L 0,10"/> -->\n    <!-- <path d="M 25,10 L 20,10"/> -->\n  </g>\n\n  <g s:type="add" transform="translate(50, 150)" s:width="25" s:height="25">\n    <s:alias val="$add"/>\n\n    <circle r="12.5" cx="12.5" cy="12.5" class="$cell_id"/>\n    <line x1="7.5" x2="17.5" y1="12.5" y2="12.5" class="$cell_id"/>\n    <line x1="12.5" x2="12.5" y1="7.5" y2="17.5" class="$cell_id"/>\n\n    <g s:x="2" s:y="5" s:pid="A"/>\n    <g s:x="2" s:y="20" s:pid="B"/>\n    <g s:x="26" s:y="12.5" s:pid="Y"/>\n  </g>\n\n  <g s:type="pos" transform="translate(100, 150)" s:width="25" s:height="25">\n    <s:alias val="$pos"/>\n\n    <circle r="12.5" cx="12.5" cy="12.5" class="$cell_id"/>\n    <line x1="7.5" x2="17.5" y1="12.5" y2="12.5" class="$cell_id"/>\n    <line x1="12.5" x2="12.5" y1="7.5" y2="17.5" class="$cell_id"/>\n\n    <g s:x="-1" s:y="12.5" s:pid="A"/>\n    <g s:x="26" s:y="12.5" s:pid="Y"/>\n  </g>\n\n  <g s:type="sub" transform="translate(150,150)" s:width="25" s:height="25">\n    <s:alias val="$sub"/>\n\n    <circle r="12.5" cx="12.5" cy="12.5" class="$cell_id"/>\n    <line x1="7.5" x2="17.5" y1="12.5" y2="12.5" class="$cell_id"/>\n\n    <g s:x="2" s:y="5" s:pid="A"/>\n    <g s:x="2" s:y="20" s:pid="B"/>\n    <g s:x="25" s:y="12.5" s:pid="Y"/>\n  </g>\n\n  <g s:type="neg" transform="translate(200,150)" s:width="25" s:height="25">\n    <s:alias val="$neg"/>\n\n    <circle r="12.5" cx="12.5" cy="12.5" class="$cell_id"/>\n    <line x1="7.5" x2="17.5" y1="12.5" y2="12.5" class="$cell_id"/>\n\n    <g s:x="0" s:y="12.5" s:pid="A"/>\n    <g s:x="25" s:y="12.5" s:pid="Y"/>\n  </g>\n\n  <g s:type="eq" transform="translate(250,150)" s:width="25" s:height="25">\n    <s:alias val="$eq"/>\n    <s:alias val="$eqx"/>\n\n    <circle r="12.5" cx="12.5" cy="12.5" class="$cell_id"/>\n    <line x1="7.5" x2="17.5" y1="10" y2="10" class="$cell_id"/>\n    <line x1="7.5" x2="17.5" y1="15" y2="15" class="$cell_id"/>\n\n    <g s:x="2" s:y="5" s:pid="A"/>\n    <g s:x="2" s:y="20" s:pid="B"/>\n    <g s:x="25" s:y="12.5" s:pid="Y"/>\n  </g>\n\n  <g s:type="mul" transform="translate(300, 150)" s:width="25" s:height="25">\n    <s:alias val="$mul"/>\n\n    <circle r="12.5" cx="12.5" cy="12.5" class="$cell_id"/>\n    <line x1="7.5"  x2="17.5" y1="7.5" y2="17.5" class="$cell_id"/>\n    <line x1="17.5" x2="7.5"  y1="7.5" y2="17.5" class="$cell_id"/>\n\n    <g s:x="2" s:y="5" s:pid="A"/>\n    <g s:x="2" s:y="20" s:pid="B"/>\n    <g s:x="26" s:y="12.5" s:pid="Y"/>\n  </g>\n\n  <g s:type="div" transform="translate(350, 150)" s:width="25" s:height="25">\n    <s:alias val="$div"/>\n\n    <circle r="12.5" cx="12.5" cy="12.5" class="$cell_id"/>\n    <line x1="15" x2="10"  y1="7.5" y2="17.5" class="$cell_id"/>\n\n    <g s:x="2" s:y="5" s:pid="A"/>\n    <g s:x="2" s:y="20" s:pid="B"/>\n    <g s:x="26" s:y="12.5" s:pid="Y"/>\n  </g>\n\n  <g s:type="mod" transform="translate(400, 150)" s:width="25" s:height="25">\n    <s:alias val="$mod"/>\n\n    <circle r="12.5" cx="12.5" cy="12.5" class="$cell_id"/>\n    <line x1="15" x2="10"  y1="7.5" y2="17.5" class="$cell_id"/>\n    <circle r="2" cx="8" cy="9" class="$cell_id"/>\n    <circle r="2" cx="17" cy="16" class="$cell_id"/>\n\n    <g s:x="2" s:y="5" s:pid="A"/>\n    <g s:x="2" s:y="20" s:pid="B"/>\n    <g s:x="26" s:y="12.5" s:pid="Y"/>\n  </g>\n\n  <g s:type="pow" transform="translate(450, 150)" s:width="25" s:height="25">\n    <s:alias val="$pow"/>\n\n    <circle r="12.5" cx="12.5" cy="12.5" class="$cell_id"/>\n    <line x1="10" x2="12.5"  y1="12" y2="6" class="$cell_id"/>\n    <line x1="15" x2="12.5"  y1="12" y2="6" class="$cell_id"/>\n\n    <g s:x="2" s:y="5" s:pid="A"/>\n    <g s:x="2" s:y="20" s:pid="B"/>\n    <g s:x="26" s:y="12.5" s:pid="Y"/>\n  </g>\n\n  <g s:type="ne" transform="translate(500,150)" s:width="25" s:height="25">\n    <s:alias val="$ne"/>\n    <s:alias val="$nex"/>\n\n    <circle r="12.5" cx="12.5" cy="12.5" class="$cell_id"/>\n    <line x1="7.5" x2="17.5" y1="10" y2="10" class="$cell_id"/>\n    <line x1="7.5" x2="17.5" y1="15" y2="15" class="$cell_id"/>\n    <line x1="9" x2="16" y1="18" y2="7" class="$cell_id"/>\n\n    <g s:x="2" s:y="5" s:pid="A"/>\n    <g s:x="2" s:y="20" s:pid="B"/>\n    <g s:x="25" s:y="12.5" s:pid="Y"/>\n  </g>\n\n  <g s:type="lt" transform="translate(50,200)" s:width="25" s:height="25">\n    <s:alias val="$lt"/>\n\n    <circle r="12.5" cx="12.5" cy="12.5" class="$cell_id"/>\n    <line x1="6" x2="17" y1="12"  y2="7" class="$cell_id"/>\n    <line x1="6" x2="17" y1="12" y2="17" class="$cell_id"/>\n\n    <g s:x="2" s:y="5" s:pid="A"/>\n    <g s:x="2" s:y="20" s:pid="B"/>\n    <g s:x="25" s:y="12.5" s:pid="Y"/>\n  </g>\n\n  <g s:type="le" transform="translate(100,200)" s:width="25" s:height="25">\n    <s:alias val="$le"/>\n\n    <circle r="12.5" cx="12.5" cy="12.5" class="$cell_id"/>\n    <line x1="6" x2="17" y1="11"  y2="6" class="$cell_id"/>\n    <line x1="6" x2="17" y1="11" y2="16" class="$cell_id"/>\n    <line x1="6" x2="17" y1="14" y2="19" class="$cell_id"/>\n\n    <g s:x="2" s:y="5" s:pid="A"/>\n    <g s:x="2" s:y="20" s:pid="B"/>\n    <g s:x="25" s:y="12.5" s:pid="Y"/>\n  </g>\n\n  <g s:type="ge" transform="translate(150,200)" s:width="25" s:height="25">\n    <s:alias val="$ge"/>\n\n    <circle r="12" cx="12" cy="12" class="$cell_id"/>\n    <line x1="8" x2="19"  y1="6" y2="11" class="$cell_id"/>\n    <line x1="8" x2="19" y1="16" y2="11" class="$cell_id"/>\n    <line x1="8" x2="19" y1="19" y2="14" class="$cell_id"/>\n\n    <g s:x="2" s:y="5" s:pid="A"/>\n    <g s:x="2" s:y="20" s:pid="B"/>\n    <g s:x="25" s:y="12.5" s:pid="Y"/>\n  </g>\n\n  <g s:type="gt" transform="translate(200,200)" s:width="25" s:height="25">\n    <s:alias val="$gt"/>\n\n    <circle r="12" cx="12" cy="12" class="$cell_id"/>\n    <line x1="8" x2="19"  y1="7" y2="12" class="$cell_id"/>\n    <line x1="8" x2="19" y1="17" y2="12" class="$cell_id"/>\n\n    <g s:x="2" s:y="5" s:pid="A"/>\n    <g s:x="2" s:y="20" s:pid="B"/>\n    <g s:x="25" s:y="12.5" s:pid="Y"/>\n  </g>\n\n  <g s:type="shr" transform="translate(250,200)" s:width="25" s:height="25">\n    <s:alias val="$shr"/>\n\n    <circle r="12" cx="12" cy="12" class="$cell_id"/>\n    <line x1="8" x2="13"  y1="7"  y2="12" class="$cell_id"/>\n    <line x1="8" x2="13"  y1="17" y2="12" class="$cell_id"/>\n    <line x1="14" x2="19" y1="7"  y2="12" class="$cell_id"/>\n    <line x1="14" x2="19" y1="17" y2="12" class="$cell_id"/>\n\n    <g s:x="2" s:y="5" s:pid="A"/>\n    <g s:x="2" s:y="20" s:pid="B"/>\n    <g s:x="25" s:y="12.5" s:pid="Y"/>\n  </g>\n\n  <g s:type="shl" transform="translate(300,200)" s:width="25" s:height="25">\n    <s:alias val="$shl"/>\n\n    <circle r="12" cx="12" cy="12" class="$cell_id"/>\n    <line x1="6" x2="11"  y1="12" y2="7"  class="$cell_id"/>\n    <line x1="6" x2="11"  y1="12" y2="17" class="$cell_id"/>\n    <line x1="12" x2="17" y1="12" y2="7"  class="$cell_id"/>\n    <line x1="12" x2="17" y1="12" y2="17" class="$cell_id"/>\n\n    <g s:x="2" s:y="5" s:pid="A"/>\n    <g s:x="2" s:y="20" s:pid="B"/>\n    <g s:x="25" s:y="12.5" s:pid="Y"/>\n  </g>\n\n  <g s:type="sshr" transform="translate(350,200)" s:width="25" s:height="25">\n    <s:alias val="$sshr"/>\n\n    <circle r="12" cx="12" cy="12" class="$cell_id"/>\n    <line x1="5"  x2="10" y1="7"  y2="12" class="$cell_id"/>\n    <line x1="5"  x2="10" y1="17" y2="12" class="$cell_id"/>\n    <line x1="11" x2="16" y1="7"  y2="12" class="$cell_id"/>\n    <line x1="11" x2="16" y1="17" y2="12" class="$cell_id"/>\n    <line x1="17" x2="22" y1="7"  y2="12" class="$cell_id"/>\n    <line x1="17" x2="22" y1="17" y2="12" class="$cell_id"/>\n\n    <g s:x="2" s:y="5" s:pid="A"/>\n    <g s:x="2" s:y="20" s:pid="B"/>\n    <g s:x="25" s:y="12.5" s:pid="Y"/>\n  </g>\n\n  <g s:type="sshl" transform="translate(400,200)" s:width="25" s:height="25">\n    <s:alias val="$sshl"/>\n\n    <circle r="12" cx="12" cy="12" class="$cell_id"/>\n    <line x1="3"  x2="8"   y1="12" y2="7"  class="$cell_id"/>\n    <line x1="3"  x2="8"   y1="12" y2="17" class="$cell_id"/>\n    <line x1="9"  x2="14" y1="12" y2="7"  class="$cell_id"/>\n    <line x1="9"  x2="14" y1="12" y2="17" class="$cell_id"/>\n    <line x1="15" x2="20" y1="12" y2="7"  class="$cell_id"/>\n    <line x1="15" x2="20" y1="12" y2="17" class="$cell_id"/>\n\n    <g s:x="2" s:y="5" s:pid="A"/>\n    <g s:x="2" s:y="20" s:pid="B"/>\n    <g s:x="25" s:y="12.5" s:pid="Y"/>\n  </g>\n\n  <g s:type="inputExt" transform="translate(50,250)" s:width="30" s:height="20">\n    <text x="15" y="-4" class="nodelabel $cell_id" s:attribute="ref">input</text>\n    <s:alias val="$_inputExt_"/>\n    <path d="M0,0 L0,20 L15,20 L30,10 L15,0 Z" class="$cell_id"/>\n    <g s:x="30" s:y="10" s:pid="Y"/>\n  </g>\n\n  <g s:type="constant" transform="translate(150,250)" s:width="30" s:height="20">\n    <text x="15" y="-4" class="nodelabel $cell_id" s:attribute="ref">constant</text>\n\n    <s:alias val="$_constant_"/>\n    <rect width="30" height="20" class="$cell_id"/>\n\n    <g s:x="31" s:y="10" s:pid="Y"/>\n  </g>\n\n  <g s:type="outputExt" transform="translate(250,250)" s:width="30" s:height="20">\n    <text x="15" y="-4" class="nodelabel $cell_id" s:attribute="ref">output</text>\n    <s:alias val="$_outputExt_"/>\n    <path d="M30,0 L30,20 L15,20 L0,10 L15,0 Z" class="$cell_id"/>\n\n    <g s:x="0" s:y="10" s:pid="A"/>\n  </g>\n\n  <g s:type="split" transform="translate(350,250)" s:width="5" s:height="40">\n    <rect width="5" height="40" class="splitjoinBody" s:generic="body"/>\n    <s:alias val="$_split_"/>\n\n    <g s:x="0" s:y="20" s:pid="in"/>\n    <g transform="translate(5, 10)" s:x="4" s:y="10" s:pid="out0">\n      <text x="5" y="-4">hi:lo</text>\n    </g>\n    <g transform="translate(5, 30)" s:x="4" s:y="30" s:pid="out1">\n      <text x="5" y="-4">hi:lo</text>\n    </g>\n  </g>\n\n  <g s:type="join" transform="translate(450,250)" s:width="4" s:height="40">\n    <rect width="5" height="40" class="splitjoinBody" s:generic="body"/>\n    <s:alias val="$_join_"/>\n    <g s:x="5" s:y="20"  s:pid="out"/>\n    <g transform="translate(0, 10)" s:x="0" s:y="10" s:pid="in0">\n      <text x="-3" y="-4" class="inputPortLabel">hi:lo</text>\n    </g>\n    <g transform="translate(0, 30)" s:x="0" s:y="30" s:pid="in1">\n      <text x="-3" y="-4" class="inputPortLabel">hi:lo</text>\n    </g>\n  </g>\n\n  <g s:type="dff" transform="translate(50,300)" s:width="30" s:height="40">\n    <s:alias val="$dff"/>\n    <s:alias val="$_DFF_"/>\n    <s:alias val="$_DFF_P_"/>\n\n    <s:alias val="$adff"/>\n    <s:alias val="$_DFF_"/>\n    <s:alias val="$_DFF_P_"/>\n\n    <s:alias val="$sdff"/>\n    <s:alias val="$_DFF_"/>\n    <s:alias val="$_DFF_P_"/>\n\n    <rect width="30" height="40" x="0" y="0" class="$cell_id"/>\n    <path d="M0,35 L5,30 L0,25" class="$cell_id"/>\n\n    <g s:x="31" s:y="10" s:pid="Q"/>\n    <g s:x="-1" s:y="30" s:pid="CLK"/>\n    <g s:x="-1" s:y="30" s:pid="C"/>\n    <g s:x="-1" s:y="10" s:pid="D"/>\n    <g s:x="15" s:y="40" s:pid="ARST"/>\n    <g s:x="15" s:y="40" s:pid="SRST"/>\n  </g>\n\n  <g s:type="dff-bus" transform="translate(100,300)" s:width="34" s:height="44">\n    <s:alias val="$dff-bus"/>\n    <s:alias val="$_DFF_-bus"/>\n    <s:alias val="$_DFF_P_-bus"/>\n\n    <s:alias val="adff-bus"/>\n    <s:alias val="$adff-bus"/>\n    <s:alias val="$_DFF_-bus"/>\n    <s:alias val="$_DFF_P_-bus"/>\n\n    <s:alias val="sdff-bus"/>\n    <s:alias val="$sdff-bus"/>\n    <s:alias val="$_DFF_-bus"/>\n    <s:alias val="$_DFF_P_-bus"/>\n\n    <rect width="30" height="40" x="0" y="0" class="$cell_id"/>\n    <path d="M0,35 L5,30 L0,25" class="$cell_id"/>\n    <path d="M30,2 L32,2 L32,42 L2,42 L2,40" class="$cell_id"/>\n    <path d="M32,4 L34,4 L34,44 L4,44 L4,42" class="$cell_id"/>\n\n    <g s:x="35" s:y="10" s:pid="Q"/>\n    <g s:x="-1" s:y="30" s:pid="CLK"/>\n    <g s:x="-1" s:y="30" s:pid="C"/>\n    <g s:x="-1" s:y="10" s:pid="D"/>\n    <g s:x="17" s:y="44" s:pid="ARST"/>\n    <g s:x="17" s:y="44" s:pid="SRST"/>\n  </g>\n\n  <g s:type="dffn" transform="translate(150,300)" s:width="30" s:height="40">\n    <s:alias val="$dffn"/>\n    <s:alias val="$_DFF_N_"/>\n\n    <rect width="30" height="40" x="0" y="0" class="$cell_id"/>\n    <path d="M0,35 L5,30 L0,25" class="$cell_id"/>\n    <circle cx="-3" cy="30" r="3" class="$cell_id"/>\n\n    <g s:x="30" s:y="10" s:pid="Q"/>\n    <g s:x="-6" s:y="30" s:pid="CLK"/>\n    <g s:x="-6" s:y="30" s:pid="C"/>\n    <g s:x="0" s:y="10" s:pid="D"/>\n  </g>\n\n  <g s:type="dffn-bus" transform="translate(200,300)" s:width="30" s:height="40">\n    <s:alias val="$dffn-bus"/>\n    <s:alias val="$_DFF_N_-bus"/>\n\n    <rect width="30" height="40" x="0" y="0" class="$cell_id"/>\n    <path d="M0,35 L5,30 L0,25" class="$cell_id"/>\n    <circle cx="-3" cy="30" r="3" class="$cell_id"/>\n    <path d="M30,2 L32,2 L32,42 L2,42 L2,40" class="$cell_id"/>\n    <path d="M32,4 L34,4 L34,44 L4,44 L4,42" class="$cell_id"/>\n\n    <g s:x="35" s:y="10" s:pid="Q"/>\n    <g s:x="-6" s:y="30" s:pid="CLK"/>\n    <g s:x="-6" s:y="30" s:pid="C"/>\n    <g s:x="0" s:y="10" s:pid="D"/>\n  </g>\n\n  <g s:type="dlatch" transform="translate(250,300)" s:width="30" s:height="40">\n    <s:alias val="$dlatch"/>\n    <s:alias val="$_DLATCH_"/>\n    <s:alias val="adlatch"/>\n    <s:alias val="$adlatch"/>\n\n    <rect width="30" height="40" x="0" y="0" class="$cell_id"/>\n\n    <path d="M 1,35 H 4 V 25 h 5 v 10 h 3" class="$cell_id"/>\n\n    <g s:x="30" s:y="10" s:pid="Q"/>\n    <g s:x="0" s:y="10" s:pid="D"/>\n    <g s:x="-1" s:y="30" s:pid="EN"/>\n    <g s:x="15" s:y="40" s:pid="ARST"/>\n  </g>\n\n  <g s:type="dlatch-bus" transform="translate(300,300)" s:width="30" s:height="40">\n    <s:alias val="$dlatch-bus"/>\n    <s:alias val="$_DLATCH_-bus"/>\n    <s:alias val="adlatch-bus"/>\n    <s:alias val="$adlatch-bus"/>\n\n    <rect width="30" height="40" x="0" y="0" class="$cell_id"/>\n\n    <path d="M 1,35 H 4 V 25 h 5 v 10 h 3" class="$cell_id"/>\n    <path d="M30,2 L32,2 L32,42 L2,42 L2,40" class="$cell_id"/>\n    <path d="M32,4 L34,4 L34,44 L4,44 L4,42" class="$cell_id"/>\n\n    <g s:x="35" s:y="10" s:pid="Q"/>\n    <g s:x="0" s:y="10" s:pid="D"/>\n    <g s:x="-1" s:y="30" s:pid="EN"/>\n    <g s:x="17" s:y="44" s:pid="ARST"/>\n  </g>\n\n  <g s:type="dlatchn" transform="translate(350,300)" s:width="30" s:height="40">\n    <s:alias val="$dlatchn"/>\n    <s:alias val="$_DLATCH_N_"/>\n\n    <rect width="30" height="40" x="0" y="0" class="$cell_id"/>\n\n    <path d="M 1,25 H 4 V 35 H 9 V 25 h 3" class="$cell_id"/>\n\n    <g s:x="30" s:y="10" s:pid="Q"/>\n    <g s:x="0" s:y="10" s:pid="D"/>\n    <g s:x="-1" s:y="30" s:pid="EN"/>\n  </g>\n\n  <g s:type="dlatchn-bus" transform="translate(400,300)" s:width="30" s:height="40">\n    <s:alias val="$dlatchn-bus"/>\n    <s:alias val="$_DLATCH_N_-bus"/>\n\n    <rect width="30" height="40" x="0" y="0" class="$cell_id"/>\n\n    <path d="M 1,25 H 4 V 35 H 9 V 25 h 3" class="$cell_id"/>\n    <path d="M30,2 L32,2 L32,42 L2,42 L2,40" class="$cell_id"/>\n    <path d="M32,4 L34,4 L34,44 L4,44 L4,42" class="$cell_id"/>\n\n    <g s:x="35" s:y="10" s:pid="Q"/>\n    <g s:x="0" s:y="10" s:pid="D"/>\n    <g s:x="-1" s:y="30" s:pid="EN"/>\n  </g>\n\n  <g s:type="_AOI3_" transform="translate(50, 400)" s:width="66" s:height="40">\n    <s:alias val="$_AOI3_"/>\n\n    <path d="M0,0 L0,25 L15,25 A15 12.5 0 0 0 15,0 Z" class="$cell_id"/>\n    <path d="M30,13 A30 25 0 0 1 30,38 A30 25 0 0 0 60,25.5 A30 25 0 0 0 30,13" class="$cell_id"/>\n    <circle cx="63" cy="25.5" r="3" class="$cell_id"/>\n    <path d="M0,32 L33,32" />\n    <g s:x="0" s:y="5"  s:pid="A"/>\n    <g s:x="0" s:y="20"  s:pid="B"/>\n    <g s:x="0" s:y="32"  s:pid="C"/>\n    <g s:x="66" s:y="25.5" s:pid="Y"/>\n    <!-- <path d="M-5,5 L0,5"/> -->\n    <!-- <path d="M-5,20 L0,20"/> -->\n    <!-- <path d="M-5,32 L0,32"/> -->\n    <!-- <path d="M 70,25.5 L 66,25.5"/> -->\n  </g>\n\n  <g s:type="_OAI3_" transform="translate(150, 400)" s:width="66" s:height="40">\n    <s:alias val="$_OAI3_"/>\n\n    <path d="M30,13 L30,38 L45,38 A15 12.5 0 0 0 45,13 Z" class="$cell_id"/>\n    <path d="M0,0 A30 25 0 0 1 0,25 A30 25 0 0 0 30,12.5 A30 25 0 0 0 0,0" class="$cell_id"/>\n    <circle cx="63" cy="25.5" r="3" class="$cell_id"/>\n    <path d="M0,32 L30,32" />\n\n    <g s:x="2" s:y="5"  s:pid="A"/>\n    <g s:x="2" s:y="20"  s:pid="B"/>\n    <g s:x="0" s:y="32"  s:pid="C"/>\n    <g s:x="66" s:y="25.5" s:pid="Y"/>\n    <!-- <path d="M-5,5 L2,5"/> -->\n    <!-- <path d="M-5,20 L2,20"/> -->\n    <!-- <path d="M-5,32 L0,32"/> -->\n    <!-- <path d="M 70,25.5 L 66,25.5"/> -->\n  </g>\n\n  <!-- AOI4 -->\n\n  <g s:type="_AOI4_" transform="translate(250, 400)" s:width="66" s:height="40">\n    <s:alias val="$_AOI4_"/>\n\n    <path d="M0,0 L0,25 L15,25 A15 12.5 0 0 0 15,0 Z" class="$cell_id"/>\n    <path d="M0,25 L0,50 L15,50 A15 12.5 0 0 0 15,25 Z" class="$cell_id"/>\n    <path d="M30,12.5 A30 25 0 0 1 30,37.5 A30 25 0 0 0 60,25.5 A30 25 0 0 0 30,12.5" class="$cell_id"/>\n    <circle cx="63" cy="25.5" r="3" class="$cell_id"/>\n    <g s:x="0" s:y="5"  s:pid="A"/>\n    <g s:x="0" s:y="20"  s:pid="B"/>\n    <g s:x="0" s:y="30"  s:pid="C"/>\n    <g s:x="0" s:y="45"  s:pid="D"/>\n    <g s:x="66" s:y="25.5" s:pid="Y"/>\n    <!-- <path d="M-5,5 L0,5"/> -->\n    <!-- <path d="M-5,20 L0,20"/> -->\n    <!-- <path d="M-5,30 L0,30"/> -->\n    <!-- <path d="M-5,45 L0,45"/> -->\n    <!-- <path d="M 70,25.5 L 66,25.5"/> -->\n  </g>\n\n  <!-- OAI4 -->\n\n  <g s:type="_OAI4_" transform="translate(350, 400)" s:width="66" s:height="40">\n    <s:alias val="$_OAI4_"/>\n\n    <path d="M30,13 L30,38 L45,38 A15 12.5 0 0 0 45,13 Z" class="$cell_id"/>\n    <path d="M0,0 A30 25 0 0 1 0,25 A30 25 0 0 0 30,12.5 A30 25 0 0 0 0,0" class="$cell_id"/>\n    <path d="M0,25 A30 25 0 0 1 0,50 A30 25 0 0 0 30,37.5 A30 25 0 0 0 0,25" class="$cell_id"/>\n    <circle cx="63" cy="25.5" r="3" class="$cell_id"/>\n\n    <g s:x="2" s:y="5"  s:pid="A"/>\n    <g s:x="2" s:y="20"  s:pid="B"/>\n    <g s:x="2" s:y="30"  s:pid="C"/>\n    <g s:x="2" s:y="45"  s:pid="D"/>\n    <g s:x="66" s:y="25.5" s:pid="Y"/>\n    <!-- <path d="M-5,5 L2,5"/> -->\n    <!-- <path d="M-5,20 L2,20"/> -->\n    <!-- <path d="M-5,30 L2,30"/> -->\n    <!-- <path d="M-5,45 L2,45"/> -->\n    <!-- <path d="M 70,25.5 L 66,25.5"/> -->\n  </g>\n\n  <g s:type="generic" transform="translate(550,250)" s:width="30" s:height="40">\n\n    <text x="15" y="-4" class="nodelabel $cell_id" s:attribute="ref">generic</text>\n    <rect width="30" height="40" s:generic="body" class="$cell_id"/>\n\n    <g transform="translate(30, 10)" s:x="30" s:y="10" s:pid="out0">\n      <text x="5" y="-4" style="fill:#000; stroke:none" class="$cell_id">out0</text>\n    </g>\n    <g transform="translate(30, 30)" s:x="30" s:y="30" s:pid="out1">\n      <text x="5" y="-4" style="fill:#000;stroke:none" class="$cell_id">out1</text>\n    </g>\n    <g transform="translate(0, 10)" s:x="0" s:y="10" s:pid="in0">\n      <text x="-3" y="-4" class="inputPortLabel $cell_id">in0</text>\n    </g>\n    <g transform="translate(0, 30)" s:x="0" s:y="30" s:pid="in1">\n      <text x="-3" y="-4" class="inputPortLabel $cell_id">in1</text>\n    </g>\n  </g>\n\n</svg>\n';
+      module.exports = '<svg  xmlns="http://www.w3.org/2000/svg"\n  xmlns:xlink="http://www.w3.org/1999/xlink"\n  xmlns:s="https://github.com/ajsb85/netlist2svg"\n  width="800" height="500"><style>\n  svg {\n    stroke: #000;\n    fill: none;\n  }\n  text {\n    fill: #000;\n    stroke: none;\n    font-size: 10px;\n    font-weight: bold;\n    font-family: "Courier New", monospace;\n  }\n  .nodelabel {\n    text-anchor: middle;\n  }\n  .inputPortLabel {\n    text-anchor: end;\n  }\n  .splitjoinBody {\n    fill: #000;\n  }\n  .junction {\n    fill: #000;\n  }\n  .labelBackground {\n    fill: #fff;\n    stroke: none;\n  }\n  .detail, .symbol {\n    stroke-linejoin: round;\n    stroke-linecap: round;\n  }\n  .symbol {\n    stroke-width: 2;\n  }\n  .detail {\n    fill: #000;\n  }\n\n  @media (prefers-color-scheme: dark) {\n    svg {\n      stroke: #fff !important;\n    }\n    text {\n      fill: #fff !important;\n    }\n    .splitjoinBody {\n      fill: #fff !important;\n    }\n    .junction {\n      fill: #fff !important;\n    }\n    .labelBackground {\n      fill: #0a192f !important; /* Blueprint background or transparent */\n    }\n    .detail {\n      fill: #fff !important;\n    }\n    circle, path, rect, line {\n      stroke: #fff;\n    }\n    [style*="fill:#000"], [style*="fill:#000000"] {\n      fill: #fff !important;\n    }\n    [style*="stroke:#000"], [style*="stroke:#000000"] {\n      stroke: #fff !important;\n    }\n    .subModuleOdd {\n      fill: #0e2238 !important;\n    }\n    .subModuleEven {\n      fill: #16365a !important;\n    }\n  }\n\n  /* Forced dark theme (used by the always-dark interactive demo). Mirrors the\n     prefers-color-scheme rules above but is triggered by class="dark" on the\n     root svg, so it works even when the host page/OS is not in dark mode. */\n  svg.dark {\n    stroke: #fff !important;\n  }\n  svg.dark text {\n    fill: #fff !important;\n  }\n  svg.dark .splitjoinBody {\n    fill: #fff !important;\n  }\n  svg.dark .junction {\n    fill: #fff !important;\n  }\n  svg.dark .labelBackground {\n    fill: #0a192f !important;\n  }\n  svg.dark .detail {\n    fill: #fff !important;\n  }\n  svg.dark circle, svg.dark path, svg.dark rect, svg.dark line {\n    stroke: #fff;\n  }\n  svg.dark .subModuleOdd {\n    fill: #0e2238 !important;\n  }\n  svg.dark .subModuleEven {\n    fill: #16365a !important;\n  }\n  svg.dark [style*="fill:#000"], svg.dark [style*="fill:#000000"] {\n    fill: #fff !important;\n  }\n  svg.dark [style*="stroke:#000"], svg.dark [style*="stroke:#000000"] {\n    stroke: #fff !important;\n  }\n</style>\n  <s:properties>\n    <s:layoutEngine\n      org.eclipse.elk.layered.spacing.nodeNodeBetweenLayers="35"\n      org.eclipse.elk.spacing.nodeNode= "35"\n      org.eclipse.elk.layered.layering.strategy= "LONGEST_PATH"\n    />\n    <s:low_priority_alias val="$dff" />\n  </s:properties>\n\n\n  <g s:type="mux" transform="translate(50, 50)" s:width="20" s:height="40">\n    <s:alias val="$pmux"/>\n    <s:alias val="$mux"/>\n    <s:alias val="$_MUX_"/>\n\n    <path d="M0,0 L20,10 L20,30 L0,40 Z" class="$cell_id"/>\n\n    <text x="5" y="32" class="nodelabel $cell_id" s:attribute="">1</text>\n    <text x="5" y="13" class="nodelabel $cell_id" s:attribute="">0</text>\n    <g s:x="0" s:y="10" s:pid="A"/>\n    <g s:x="0" s:y="30" s:pid="B"/>\n    <g s:x="10" s:y="35" s:pid="S"/>\n    <g s:x="20" s:y="20" s:pid="Y"/>\n  </g>\n\n  <g s:type="mux-bus" transform="translate(100, 50)" s:width="24" s:height="40">\n    <s:alias val="$pmux-bus"/>\n    <s:alias val="$mux-bus"/>\n    <s:alias val="$_MUX_-bus"/>\n\n    <path d="M0,0 L20,10 L20,30 L0,40 Z" class="$cell_id"/>\n    <path d="M4,2 L4,0 L22,9 L22,31 L4,40 L4,38" class="$cell_id"/>\n    <path d="M8,2 L8,0 L24,8 L24,32 L8,40 L8,38" class="$cell_id"/>\n\n    <text x="5" y="32" class="nodelabel $cell_id" s:attribute="">1</text>\n    <text x="5" y="13" class="nodelabel $cell_id" s:attribute="">0</text>\n    <g s:x="-1" s:y="10" s:pid="A"/>\n    <g s:x="-1" s:y="30" s:pid="B"/>\n    <g s:x="12" s:y="38" s:pid="S"/>\n    <g s:x="24.5" s:y="20" s:pid="Y"/>\n  </g>\n\n  <!-- and -->\n  <g s:type="and" transform="translate(150,50)" s:width="30" s:height="25">\n    <s:alias val="$and"/>\n    <s:alias val="$logic_and"/>\n    <s:alias val="$_AND_"/>\n    <s:alias val="$reduce_and"/>\n\n    <path d="M0,0 L0,25 L15,25 A15 12.5 0 0 0 15,0 Z" class="$cell_id"/>\n\n    <g s:x="0" s:y="5" s:pid="A"/>\n    <g s:x="0" s:y="20" s:pid="B"/>\n    <g s:x="30" s:y="12.5" s:pid="Y"/>\n  </g>\n  <g s:type="nand" transform="translate(150,100)" s:width="30" s:height="25">\n    <s:alias val="$nand"/>\n    <s:alias val="$logic_nand"/>\n    <s:alias val="$_NAND_"/>\n\n    <path d="M0,0 L0,25 L15,25 A15 12.5 0 0 0 15,0 Z" class="$cell_id"/>\n    <circle cx="34" cy="12.5" r="3" class="$cell_id"/>\n\n    <g s:x="0" s:y="5" s:pid="A"/>\n    <g s:x="0" s:y="20" s:pid="B"/>\n    <g s:x="36" s:y="12.5" s:pid="Y"/>\n  </g>\n  <g s:type="andnot" transform="translate(200,50)" s:width="30" s:height="25">\n    <s:alias val="$_ANDNOT_"/>\n\n    <path d="M0,0 L0,25 L15,25 A15 12.5 0 0 0 15,0 Z" class="$cell_id"/>\n    <circle cx="-3" cy="20" r="3"/>\n\n    <g s:x="0" s:y="5" s:pid="A"/>\n    <g s:x="-6" s:y="20" s:pid="B"/>\n    <!-- <path d="M -10,20 L -6,20"/> -->\n    <g s:x="30" s:y="12.5" s:pid="Y"/>\n  </g>\n\n  <!-- or -->\n  <g s:type="or" transform="translate(250,50)" s:width="30" s:height="25">\n    <s:alias val="$or"/>\n    <s:alias val="$logic_or"/>\n    <s:alias val="$_OR_"/>\n    <s:alias val="$reduce_or"/>\n    <s:alias val="$reduce_bool"/>\n\n    <path d="M0,0 A30 25 0 0 1 0,25 A30 25 0 0 0 30,12.5 A30 25 0 0 0 0,0" class="$cell_id"/>\n \n    <g s:x="2" s:y="5" s:pid="A"/>\n    <g s:x="2" s:y="20" s:pid="B"/>\n    <g s:x="30" s:y="12.5" s:pid="Y"/>\n  </g>\n  <g s:type="reduce_nor" transform="translate(250, 100)" s:width="33" s:height="25">\n    <s:alias val="$nor"/>\n    <s:alias val="$reduce_nor"/>\n    <s:alias val="$_NOR_"/>\n    <s:alias val="$_ORNOT_"/>\n\n    <path d="M0,0 A30 25 0 0 1 0,25 A30 25 0 0 0 30,12.5 A30 25 0 0 0 0,0" class="$cell_id"/>\n    <circle cx="33" cy="12.5" r="3" class="$cell_id"/>\n\n    <g s:x="2" s:y="5" s:pid="A"/>\n    <g s:x="2" s:y="20" s:pid="B"/>\n    <g s:x="36" s:y="12.5" s:pid="Y"/>\n  </g>\n  <g s:type="ornot" transform="translate(300,50)" s:width="30" s:height="25">\n    <s:alias val="$_ORNOT_"/>\n\n    <path d="M0,0 A30 25 0 0 1 0,25 A30 25 0 0 0 30,12.5 A30 25 0 0 0 0,0" class="$cell_id"/>\n    <circle cx="-1" cy="20" r="3"/>\n \n    <g s:x="2" s:y="5" s:pid="A"/>\n    <g s:x="-4" s:y="20" s:pid="B"/>\n    <!-- <path d="M -8,20 L -4,20"/> -->\n    <g s:x="30" s:y="12.5" s:pid="Y"/>\n  </g>\n\n  <!--xor -->\n  <g s:type="reduce_xor" transform="translate(350, 50)" s:width="33" s:height="25">\n    <s:alias val="$xor"/>\n    <s:alias val="$reduce_xor"/>\n    <s:alias val="$_XOR_"/>\n\n    <path d="M3,0 A30 25 0 0 1 3,25 A30 25 0 0 0 33,12.5 A30 25 0 0 0 3,0" class="$cell_id"/>\n    <path d="M0,0 A30 25 0 0 1 0,25" class="$cell_id"/>\n\n    <g s:x="2" s:y="5" s:pid="A"/>\n    <g s:x="2" s:y="20" s:pid="B"/>\n    <g s:x="33" s:y="12.5" s:pid="Y"/>\n  </g>\n\n  <g s:type="reduce_nxor" transform="translate(350, 100)" s:width="33" s:height="25">\n    <s:alias val="$xnor"/>\n    <s:alias val="$reduce_xnor"/>\n    <s:alias val="$_XNOR_"/>\n\n    <path d="M3,0 A30 25 0 0 1 3,25 A30 25 0 0 0 33,12.5 A30 25 0 0 0 3,0" class="$cell_id"/>\n    <path d="M0,0 A30 25 0 0 1 0,25" class="$cell_id"/>\n    <circle cx="36" cy="12.5" r="3" class="$cell_id"/>\n\n    <g s:x="2" s:y="5" s:pid="A"/>\n    <g s:x="2" s:y="20" s:pid="B"/>\n    <g s:x="38" s:y="12.5" s:pid="Y"/>\n  </g>\n\n  <g s:type="tribuf" transform="translate(550, 50)" s:width="15" s:height="30">\n    <s:alias val="$tribuf"/>\n    <s:alias val="$_TRIBUF_"/>\n\n    <s:alias val="tribuf-bus"/>\n    <s:alias val="$tribuf-bus"/>\n    <s:alias val="$_TRIBUF_-bus"/>\n\n    <path d="M0,0 L25,15 L0,30 Z" class="$cell_id"/>\n\n    <g s:x="0" s:y="15" s:pid="A"/>\n    <g s:x="11" s:y="6" s:pid="EN"/>\n    <g s:x="25" s:y="15" s:pid="Y"/>\n    <!-- <path d="M -5,15 L 0,15" /> -->\n    <!-- <path d="M 11,0 L 11,6" /> -->\n    <!-- <path d="M 30,15 L 25,15" /> -->\n  </g>\n\n  <!--buffer -->\n  <g s:type="not" transform="translate(450,100)" s:width="30" s:height="20">\n    <s:alias val="$_NOT_"/>\n    <s:alias val="$not"/>\n    <s:alias val="$logic_not"/>\n\n    <path d="M0,0 L0,20 L20,10 Z" class="$cell_id"/>\n    <circle cx="24" cy="10" r="3" class="$cell_id"/>\n\n    <g s:x="-1" s:y="10" s:pid="A"/>\n    <g s:x="27" s:y="10" s:pid="Y"/>\n  </g>\n  <g s:type="buf" transform="translate(450,50)" s:width="30" s:height="20">\n    <s:alias val="$_BUF_"/>\n\n    <path d="M0,0 L0,20 L20,10 Z" class="$cell_id"/>\n\n    <g s:x="0" s:y="10" s:pid="A"/>\n    <g s:x="20" s:y="10" s:pid="Y"/>\n    <!-- <path d="M -5,10 L 0,10"/> -->\n    <!-- <path d="M 25,10 L 20,10"/> -->\n  </g>\n\n  <g s:type="add" transform="translate(50, 150)" s:width="25" s:height="25">\n    <s:alias val="$add"/>\n\n    <circle r="12.5" cx="12.5" cy="12.5" class="$cell_id"/>\n    <line x1="7.5" x2="17.5" y1="12.5" y2="12.5" class="$cell_id"/>\n    <line x1="12.5" x2="12.5" y1="7.5" y2="17.5" class="$cell_id"/>\n\n    <g s:x="2" s:y="5" s:pid="A"/>\n    <g s:x="2" s:y="20" s:pid="B"/>\n    <g s:x="26" s:y="12.5" s:pid="Y"/>\n  </g>\n\n  <g s:type="pos" transform="translate(100, 150)" s:width="25" s:height="25">\n    <s:alias val="$pos"/>\n\n    <circle r="12.5" cx="12.5" cy="12.5" class="$cell_id"/>\n    <line x1="7.5" x2="17.5" y1="12.5" y2="12.5" class="$cell_id"/>\n    <line x1="12.5" x2="12.5" y1="7.5" y2="17.5" class="$cell_id"/>\n\n    <g s:x="-1" s:y="12.5" s:pid="A"/>\n    <g s:x="26" s:y="12.5" s:pid="Y"/>\n  </g>\n\n  <g s:type="sub" transform="translate(150,150)" s:width="25" s:height="25">\n    <s:alias val="$sub"/>\n\n    <circle r="12.5" cx="12.5" cy="12.5" class="$cell_id"/>\n    <line x1="7.5" x2="17.5" y1="12.5" y2="12.5" class="$cell_id"/>\n\n    <g s:x="2" s:y="5" s:pid="A"/>\n    <g s:x="2" s:y="20" s:pid="B"/>\n    <g s:x="25" s:y="12.5" s:pid="Y"/>\n  </g>\n\n  <g s:type="neg" transform="translate(200,150)" s:width="25" s:height="25">\n    <s:alias val="$neg"/>\n\n    <circle r="12.5" cx="12.5" cy="12.5" class="$cell_id"/>\n    <line x1="7.5" x2="17.5" y1="12.5" y2="12.5" class="$cell_id"/>\n\n    <g s:x="0" s:y="12.5" s:pid="A"/>\n    <g s:x="25" s:y="12.5" s:pid="Y"/>\n  </g>\n\n  <g s:type="eq" transform="translate(250,150)" s:width="25" s:height="25">\n    <s:alias val="$eq"/>\n    <s:alias val="$eqx"/>\n\n    <circle r="12.5" cx="12.5" cy="12.5" class="$cell_id"/>\n    <line x1="7.5" x2="17.5" y1="10" y2="10" class="$cell_id"/>\n    <line x1="7.5" x2="17.5" y1="15" y2="15" class="$cell_id"/>\n\n    <g s:x="2" s:y="5" s:pid="A"/>\n    <g s:x="2" s:y="20" s:pid="B"/>\n    <g s:x="25" s:y="12.5" s:pid="Y"/>\n  </g>\n\n  <g s:type="mul" transform="translate(300, 150)" s:width="25" s:height="25">\n    <s:alias val="$mul"/>\n\n    <circle r="12.5" cx="12.5" cy="12.5" class="$cell_id"/>\n    <line x1="7.5"  x2="17.5" y1="7.5" y2="17.5" class="$cell_id"/>\n    <line x1="17.5" x2="7.5"  y1="7.5" y2="17.5" class="$cell_id"/>\n\n    <g s:x="2" s:y="5" s:pid="A"/>\n    <g s:x="2" s:y="20" s:pid="B"/>\n    <g s:x="26" s:y="12.5" s:pid="Y"/>\n  </g>\n\n  <g s:type="div" transform="translate(350, 150)" s:width="25" s:height="25">\n    <s:alias val="$div"/>\n\n    <circle r="12.5" cx="12.5" cy="12.5" class="$cell_id"/>\n    <line x1="15" x2="10"  y1="7.5" y2="17.5" class="$cell_id"/>\n\n    <g s:x="2" s:y="5" s:pid="A"/>\n    <g s:x="2" s:y="20" s:pid="B"/>\n    <g s:x="26" s:y="12.5" s:pid="Y"/>\n  </g>\n\n  <g s:type="mod" transform="translate(400, 150)" s:width="25" s:height="25">\n    <s:alias val="$mod"/>\n\n    <circle r="12.5" cx="12.5" cy="12.5" class="$cell_id"/>\n    <line x1="15" x2="10"  y1="7.5" y2="17.5" class="$cell_id"/>\n    <circle r="2" cx="8" cy="9" class="$cell_id"/>\n    <circle r="2" cx="17" cy="16" class="$cell_id"/>\n\n    <g s:x="2" s:y="5" s:pid="A"/>\n    <g s:x="2" s:y="20" s:pid="B"/>\n    <g s:x="26" s:y="12.5" s:pid="Y"/>\n  </g>\n\n  <g s:type="pow" transform="translate(450, 150)" s:width="25" s:height="25">\n    <s:alias val="$pow"/>\n\n    <circle r="12.5" cx="12.5" cy="12.5" class="$cell_id"/>\n    <line x1="10" x2="12.5"  y1="12" y2="6" class="$cell_id"/>\n    <line x1="15" x2="12.5"  y1="12" y2="6" class="$cell_id"/>\n\n    <g s:x="2" s:y="5" s:pid="A"/>\n    <g s:x="2" s:y="20" s:pid="B"/>\n    <g s:x="26" s:y="12.5" s:pid="Y"/>\n  </g>\n\n  <g s:type="ne" transform="translate(500,150)" s:width="25" s:height="25">\n    <s:alias val="$ne"/>\n    <s:alias val="$nex"/>\n\n    <circle r="12.5" cx="12.5" cy="12.5" class="$cell_id"/>\n    <line x1="7.5" x2="17.5" y1="10" y2="10" class="$cell_id"/>\n    <line x1="7.5" x2="17.5" y1="15" y2="15" class="$cell_id"/>\n    <line x1="9" x2="16" y1="18" y2="7" class="$cell_id"/>\n\n    <g s:x="2" s:y="5" s:pid="A"/>\n    <g s:x="2" s:y="20" s:pid="B"/>\n    <g s:x="25" s:y="12.5" s:pid="Y"/>\n  </g>\n\n  <g s:type="lt" transform="translate(50,200)" s:width="25" s:height="25">\n    <s:alias val="$lt"/>\n\n    <circle r="12.5" cx="12.5" cy="12.5" class="$cell_id"/>\n    <line x1="6" x2="17" y1="12"  y2="7" class="$cell_id"/>\n    <line x1="6" x2="17" y1="12" y2="17" class="$cell_id"/>\n\n    <g s:x="2" s:y="5" s:pid="A"/>\n    <g s:x="2" s:y="20" s:pid="B"/>\n    <g s:x="25" s:y="12.5" s:pid="Y"/>\n  </g>\n\n  <g s:type="le" transform="translate(100,200)" s:width="25" s:height="25">\n    <s:alias val="$le"/>\n\n    <circle r="12.5" cx="12.5" cy="12.5" class="$cell_id"/>\n    <line x1="6" x2="17" y1="11"  y2="6" class="$cell_id"/>\n    <line x1="6" x2="17" y1="11" y2="16" class="$cell_id"/>\n    <line x1="6" x2="17" y1="14" y2="19" class="$cell_id"/>\n\n    <g s:x="2" s:y="5" s:pid="A"/>\n    <g s:x="2" s:y="20" s:pid="B"/>\n    <g s:x="25" s:y="12.5" s:pid="Y"/>\n  </g>\n\n  <g s:type="ge" transform="translate(150,200)" s:width="25" s:height="25">\n    <s:alias val="$ge"/>\n\n    <circle r="12" cx="12" cy="12" class="$cell_id"/>\n    <line x1="8" x2="19"  y1="6" y2="11" class="$cell_id"/>\n    <line x1="8" x2="19" y1="16" y2="11" class="$cell_id"/>\n    <line x1="8" x2="19" y1="19" y2="14" class="$cell_id"/>\n\n    <g s:x="2" s:y="5" s:pid="A"/>\n    <g s:x="2" s:y="20" s:pid="B"/>\n    <g s:x="25" s:y="12.5" s:pid="Y"/>\n  </g>\n\n  <g s:type="gt" transform="translate(200,200)" s:width="25" s:height="25">\n    <s:alias val="$gt"/>\n\n    <circle r="12" cx="12" cy="12" class="$cell_id"/>\n    <line x1="8" x2="19"  y1="7" y2="12" class="$cell_id"/>\n    <line x1="8" x2="19" y1="17" y2="12" class="$cell_id"/>\n\n    <g s:x="2" s:y="5" s:pid="A"/>\n    <g s:x="2" s:y="20" s:pid="B"/>\n    <g s:x="25" s:y="12.5" s:pid="Y"/>\n  </g>\n\n  <g s:type="shr" transform="translate(250,200)" s:width="25" s:height="25">\n    <s:alias val="$shr"/>\n\n    <circle r="12" cx="12" cy="12" class="$cell_id"/>\n    <line x1="8" x2="13"  y1="7"  y2="12" class="$cell_id"/>\n    <line x1="8" x2="13"  y1="17" y2="12" class="$cell_id"/>\n    <line x1="14" x2="19" y1="7"  y2="12" class="$cell_id"/>\n    <line x1="14" x2="19" y1="17" y2="12" class="$cell_id"/>\n\n    <g s:x="2" s:y="5" s:pid="A"/>\n    <g s:x="2" s:y="20" s:pid="B"/>\n    <g s:x="25" s:y="12.5" s:pid="Y"/>\n  </g>\n\n  <g s:type="shl" transform="translate(300,200)" s:width="25" s:height="25">\n    <s:alias val="$shl"/>\n\n    <circle r="12" cx="12" cy="12" class="$cell_id"/>\n    <line x1="6" x2="11"  y1="12" y2="7"  class="$cell_id"/>\n    <line x1="6" x2="11"  y1="12" y2="17" class="$cell_id"/>\n    <line x1="12" x2="17" y1="12" y2="7"  class="$cell_id"/>\n    <line x1="12" x2="17" y1="12" y2="17" class="$cell_id"/>\n\n    <g s:x="2" s:y="5" s:pid="A"/>\n    <g s:x="2" s:y="20" s:pid="B"/>\n    <g s:x="25" s:y="12.5" s:pid="Y"/>\n  </g>\n\n  <g s:type="sshr" transform="translate(350,200)" s:width="25" s:height="25">\n    <s:alias val="$sshr"/>\n\n    <circle r="12" cx="12" cy="12" class="$cell_id"/>\n    <line x1="5"  x2="10" y1="7"  y2="12" class="$cell_id"/>\n    <line x1="5"  x2="10" y1="17" y2="12" class="$cell_id"/>\n    <line x1="11" x2="16" y1="7"  y2="12" class="$cell_id"/>\n    <line x1="11" x2="16" y1="17" y2="12" class="$cell_id"/>\n    <line x1="17" x2="22" y1="7"  y2="12" class="$cell_id"/>\n    <line x1="17" x2="22" y1="17" y2="12" class="$cell_id"/>\n\n    <g s:x="2" s:y="5" s:pid="A"/>\n    <g s:x="2" s:y="20" s:pid="B"/>\n    <g s:x="25" s:y="12.5" s:pid="Y"/>\n  </g>\n\n  <g s:type="sshl" transform="translate(400,200)" s:width="25" s:height="25">\n    <s:alias val="$sshl"/>\n\n    <circle r="12" cx="12" cy="12" class="$cell_id"/>\n    <line x1="3"  x2="8"   y1="12" y2="7"  class="$cell_id"/>\n    <line x1="3"  x2="8"   y1="12" y2="17" class="$cell_id"/>\n    <line x1="9"  x2="14" y1="12" y2="7"  class="$cell_id"/>\n    <line x1="9"  x2="14" y1="12" y2="17" class="$cell_id"/>\n    <line x1="15" x2="20" y1="12" y2="7"  class="$cell_id"/>\n    <line x1="15" x2="20" y1="12" y2="17" class="$cell_id"/>\n\n    <g s:x="2" s:y="5" s:pid="A"/>\n    <g s:x="2" s:y="20" s:pid="B"/>\n    <g s:x="25" s:y="12.5" s:pid="Y"/>\n  </g>\n\n  <g s:type="inputExt" transform="translate(50,250)" s:width="30" s:height="20">\n    <text x="15" y="-4" class="nodelabel $cell_id" s:attribute="ref">input</text>\n    <s:alias val="$_inputExt_"/>\n    <path d="M0,0 L0,20 L15,20 L30,10 L15,0 Z" class="$cell_id"/>\n    <g s:x="30" s:y="10" s:pid="Y"/>\n  </g>\n\n  <g s:type="constant" transform="translate(150,250)" s:width="30" s:height="20">\n    <text x="15" y="-4" class="nodelabel $cell_id" s:attribute="ref">constant</text>\n\n    <s:alias val="$_constant_"/>\n    <rect width="30" height="20" class="$cell_id"/>\n\n    <g s:x="31" s:y="10" s:pid="Y"/>\n  </g>\n\n  <g s:type="outputExt" transform="translate(250,250)" s:width="30" s:height="20">\n    <text x="15" y="-4" class="nodelabel $cell_id" s:attribute="ref">output</text>\n    <s:alias val="$_outputExt_"/>\n    <path d="M30,0 L30,20 L15,20 L0,10 L15,0 Z" class="$cell_id"/>\n\n    <g s:x="0" s:y="10" s:pid="A"/>\n  </g>\n\n  <g s:type="split" transform="translate(350,250)" s:width="5" s:height="40">\n    <rect width="5" height="40" class="splitjoinBody" s:generic="body"/>\n    <s:alias val="$_split_"/>\n\n    <g s:x="0" s:y="20" s:pid="in"/>\n    <g transform="translate(5, 10)" s:x="4" s:y="10" s:pid="out0">\n      <text x="5" y="-4">hi:lo</text>\n    </g>\n    <g transform="translate(5, 30)" s:x="4" s:y="30" s:pid="out1">\n      <text x="5" y="-4">hi:lo</text>\n    </g>\n  </g>\n\n  <g s:type="join" transform="translate(450,250)" s:width="4" s:height="40">\n    <rect width="5" height="40" class="splitjoinBody" s:generic="body"/>\n    <s:alias val="$_join_"/>\n    <g s:x="5" s:y="20"  s:pid="out"/>\n    <g transform="translate(0, 10)" s:x="0" s:y="10" s:pid="in0">\n      <text x="-3" y="-4" class="inputPortLabel">hi:lo</text>\n    </g>\n    <g transform="translate(0, 30)" s:x="0" s:y="30" s:pid="in1">\n      <text x="-3" y="-4" class="inputPortLabel">hi:lo</text>\n    </g>\n  </g>\n\n  <g s:type="dff" transform="translate(50,300)" s:width="30" s:height="40">\n    <s:alias val="$dff"/>\n    <s:alias val="$_DFF_"/>\n    <s:alias val="$_DFF_P_"/>\n\n    <s:alias val="$adff"/>\n    <s:alias val="$_DFF_"/>\n    <s:alias val="$_DFF_P_"/>\n\n    <s:alias val="$sdff"/>\n    <s:alias val="$_DFF_"/>\n    <s:alias val="$_DFF_P_"/>\n\n    <rect width="30" height="40" x="0" y="0" class="$cell_id"/>\n    <path d="M0,35 L5,30 L0,25" class="$cell_id"/>\n\n    <g s:x="31" s:y="10" s:pid="Q"/>\n    <g s:x="-1" s:y="30" s:pid="CLK"/>\n    <g s:x="-1" s:y="30" s:pid="C"/>\n    <g s:x="-1" s:y="10" s:pid="D"/>\n    <g s:x="15" s:y="40" s:pid="ARST"/>\n    <g s:x="15" s:y="40" s:pid="SRST"/>\n  </g>\n\n  <g s:type="dff-bus" transform="translate(100,300)" s:width="34" s:height="44">\n    <s:alias val="$dff-bus"/>\n    <s:alias val="$_DFF_-bus"/>\n    <s:alias val="$_DFF_P_-bus"/>\n\n    <s:alias val="adff-bus"/>\n    <s:alias val="$adff-bus"/>\n    <s:alias val="$_DFF_-bus"/>\n    <s:alias val="$_DFF_P_-bus"/>\n\n    <s:alias val="sdff-bus"/>\n    <s:alias val="$sdff-bus"/>\n    <s:alias val="$_DFF_-bus"/>\n    <s:alias val="$_DFF_P_-bus"/>\n\n    <rect width="30" height="40" x="0" y="0" class="$cell_id"/>\n    <path d="M0,35 L5,30 L0,25" class="$cell_id"/>\n    <path d="M30,2 L32,2 L32,42 L2,42 L2,40" class="$cell_id"/>\n    <path d="M32,4 L34,4 L34,44 L4,44 L4,42" class="$cell_id"/>\n\n    <g s:x="35" s:y="10" s:pid="Q"/>\n    <g s:x="-1" s:y="30" s:pid="CLK"/>\n    <g s:x="-1" s:y="30" s:pid="C"/>\n    <g s:x="-1" s:y="10" s:pid="D"/>\n    <g s:x="17" s:y="44" s:pid="ARST"/>\n    <g s:x="17" s:y="44" s:pid="SRST"/>\n  </g>\n\n  <g s:type="dffn" transform="translate(150,300)" s:width="30" s:height="40">\n    <s:alias val="$dffn"/>\n    <s:alias val="$_DFF_N_"/>\n\n    <rect width="30" height="40" x="0" y="0" class="$cell_id"/>\n    <path d="M0,35 L5,30 L0,25" class="$cell_id"/>\n    <circle cx="-3" cy="30" r="3" class="$cell_id"/>\n\n    <g s:x="30" s:y="10" s:pid="Q"/>\n    <g s:x="-6" s:y="30" s:pid="CLK"/>\n    <g s:x="-6" s:y="30" s:pid="C"/>\n    <g s:x="0" s:y="10" s:pid="D"/>\n  </g>\n\n  <g s:type="dffn-bus" transform="translate(200,300)" s:width="30" s:height="40">\n    <s:alias val="$dffn-bus"/>\n    <s:alias val="$_DFF_N_-bus"/>\n\n    <rect width="30" height="40" x="0" y="0" class="$cell_id"/>\n    <path d="M0,35 L5,30 L0,25" class="$cell_id"/>\n    <circle cx="-3" cy="30" r="3" class="$cell_id"/>\n    <path d="M30,2 L32,2 L32,42 L2,42 L2,40" class="$cell_id"/>\n    <path d="M32,4 L34,4 L34,44 L4,44 L4,42" class="$cell_id"/>\n\n    <g s:x="35" s:y="10" s:pid="Q"/>\n    <g s:x="-6" s:y="30" s:pid="CLK"/>\n    <g s:x="-6" s:y="30" s:pid="C"/>\n    <g s:x="0" s:y="10" s:pid="D"/>\n  </g>\n\n  <g s:type="dlatch" transform="translate(250,300)" s:width="30" s:height="40">\n    <s:alias val="$dlatch"/>\n    <s:alias val="$_DLATCH_"/>\n    <s:alias val="adlatch"/>\n    <s:alias val="$adlatch"/>\n\n    <rect width="30" height="40" x="0" y="0" class="$cell_id"/>\n\n    <path d="M 1,35 H 4 V 25 h 5 v 10 h 3" class="$cell_id"/>\n\n    <g s:x="30" s:y="10" s:pid="Q"/>\n    <g s:x="0" s:y="10" s:pid="D"/>\n    <g s:x="-1" s:y="30" s:pid="EN"/>\n    <g s:x="15" s:y="40" s:pid="ARST"/>\n  </g>\n\n  <g s:type="dlatch-bus" transform="translate(300,300)" s:width="30" s:height="40">\n    <s:alias val="$dlatch-bus"/>\n    <s:alias val="$_DLATCH_-bus"/>\n    <s:alias val="adlatch-bus"/>\n    <s:alias val="$adlatch-bus"/>\n\n    <rect width="30" height="40" x="0" y="0" class="$cell_id"/>\n\n    <path d="M 1,35 H 4 V 25 h 5 v 10 h 3" class="$cell_id"/>\n    <path d="M30,2 L32,2 L32,42 L2,42 L2,40" class="$cell_id"/>\n    <path d="M32,4 L34,4 L34,44 L4,44 L4,42" class="$cell_id"/>\n\n    <g s:x="35" s:y="10" s:pid="Q"/>\n    <g s:x="0" s:y="10" s:pid="D"/>\n    <g s:x="-1" s:y="30" s:pid="EN"/>\n    <g s:x="17" s:y="44" s:pid="ARST"/>\n  </g>\n\n  <g s:type="dlatchn" transform="translate(350,300)" s:width="30" s:height="40">\n    <s:alias val="$dlatchn"/>\n    <s:alias val="$_DLATCH_N_"/>\n\n    <rect width="30" height="40" x="0" y="0" class="$cell_id"/>\n\n    <path d="M 1,25 H 4 V 35 H 9 V 25 h 3" class="$cell_id"/>\n\n    <g s:x="30" s:y="10" s:pid="Q"/>\n    <g s:x="0" s:y="10" s:pid="D"/>\n    <g s:x="-1" s:y="30" s:pid="EN"/>\n  </g>\n\n  <g s:type="dlatchn-bus" transform="translate(400,300)" s:width="30" s:height="40">\n    <s:alias val="$dlatchn-bus"/>\n    <s:alias val="$_DLATCH_N_-bus"/>\n\n    <rect width="30" height="40" x="0" y="0" class="$cell_id"/>\n\n    <path d="M 1,25 H 4 V 35 H 9 V 25 h 3" class="$cell_id"/>\n    <path d="M30,2 L32,2 L32,42 L2,42 L2,40" class="$cell_id"/>\n    <path d="M32,4 L34,4 L34,44 L4,44 L4,42" class="$cell_id"/>\n\n    <g s:x="35" s:y="10" s:pid="Q"/>\n    <g s:x="0" s:y="10" s:pid="D"/>\n    <g s:x="-1" s:y="30" s:pid="EN"/>\n  </g>\n\n  <g s:type="_AOI3_" transform="translate(50, 400)" s:width="66" s:height="40">\n    <s:alias val="$_AOI3_"/>\n\n    <path d="M0,0 L0,25 L15,25 A15 12.5 0 0 0 15,0 Z" class="$cell_id"/>\n    <path d="M30,13 A30 25 0 0 1 30,38 A30 25 0 0 0 60,25.5 A30 25 0 0 0 30,13" class="$cell_id"/>\n    <circle cx="63" cy="25.5" r="3" class="$cell_id"/>\n    <path d="M0,32 L33,32" />\n    <g s:x="0" s:y="5"  s:pid="A"/>\n    <g s:x="0" s:y="20"  s:pid="B"/>\n    <g s:x="0" s:y="32"  s:pid="C"/>\n    <g s:x="66" s:y="25.5" s:pid="Y"/>\n    <!-- <path d="M-5,5 L0,5"/> -->\n    <!-- <path d="M-5,20 L0,20"/> -->\n    <!-- <path d="M-5,32 L0,32"/> -->\n    <!-- <path d="M 70,25.5 L 66,25.5"/> -->\n  </g>\n\n  <g s:type="_OAI3_" transform="translate(150, 400)" s:width="66" s:height="40">\n    <s:alias val="$_OAI3_"/>\n\n    <path d="M30,13 L30,38 L45,38 A15 12.5 0 0 0 45,13 Z" class="$cell_id"/>\n    <path d="M0,0 A30 25 0 0 1 0,25 A30 25 0 0 0 30,12.5 A30 25 0 0 0 0,0" class="$cell_id"/>\n    <circle cx="63" cy="25.5" r="3" class="$cell_id"/>\n    <path d="M0,32 L30,32" />\n\n    <g s:x="2" s:y="5"  s:pid="A"/>\n    <g s:x="2" s:y="20"  s:pid="B"/>\n    <g s:x="0" s:y="32"  s:pid="C"/>\n    <g s:x="66" s:y="25.5" s:pid="Y"/>\n    <!-- <path d="M-5,5 L2,5"/> -->\n    <!-- <path d="M-5,20 L2,20"/> -->\n    <!-- <path d="M-5,32 L0,32"/> -->\n    <!-- <path d="M 70,25.5 L 66,25.5"/> -->\n  </g>\n\n  <!-- AOI4 -->\n\n  <g s:type="_AOI4_" transform="translate(250, 400)" s:width="66" s:height="40">\n    <s:alias val="$_AOI4_"/>\n\n    <path d="M0,0 L0,25 L15,25 A15 12.5 0 0 0 15,0 Z" class="$cell_id"/>\n    <path d="M0,25 L0,50 L15,50 A15 12.5 0 0 0 15,25 Z" class="$cell_id"/>\n    <path d="M30,12.5 A30 25 0 0 1 30,37.5 A30 25 0 0 0 60,25.5 A30 25 0 0 0 30,12.5" class="$cell_id"/>\n    <circle cx="63" cy="25.5" r="3" class="$cell_id"/>\n    <g s:x="0" s:y="5"  s:pid="A"/>\n    <g s:x="0" s:y="20"  s:pid="B"/>\n    <g s:x="0" s:y="30"  s:pid="C"/>\n    <g s:x="0" s:y="45"  s:pid="D"/>\n    <g s:x="66" s:y="25.5" s:pid="Y"/>\n    <!-- <path d="M-5,5 L0,5"/> -->\n    <!-- <path d="M-5,20 L0,20"/> -->\n    <!-- <path d="M-5,30 L0,30"/> -->\n    <!-- <path d="M-5,45 L0,45"/> -->\n    <!-- <path d="M 70,25.5 L 66,25.5"/> -->\n  </g>\n\n  <!-- OAI4 -->\n\n  <g s:type="_OAI4_" transform="translate(350, 400)" s:width="66" s:height="40">\n    <s:alias val="$_OAI4_"/>\n\n    <path d="M30,13 L30,38 L45,38 A15 12.5 0 0 0 45,13 Z" class="$cell_id"/>\n    <path d="M0,0 A30 25 0 0 1 0,25 A30 25 0 0 0 30,12.5 A30 25 0 0 0 0,0" class="$cell_id"/>\n    <path d="M0,25 A30 25 0 0 1 0,50 A30 25 0 0 0 30,37.5 A30 25 0 0 0 0,25" class="$cell_id"/>\n    <circle cx="63" cy="25.5" r="3" class="$cell_id"/>\n\n    <g s:x="2" s:y="5"  s:pid="A"/>\n    <g s:x="2" s:y="20"  s:pid="B"/>\n    <g s:x="2" s:y="30"  s:pid="C"/>\n    <g s:x="2" s:y="45"  s:pid="D"/>\n    <g s:x="66" s:y="25.5" s:pid="Y"/>\n    <!-- <path d="M-5,5 L2,5"/> -->\n    <!-- <path d="M-5,20 L2,20"/> -->\n    <!-- <path d="M-5,30 L2,30"/> -->\n    <!-- <path d="M-5,45 L2,45"/> -->\n    <!-- <path d="M 70,25.5 L 66,25.5"/> -->\n  </g>\n\n  <g s:type="generic" transform="translate(550,250)" s:width="30" s:height="40">\n\n    <text x="15" y="-4" class="nodelabel $cell_id" s:attribute="ref">generic</text>\n    <rect width="30" height="40" s:generic="body" class="$cell_id"/>\n\n    <g transform="translate(30, 10)" s:x="30" s:y="10" s:pid="out0">\n      <text x="5" y="-4" style="fill:#000; stroke:none" class="$cell_id">out0</text>\n    </g>\n    <g transform="translate(30, 30)" s:x="30" s:y="30" s:pid="out1">\n      <text x="5" y="-4" style="fill:#000;stroke:none" class="$cell_id">out1</text>\n    </g>\n    <g transform="translate(0, 10)" s:x="0" s:y="10" s:pid="in0">\n      <text x="-3" y="-4" class="inputPortLabel $cell_id">in0</text>\n    </g>\n    <g transform="translate(0, 30)" s:x="0" s:y="30" s:pid="in1">\n      <text x="-3" y="-4" class="inputPortLabel $cell_id">in1</text>\n    </g>\n  </g>\n\n  <g s:type="sub_odd" transform="translate(600,300)" s:width="30" s:height="40">\n    <text x="15" y="-4" class="nodelabel $cell_id" s:attribute="ref">sub_odd</text>\n    <rect width="30" height="40" s:generic="body" fill="#e9e9e9" rx="4" class="subModuleOdd $cell_id"/>\n\n    <g transform="translate(30, 10)" s:x="30" s:y="10" s:pid="out0">\n      <text x="5" y="-4" style="fill:#000; stroke:none" class="$cell_id">out0</text>\n    </g>\n    <g transform="translate(30, 30)" s:x="30" s:y="30" s:pid="out1">\n      <text x="5" y="-4" style="fill:#000;stroke:none" class="$cell_id">out1</text>\n    </g>\n    <g transform="translate(0, 10)" s:x="0" s:y="10" s:pid="in0">\n      <text x="-3" y="-4" class="inputPortLabel $cell_id">in0</text>\n    </g>\n    <g transform="translate(0, 30)" s:x="0" s:y="30" s:pid="in1">\n      <text x="-3" y="-4" class="inputPortLabel $cell_id">in1</text>\n    </g>\n  </g>\n\n  <g s:type="sub_even" transform="translate(650,300)" s:width="30" s:height="40">\n    <text x="15" y="-4" class="nodelabel $cell_id" s:attribute="ref">sub_even</text>\n    <rect width="30" height="40" s:generic="body" fill="#ffffff" rx="4" class="subModuleEven $cell_id"/>\n\n    <g transform="translate(30, 10)" s:x="30" s:y="10" s:pid="out0">\n      <text x="5" y="-4" style="fill:#000; stroke:none" class="$cell_id">out0</text>\n    </g>\n    <g transform="translate(30, 30)" s:x="30" s:y="30" s:pid="out1">\n      <text x="5" y="-4" style="fill:#000;stroke:none" class="$cell_id">out1</text>\n    </g>\n    <g transform="translate(0, 10)" s:x="0" s:y="10" s:pid="in0">\n      <text x="-3" y="-4" class="inputPortLabel $cell_id">in0</text>\n    </g>\n    <g transform="translate(0, 30)" s:x="0" s:y="30" s:pid="in1">\n      <text x="-3" y="-4" class="inputPortLabel $cell_id">in1</text>\n    </g>\n  </g>\n\n</svg>\n';
     }
   });
 

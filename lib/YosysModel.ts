@@ -45,7 +45,7 @@ namespace Yosys {
       cells: Record<string, Cell>;
       netNames: Record<string, Net>;
       attributes?: {
-        top?: 0 | 1 | '00000000000000000000000000000000' | '00000000000000000000000000000001';
+        top?: number | string;
         [attrName: string]: any;
       };
     }

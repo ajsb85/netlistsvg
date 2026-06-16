@@ -54,9 +54,12 @@ var Skin;
     }
     Skin.getLateralPortPids = getLateralPortPids;
     /**
-     * Finds a skin type by name, first checking aliases then falling back to generic
+     * Finds a skin type by name, first checking aliases then falling back to a
+     * generic template. When `depth` is provided (i.e. the cell is an expanded
+     * submodule) the fallback alternates between the `sub_odd` and `sub_even`
+     * templates based on the hierarchy depth so nested modules are visually distinct.
      */
-    function findSkinType(type) {
+    function findSkinType(type, depth = null) {
         if (!Skin.skin) {
             return null;
         }
@@ -70,11 +73,14 @@ var Skin;
                 }
             },
         });
-        // If no alias found, fall back to generic type
+        // If no alias found, fall back to the appropriate template
         if (!foundNode) {
+            // 'generic' for ordinary unknown cells; an alternating submodule
+            // template when rendering an expanded hierarchy.
+            const fallbackType = depth == null ? 'generic' : ['sub_odd', 'sub_even'][depth % 2];
             onml.traverse(Skin.skin, {
                 enter: (node) => {
-                    if (node.attr['s:type'] === 'generic') {
+                    if (node.attr['s:type'] === fallbackType) {
                         foundNode = node;
                         return true;
                     }

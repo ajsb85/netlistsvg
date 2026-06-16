@@ -1,5 +1,6 @@
 // FlatModule.ts
 import Yosys from './YosysModel';
+import Config from './ConfigModel';
 import Skin from './Skin';
 import Cell from './Cell';
 
@@ -127,30 +128,105 @@ export function processSplitsAndJoins(
  * Represents a flattened module from a Yosys netlist
  */
 export class FlatModule {
+    // Shared state for a single render pass (set up by fromNetlist).
+    public static netlist: Yosys.Netlist;
+    public static layoutProps: { [x: string]: any };
+    public static modNames: string[];
+    public static config: Config;
+
+    /**
+     * Entry point for building a (possibly hierarchical) FlatModule from a Yosys
+     * netlist and a configuration. Selects the top module, then recursively flattens
+     * it according to the hierarchy settings in the config.
+     */
+    public static fromNetlist(netlist: Yosys.Netlist, config: Config): FlatModule {
+        this.layoutProps = Skin.getProperties();
+        this.modNames = Object.keys(netlist.modules);
+        this.netlist = netlist;
+        this.config = config;
+
+        let topName: string | null = null;
+        if (config.top.enable) {
+            topName = config.top.module;
+            if (!this.modNames.includes(topName)) {
+                throw new Error('Top module in config file not defined in input json file.');
+            }
+        } else {
+            Object.entries(netlist.modules).forEach(([name, mod]) => {
+                if (mod.attributes && Number(mod.attributes.top) === 1) {
+                    topName = name;
+                }
+            });
+            // Otherwise default the first one in the file...
+            if (topName == null) {
+                topName = this.modNames[0];
+            }
+        }
+        const top = netlist.modules[topName];
+        return new FlatModule(top, topName, 0);
+    }
+
+    // name of the parent module (null for the top module)
+    public parent: string | null;
     public moduleName: string;
     public nodes: Cell[];
     public wires: Wire[];
 
     /**
-     * Create a new FlatModule from a Yosys netlist
+     * Create a FlatModule for a single module. `depth` is the hierarchy depth
+     * (0 for the top module) and `parent` is the name of the enclosing module.
      */
-    constructor(netlist: Yosys.Netlist) {
-        // Find the top module or use the first one
-        this.moduleName = Object.keys(netlist.modules).find(name =>
-            netlist.modules[name].attributes?.top === 1
-        ) || Object.keys(netlist.modules)[0];
+    constructor(mod: Yosys.Module, name: string, depth: number, parent: string | null = null) {
+        this.parent = parent;
+        this.moduleName = name;
 
-        const topModule = netlist.modules[this.moduleName];
+        const ports = Object.entries(mod.ports).map(([portName, portData]) =>
+            Cell.fromPort(portData, portName, this.moduleName));
 
-        // Create nodes from ports and cells
-        this.nodes = [
-            ...Object.entries(topModule.ports).map(([key, portData]) =>
-                Cell.fromPort(portData, key)),
-            ...Object.entries(topModule.cells).map(([key, cellData]) =>
-                Cell.fromYosysCell(cellData, key))
-        ];
+        const cells = Object.entries(mod.cells).map(([key, c]) =>
+            this.buildCell(c, key, depth));
 
-        this.wires = []; // Will be populated by createWires
+        this.nodes = cells.concat(ports);
+        this.wires = []; // populated by createWires below
+
+        // this can be skipped if there are no 0's or 1's
+        if (FlatModule.layoutProps.constants !== false) {
+            this.addConstants();
+        }
+        // this can be skipped if there are no splits or joins
+        if (FlatModule.layoutProps.splitsAndJoins !== false) {
+            this.addSplitsJoins();
+        }
+        this.createWires();
+    }
+
+    /**
+     * Decide whether a child cell should be rendered as an expanded submodule or as
+     * an opaque box, based on the hierarchy configuration and current depth.
+     */
+    private buildCell(c: Yosys.Cell, key: string, depth: number): Cell {
+        const cfg = FlatModule.config.hierarchy;
+        const isModule = FlatModule.modNames.includes(c.type);
+        const expand = (): Cell => Cell.createSubModule(
+            c, key, this.moduleName, FlatModule.netlist.modules[c.type], depth);
+        const box = (): Cell => Cell.fromYosysCell(c, key, this.moduleName);
+
+        switch (cfg.enable) {
+            case 'level':
+                return (cfg.expandLevel > depth && isModule) ? expand() : box();
+            case 'all':
+                return isModule ? expand() : box();
+            case 'modules':
+                if (cfg.expandModules.types.includes(c.type) || cfg.expandModules.ids.includes(key)) {
+                    if (!isModule) {
+                        throw new Error('Submodule in config file not defined in input json file.');
+                    }
+                    return expand();
+                }
+                return box();
+            default:
+                return box();
+        }
     }
 
     /**
@@ -188,11 +264,11 @@ export class FlatModule {
 
         // Create new cells for joins and splits
         const joinCells = Object.entries(joins).map(([joinInput, joinOutputs]) =>
-            Cell.fromJoinInfo(joinInput, joinOutputs)
+            Cell.fromJoinInfo(joinInput, joinOutputs, this.moduleName)
         );
 
         const splitCells = Object.entries(splits).map(([splitInput, splitOutputs]) =>
-            Cell.fromSplitInfo(splitInput, splitOutputs)
+            Cell.fromSplitInfo(splitInput, splitOutputs, this.moduleName)
         );
 
         // Add new cells to the module

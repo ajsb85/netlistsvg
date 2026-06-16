@@ -1,0 +1,290 @@
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=JetBrains+Mono:wght@300;400;500;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+    /* Engineering Blueprint Palette */
+    --blueprint-bg: #0a192f;
+    --blueprint-grid: #112240;
+    --blueprint-line: rgba(100, 255, 218, 0.1);
+    --panel-bg: rgba(16, 33, 65, 0.85);
+    --border-color: #233554;
+    --text-primary: #e6f1ff;
+    --text-secondary: #8892b0;
+    --accent-cyan: #64ffda;
+    --accent-blue: #3b82f6;
+    --accent-yellow: #ffcc00;
+    --accent-error: #f43f5e;
+    --shadow: 0 10px 30px -15px rgba(2, 12, 27, 0.7);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--blueprint-bg);
+    color: var(--text-primary);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 32px;
+    
+    /* Technical Grid Background */
+    background-image: 
+        linear-gradient(var(--blueprint-line) 2px, transparent 2px),
+        linear-gradient(90deg, var(--blueprint-line) 2px, transparent 2px),
+        linear-gradient(rgba(100, 255, 218, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(100, 255, 218, 0.05) 1px, transparent 1px);
+    background-size: 100px 100px, 100px 100px, 20px 20px, 20px 20px;
+    background-attachment: fixed;
+}
+
+header {
+    margin-bottom: 32px;
+    border-bottom: 2px solid var(--accent-cyan);
+    padding-bottom: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    background: rgba(10, 25, 47, 0.5);
+    backdrop-filter: blur(4px);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+header h1 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--accent-cyan);
+}
+
+header p {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+header a {
+    color: var(--accent-cyan);
+    text-decoration: underline;
+    text-underline-offset: 4px;
+}
+
+.dashboard {
+    display: grid;
+    grid-template-columns: 450px 1fr;
+    gap: 32px;
+    max-width: 1600px;
+    width: 100%;
+    margin: 0 auto;
+    flex: 1;
+}
+
+@media (max-width: 1200px) {
+    .dashboard {
+        grid-template-columns: 1fr;
+    }
+}
+
+.panel {
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 4px; /* Sharper industrial corners */
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow);
+    position: relative;
+    overflow: hidden;
+}
+
+/* Engineering corner marks */
+.panel::after {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 20px; height: 20px;
+    border-top: 2px solid var(--accent-cyan);
+    border-right: 2px solid var(--accent-cyan);
+    pointer-events: none;
+}
+
+.panel-header {
+    background: rgba(2, 12, 27, 0.5);
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.panel-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--accent-cyan);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.panel-title::before {
+    content: '>>';
+    color: var(--accent-yellow);
+}
+
+.controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+select, button {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    border-radius: 2px;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+select {
+    background: var(--blueprint-bg);
+    border: 1px solid var(--border-color);
+    color: var(--accent-cyan);
+    padding: 6px 10px;
+    cursor: pointer;
+}
+
+select:hover {
+    border-color: var(--accent-cyan);
+}
+
+button {
+    border: 1px solid var(--accent-cyan);
+    background: transparent;
+    color: var(--accent-cyan);
+    cursor: pointer;
+    font-weight: 500;
+    padding: 6px 14px;
+    text-transform: uppercase;
+}
+
+button:hover {
+    background: rgba(100, 255, 218, 0.1);
+    box-shadow: 0 0 10px rgba(100, 255, 218, 0.2);
+}
+
+.btn-success {
+    border-color: var(--accent-yellow);
+    color: var(--accent-yellow);
+}
+
+.btn-success:hover {
+    background: rgba(255, 204, 0, 0.1);
+}
+
+.editor-wrapper {
+    flex: 1;
+    padding: 0;
+}
+
+textarea {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.85rem;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    color: #ccd6f6;
+    border: none;
+    padding: 20px;
+    resize: none;
+    line-height: 1.6;
+}
+
+textarea:focus {
+    outline: none;
+}
+
+.preview-container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #020c1b;
+    background-image: 
+        radial-gradient(var(--blueprint-line) 1px, transparent 1px);
+    background-size: 20px 20px;
+    overflow: auto;
+    position: relative;
+    padding: 40px;
+}
+
+#svgArea {
+    max-width: none;
+    display: none;
+    filter: drop-shadow(0 0 20px rgba(100, 255, 218, 0.1));
+    background: rgba(255, 255, 255, 0.03);
+    padding: 20px;
+    border: 1px dashed rgba(100, 255, 218, 0.2);
+}
+
+.empty-state {
+    color: var(--text-secondary);
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+.empty-state-icon {
+    font-size: 3rem;
+    color: var(--accent-yellow);
+    opacity: 0.8;
+}
+
+/* Toast alert */
+.toast {
+    position: fixed;
+    top: 32px;
+    right: 32px;
+    background: #112240;
+    border: 1px solid var(--accent-error);
+    border-left: 5px solid var(--accent-error);
+    color: #f8fafc;
+    padding: 16px 24px;
+    border-radius: 4px;
+    box-shadow: var(--shadow);
+    z-index: 1000;
+    display: none;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    max-width: 450px;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--blueprint-bg);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--text-secondary);
+}

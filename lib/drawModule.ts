@@ -47,14 +47,32 @@ function findNearestBend(
     });
 }
 
-// Clean up dummy edges in the graph
-export function removeDummyEdges(graph: ElkModel.Graph) {
-    while (true) {
-        const dummyId = `$d_${ElkModel.dummyNum}`;
-        const edgesWithDummy = graph.edges.filter(e => e.source === dummyId || e.target === dummyId);
+// Junction dummy nodes are named `<module>.$d_<n>` (or `$d_<n>` at the top level).
+// The self-loop dummies created for submodule passthroughs have non-numeric
+// suffixes and are intentionally left untouched.
+function isJunctionDummy(id: string | undefined): boolean {
+    return typeof id === 'string' && /\$d_\d+$/.test(id);
+}
 
-        // Exit if no more dummy edges found
-        if (edgesWithDummy.length === 0) break;
+// Clean up dummy edges in the graph (or a nested submodule cell)
+export function removeDummyEdges(graph: ElkModel.Graph | ElkModel.Cell) {
+    const edges = graph.edges || [];
+
+    // Collect every junction-dummy id referenced by an edge endpoint.
+    const dummyIds: string[] = [];
+    for (const e of edges) {
+        for (const endpoint of [e.source, e.target]) {
+            if (isJunctionDummy(endpoint) && !dummyIds.includes(endpoint as string)) {
+                dummyIds.push(endpoint as string);
+            }
+        }
+    }
+
+    for (const dummyId of dummyIds) {
+        const edgesWithDummy = edges.filter(e => e.source === dummyId || e.target === dummyId);
+
+        // Nothing to merge
+        if (edgesWithDummy.length === 0) continue;
 
         const firstEdge = edgesWithDummy[0];
         const dummyIsSource = firstEdge.source === dummyId;
@@ -65,7 +83,6 @@ export function removeDummyEdges(graph: ElkModel.Graph) {
         // Find replacement endpoint
         const newEndpoint = findNearestBend(edgesWithDummy, dummyIsSource, dummyLocation);
         if (!newEndpoint) {
-            ElkModel.dummyNum += 1;
             continue;
         }
 
@@ -98,8 +115,6 @@ export function removeDummyEdges(graph: ElkModel.Graph) {
                 );
             }
         }
-
-        ElkModel.dummyNum += 1;
     }
 }
 
@@ -107,21 +122,77 @@ export function removeDummyEdges(graph: ElkModel.Graph) {
 export default function drawModule(graph: ElkModel.Graph, module: FlatModule): string {
     // Render all nodes
     const nodes: onml.Element[] = module.nodes.map(node => {
-        const matchedChild = graph.children.find(child => child.id === node.Key);
+        const matchedChild = graph.children.find(child => child.id === node.parent + '.' + node.Key);
         return node.render(matchedChild!);
     });
 
     // Clean up the graph structure
     removeDummyEdges(graph);
 
-    // Create wire lines
-    const lines: onml.Element[] = graph.edges.flatMap(edge => {
+    // Create wire lines and labels
+    const lines: onml.Element[] = renderWireLines(graph.edges);
+    const labels: onml.Element[] = renderWireLabels(graph.edges);
+
+    // Add labels to lines if present
+    if (labels.length > 0) {
+        lines.push(...labels);
+    }
+
+    // Set up SVG attributes
+    const svgAttributes: onml.Attributes = { ...(Skin.skin![1] as any) };
+    svgAttributes.width = String(graph.width);
+    svgAttributes.height = String(graph.height);
+
+    // Extract and combine styles
+    const styles: any = ['style', {}, ''];
+    onml.traverse(Skin.skin!, {
+        enter: (node) => {
+            if (node.name === 'style') {
+                styles[2] += node.full[2];
+            }
+        }
+    });
+
+    // Build final SVG
+    const svgElement: onml.Element = ['svg', svgAttributes, styles, ...nodes, ...lines];
+    return onml.s(svgElement);
+}
+
+/**
+ * Renders the contents of an expanded submodule into an `svg` element. Returns the
+ * onml element tree (not serialized) so the parent cell can splice it into its body.
+ */
+export function drawSubModule(cell: ElkModel.Cell, subModule: FlatModule): onml.Element {
+    // Render only the nodes that survived as children (port cells were folded into
+    // the parent cell's ports and are skipped).
+    const nodes: onml.Element[] = [];
+    subModule.nodes.forEach(node => {
+        const matchedChild = (cell.children || []).find(child => child.id === node.parent + '.' + node.Key);
+        if (matchedChild) {
+            nodes.push(node.render(matchedChild));
+        }
+    });
+
+    removeDummyEdges(cell);
+
+    const lines: onml.Element[] = renderWireLines(cell.edges || []);
+
+    const svgAttributes: onml.Attributes = { ...(Skin.skin![1] as any) };
+    svgAttributes.width = String(cell.width);
+    svgAttributes.height = String(cell.height);
+
+    return ['svg', svgAttributes, ...nodes, ...lines];
+}
+
+// Build the SVG line/junction elements for a set of laid-out edges.
+function renderWireLines(edges: ElkModel.Edge[]): onml.Element[] {
+    return edges.flatMap(edge => {
         const netId = ElkModel.wireNameLookup[edge.id];
         const numWires = netId.split(',').length - 2;
         const lineWidth = numWires > 1 ? 2 : 1;
         const netClass = `net_${netId.slice(1, -1)} width_${numWires}`;
 
-        return edge.sections!.flatMap(section => {
+        return (edge.sections || []).flatMap(section => {
             let currentPoint = section.startPoint;
             const wireSegments: onml.Element[] = [];
 
@@ -162,9 +233,11 @@ export default function drawModule(graph: ElkModel.Graph, module: FlatModule): s
             return [...wireSegments, ...junctions];
         });
     });
+}
 
-    // Create wire labels
-    const labels: onml.Element[] = graph.edges.flatMap(edge => {
+// Build the SVG label elements (bus widths) for a set of laid-out edges.
+function renderWireLabels(edges: ElkModel.Edge[]): onml.Element[] {
+    return edges.flatMap(edge => {
         // Skip if no label
         if (!edge.labels?.[0]?.text) return [];
 
@@ -190,28 +263,4 @@ export default function drawModule(graph: ElkModel.Graph, module: FlatModule): s
             }, `/${label.text}/`]
         ];
     });
-
-    // Add labels to lines if present
-    if (labels.length > 0) {
-        lines.push(...labels);
-    }
-
-    // Set up SVG attributes
-    const svgAttributes: onml.Attributes = { ...(Skin.skin![1] as any) };
-    svgAttributes.width = String(graph.width);
-    svgAttributes.height = String(graph.height);
-
-    // Extract and combine styles
-    const styles: any = ['style', {}, ''];
-    onml.traverse(Skin.skin!, {
-        enter: (node) => {
-            if (node.name === 'style') {
-                styles[2] += node.full[2];
-            }
-        }
-    });
-
-    // Build final SVG
-    const svgElement: onml.Element = ['svg', svgAttributes, styles, ...nodes, ...lines];
-    return onml.s(svgElement);
 }

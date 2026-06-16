@@ -11,7 +11,7 @@ export declare class Port {
     keyIn(pids: string[]): boolean;
     maxVal(): number;
     valString(): string;
-    findConstants(sigsByConstantName: SigsByConstName, maxNum: number, constantCollector: Cell[]): number;
+    findConstants(sigsByConstantName: SigsByConstName, maxNum: number, constantCollector: Cell[], parent: string): number;
     getGenericElkPort(index: number, templatePorts: any[], dir: string): ElkModel.Port;
     private assignConstant;
 }

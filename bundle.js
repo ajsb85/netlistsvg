@@ -7132,7 +7132,7 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
           return filterPortPids(template, (attrs) => attrs["s:dir"] === "lateral" || ["left", "right"].includes(attrs["s:position"]));
         }
         Skin2.getLateralPortPids = getLateralPortPids;
-        function findSkinType(type) {
+        function findSkinType(type, depth = null) {
           if (!Skin2.skin) {
             return null;
           }
@@ -7146,9 +7146,10 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
             }
           });
           if (!foundNode) {
+            const fallbackType = depth == null ? "generic" : ["sub_odd", "sub_even"][depth % 2];
             onml.traverse(Skin2.skin, {
               enter: (node) => {
-                if (node.attr["s:type"] === "generic") {
+                if (node.attr["s:type"] === fallbackType) {
                   foundNode = node;
                   return true;
                 }
@@ -7269,24 +7270,24 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
         valString() {
           return "," + this.value.join() + ",";
         }
-        findConstants(sigsByConstantName, maxNum, constantCollector) {
+        findConstants(sigsByConstantName, maxNum, constantCollector, parent) {
           let constName = "";
           let constNums = [];
           for (let i = 0; i < this.value.length; i++) {
             const portSig = this.value[i];
-            if (portSig === "0" || portSig === "1") {
+            if (portSig === "0" || portSig === "1" || portSig === "x") {
               maxNum += 1;
               constName += portSig;
               this.value[i] = maxNum;
               constNums.push(maxNum);
             } else if (constName.length > 0) {
-              this.assignConstant(constName, constNums, sigsByConstantName, constantCollector);
+              this.assignConstant(constName, constNums, sigsByConstantName, constantCollector, parent);
               constName = "";
               constNums = [];
             }
           }
           if (constName.length > 0) {
-            this.assignConstant(constName, constNums, sigsByConstantName, constantCollector);
+            this.assignConstant(constName, constNums, sigsByConstantName, constantCollector, parent);
           }
           return maxNum;
         }
@@ -7294,8 +7295,9 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
           if (!this.parentNode) {
             throw new Error("Port has no parentNode");
           }
-          const nodeKey = this.parentNode.Key;
+          const nodeKey = `${this.parentNode.parent}.${this.parentNode.Key}`;
           const type = this.parentNode.getTemplate()[1]["s:type"];
+          const isSub = type === "sub_odd" || type === "sub_even";
           const x = Number(templatePorts[0][1]["s:x"]);
           const y = Number(templatePorts[0][1]["s:y"]);
           const portId = `${nodeKey}.${this.key}`;
@@ -7307,7 +7309,7 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
             x,
             y: portY
           };
-          const needsLabel = type === "generic" || type === "join" && dir === "in" || type === "split" && dir === "out";
+          const needsLabel = type === "generic" || isSub || type === "join" && dir === "in" || type === "split" && dir === "out";
           if (needsLabel) {
             elkPort.labels = [{
               id: `${portId}.label`,
@@ -7318,9 +7320,16 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
               height: 11
             }];
           }
+          if (isSub) {
+            elkPort.layoutOptions = {
+              "org.eclipse.elk.port.side": dir === "in" ? "WEST" : "EAST"
+            };
+            delete elkPort.x;
+            delete elkPort.y;
+          }
           return elkPort;
         }
-        assignConstant(name, constants, signalsByConstantName, constantCollector) {
+        assignConstant(name, constants, signalsByConstantName, constantCollector, parent) {
           const reversedName = name.split("").reverse().join("");
           if (signalsByConstantName[reversedName]) {
             const constSigs = signalsByConstantName[reversedName];
@@ -7331,12 +7340,340 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
               }
             }
           } else {
-            constantCollector.push(Cell_1.default.fromConstantInfo(reversedName, constants));
+            constantCollector.push(Cell_1.default.fromConstantInfo(reversedName, constants, parent));
             signalsByConstantName[reversedName] = constants;
           }
         }
       };
       exports.Port = Port;
+    }
+  });
+
+  // built/elkGraph.js
+  var require_elkGraph = __commonJS({
+    "built/elkGraph.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.ElkModel = void 0;
+      exports.buildElkGraph = buildElkGraph;
+      var ElkModel;
+      (function(ElkModel2) {
+        ElkModel2.wireNameLookup = {};
+        ElkModel2.dummyNum = 0;
+        ElkModel2.edgeIndex = 0;
+      })(ElkModel || (exports.ElkModel = ElkModel = {}));
+      function buildElkGraph(module2) {
+        const moduleName = module2.moduleName;
+        const children = module2.nodes.map((n) => n.buildElkChild());
+        ElkModel.edgeIndex = 0;
+        ElkModel.dummyNum = 0;
+        const edges = [];
+        module2.wires.forEach((wire) => {
+          const numWires = wire.netName.split(",").length - 2;
+          const { drivers, riders, laterals } = wire;
+          if (drivers.length > 0 && riders.length > 0 && laterals.length === 0) {
+            createEdges(drivers, riders, edges, numWires, moduleName);
+          } else if (drivers.concat(riders).length > 0 && laterals.length > 0) {
+            createEdges(drivers, laterals, edges, numWires, moduleName);
+            createEdges(laterals, riders, edges, numWires, moduleName);
+          } else if (riders.length === 0 && drivers.length > 1) {
+            const dummyId = addDummy(children, moduleName);
+            drivers.forEach((driver) => {
+              edges.push(createDummyEdge(driver, dummyId, "source", driver.wire.netName, moduleName));
+            });
+          } else if (riders.length > 1 && drivers.length === 0) {
+            const dummyId = addDummy(children, moduleName);
+            riders.forEach((rider) => {
+              edges.push(createDummyEdge(rider, dummyId, "target", rider.wire.netName, moduleName));
+            });
+          } else if (laterals.length > 1) {
+            const [source, ...otherLaterals] = laterals;
+            const sourceParentKey = source.parentNode.Key;
+            otherLaterals.forEach((lateral) => {
+              const lateralParentKey = lateral.parentNode.Key;
+              const id = `${moduleName}.e${ElkModel.edgeIndex++}`;
+              edges.push({
+                id,
+                source: `${moduleName}.${sourceParentKey}`,
+                sourcePort: `${moduleName}.${sourceParentKey}.${source.key}`,
+                target: `${moduleName}.${lateralParentKey}`,
+                targetPort: `${moduleName}.${lateralParentKey}.${lateral.key}`
+              });
+              ElkModel.wireNameLookup[id] = lateral.wire.netName;
+            });
+          }
+        });
+        return {
+          id: moduleName,
+          children,
+          edges
+        };
+      }
+      function createEdges(sourcePorts, targetPorts, edges, numWires, moduleName) {
+        for (const sourcePort of sourcePorts) {
+          const sourceParentKey = sourcePort.parentNode.Key;
+          const source = `${moduleName}.${sourceParentKey}`;
+          const sourceKey = `${source}.${sourcePort.key}`;
+          const edgeLabel = numWires > 1 ? [{
+            id: `label_${ElkModel.edgeIndex}`,
+            text: String(numWires),
+            width: 4,
+            height: 6,
+            x: 0,
+            y: 0,
+            layoutOptions: { "org.eclipse.elk.edgeLabels.inline": true }
+          }] : void 0;
+          for (const targetPort of targetPorts) {
+            const targetParentKey = targetPort.parentNode.Key;
+            const target = `${moduleName}.${targetParentKey}`;
+            const targetKey = `${target}.${targetPort.key}`;
+            const id = `${moduleName}.e${ElkModel.edgeIndex++}`;
+            edges.push({
+              id,
+              labels: edgeLabel,
+              source,
+              sourcePort: sourceKey,
+              target,
+              targetPort: targetKey,
+              layoutOptions: {
+                "org.eclipse.elk.layered.priority.direction": sourcePort.parentNode.type !== "$dff" ? 10 : void 0,
+                "org.eclipse.elk.edge.thickness": numWires > 1 ? 2 : 1
+              }
+            });
+            ElkModel.wireNameLookup[id] = targetPort.wire.netName;
+          }
+        }
+      }
+      function addDummy(children, moduleName) {
+        const dummyId = `${moduleName}.$d_${ElkModel.dummyNum++}`;
+        children.push({
+          id: dummyId,
+          width: 0,
+          height: 0,
+          ports: [{ id: `${dummyId}.p`, width: 0, height: 0 }],
+          layoutOptions: { "org.eclipse.elk.portConstraints": "FIXED_SIDE" }
+        });
+        return dummyId;
+      }
+      function createDummyEdge(port, dummyId, type, netName, moduleName) {
+        const parentKey = `${moduleName}.${port.parentNode.Key}`;
+        const id = `${moduleName}.e${ElkModel.edgeIndex++}`;
+        const edge = {
+          id,
+          [type === "source" ? "source" : "target"]: parentKey,
+          [type === "source" ? "sourcePort" : "targetPort"]: `${parentKey}.${port.key}`,
+          [type === "source" ? "target" : "source"]: dummyId,
+          [type === "source" ? "targetPort" : "sourcePort"]: `${dummyId}.p`
+        };
+        ElkModel.wireNameLookup[id] = netName;
+        return edge;
+      }
+    }
+  });
+
+  // built/drawModule.js
+  var require_drawModule = __commonJS({
+    "built/drawModule.js"(exports) {
+      "use strict";
+      var __importDefault = exports && exports.__importDefault || function(mod) {
+        return mod && mod.__esModule ? mod : { "default": mod };
+      };
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.removeDummyEdges = removeDummyEdges;
+      exports.default = drawModule;
+      exports.drawSubModule = drawSubModule;
+      var elkGraph_1 = require_elkGraph();
+      var Skin_1 = __importDefault(require_Skin());
+      var onml = require_onml();
+      var WireDirection;
+      (function(WireDirection2) {
+        WireDirection2[WireDirection2["Up"] = 0] = "Up";
+        WireDirection2[WireDirection2["Down"] = 1] = "Down";
+        WireDirection2[WireDirection2["Left"] = 2] = "Left";
+        WireDirection2[WireDirection2["Right"] = 3] = "Right";
+      })(WireDirection || (WireDirection = {}));
+      function getWireDirection(start, end) {
+        if (end.x === start.x && end.y === start.y) {
+          throw new Error("Points cannot be identical");
+        }
+        if (end.x !== start.x && end.y !== start.y) {
+          throw new Error("Points must be orthogonal");
+        }
+        if (end.x > start.x)
+          return WireDirection.Right;
+        if (end.x < start.x)
+          return WireDirection.Left;
+        if (end.y > start.y)
+          return WireDirection.Down;
+        return WireDirection.Up;
+      }
+      function findNearestBend(edges, dummyIsSource, dummyLocation) {
+        const candidates = edges.map((edge) => {
+          const bends = edge.sections[0].bendPoints || [];
+          return dummyIsSource ? bends[0] : bends[bends.length - 1];
+        }).filter((p) => p !== void 0);
+        if (candidates.length === 0)
+          return void 0;
+        return candidates.reduce((closest, current) => {
+          const closestDist = (closest.x - dummyLocation.x) ** 2 + (closest.y - dummyLocation.y) ** 2;
+          const currentDist = (current.x - dummyLocation.x) ** 2 + (current.y - dummyLocation.y) ** 2;
+          return currentDist < closestDist ? current : closest;
+        });
+      }
+      function isJunctionDummy(id) {
+        return typeof id === "string" && /\$d_\d+$/.test(id);
+      }
+      function removeDummyEdges(graph) {
+        var _a, _b;
+        const edges = graph.edges || [];
+        const dummyIds = [];
+        for (const e of edges) {
+          for (const endpoint of [e.source, e.target]) {
+            if (isJunctionDummy(endpoint) && !dummyIds.includes(endpoint)) {
+              dummyIds.push(endpoint);
+            }
+          }
+        }
+        for (const dummyId of dummyIds) {
+          const edgesWithDummy = edges.filter((e) => e.source === dummyId || e.target === dummyId);
+          if (edgesWithDummy.length === 0)
+            continue;
+          const firstEdge = edgesWithDummy[0];
+          const dummyIsSource = firstEdge.source === dummyId;
+          const dummyLocation = dummyIsSource ? firstEdge.sections[0].startPoint : firstEdge.sections[0].endPoint;
+          const newEndpoint = findNearestBend(edgesWithDummy, dummyIsSource, dummyLocation);
+          if (!newEndpoint) {
+            continue;
+          }
+          for (const edge of edgesWithDummy) {
+            const section = edge.sections[0];
+            if (dummyIsSource) {
+              section.startPoint = newEndpoint;
+              (_a = section.bendPoints) === null || _a === void 0 ? void 0 : _a.shift();
+            } else {
+              section.endPoint = newEndpoint;
+              (_b = section.bendPoints) === null || _b === void 0 ? void 0 : _b.pop();
+            }
+          }
+          const directions = new Set(edgesWithDummy.map((edge) => {
+            var _a2, _b2;
+            const section = edge.sections[0];
+            const point = dummyIsSource ? ((_a2 = section.bendPoints) === null || _a2 === void 0 ? void 0 : _a2[0]) || section.endPoint : ((_b2 = section.bendPoints) === null || _b2 === void 0 ? void 0 : _b2[section.bendPoints.length - 1]) || section.startPoint;
+            return getWireDirection(newEndpoint, point);
+          }));
+          if (directions.size < 3) {
+            for (const edge of edgesWithDummy) {
+              edge.junctionPoints = (edge.junctionPoints || []).filter((junction) => !(junction.x === newEndpoint.x && junction.y === newEndpoint.y));
+            }
+          }
+        }
+      }
+      function drawModule(graph, module2) {
+        const nodes = module2.nodes.map((node) => {
+          const matchedChild = graph.children.find((child) => child.id === node.parent + "." + node.Key);
+          return node.render(matchedChild);
+        });
+        removeDummyEdges(graph);
+        const lines = renderWireLines(graph.edges);
+        const labels = renderWireLabels(graph.edges);
+        if (labels.length > 0) {
+          lines.push(...labels);
+        }
+        const svgAttributes = { ...Skin_1.default.skin[1] };
+        svgAttributes.width = String(graph.width);
+        svgAttributes.height = String(graph.height);
+        const styles = ["style", {}, ""];
+        onml.traverse(Skin_1.default.skin, {
+          enter: (node) => {
+            if (node.name === "style") {
+              styles[2] += node.full[2];
+            }
+          }
+        });
+        const svgElement = ["svg", svgAttributes, styles, ...nodes, ...lines];
+        return onml.s(svgElement);
+      }
+      function drawSubModule(cell, subModule) {
+        const nodes = [];
+        subModule.nodes.forEach((node) => {
+          const matchedChild = (cell.children || []).find((child) => child.id === node.parent + "." + node.Key);
+          if (matchedChild) {
+            nodes.push(node.render(matchedChild));
+          }
+        });
+        removeDummyEdges(cell);
+        const lines = renderWireLines(cell.edges || []);
+        const svgAttributes = { ...Skin_1.default.skin[1] };
+        svgAttributes.width = String(cell.width);
+        svgAttributes.height = String(cell.height);
+        return ["svg", svgAttributes, ...nodes, ...lines];
+      }
+      function renderWireLines(edges) {
+        return edges.flatMap((edge) => {
+          const netId = elkGraph_1.ElkModel.wireNameLookup[edge.id];
+          const numWires = netId.split(",").length - 2;
+          const lineWidth = numWires > 1 ? 2 : 1;
+          const netClass = `net_${netId.slice(1, -1)} width_${numWires}`;
+          return (edge.sections || []).flatMap((section) => {
+            let currentPoint = section.startPoint;
+            const wireSegments = [];
+            const bendPoints = section.bendPoints || [];
+            bendPoints.forEach((bendPoint) => {
+              wireSegments.push(["line", {
+                x1: currentPoint.x,
+                y1: currentPoint.y,
+                x2: bendPoint.x,
+                y2: bendPoint.y,
+                class: netClass,
+                style: `stroke-width: ${lineWidth}`
+              }]);
+              currentPoint = bendPoint;
+            });
+            const junctions = (edge.junctionPoints || []).map((junction) => ["circle", {
+              cx: junction.x,
+              cy: junction.y,
+              r: numWires > 1 ? 3 : 2,
+              class: `${netClass} junction`
+            }]);
+            wireSegments.push(["line", {
+              x1: currentPoint.x,
+              y1: currentPoint.y,
+              x2: section.endPoint.x,
+              y2: section.endPoint.y,
+              class: netClass,
+              style: `stroke-width: ${lineWidth}`
+            }]);
+            return [...wireSegments, ...junctions];
+          });
+        });
+      }
+      function renderWireLabels(edges) {
+        return edges.flatMap((edge) => {
+          var _a, _b;
+          if (!((_b = (_a = edge.labels) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.text))
+            return [];
+          const label = edge.labels[0];
+          const netId = elkGraph_1.ElkModel.wireNameLookup[edge.id];
+          const numWires = netId.split(",").length - 2;
+          const labelClass = `net_${netId.slice(1, -1)} width_${numWires} busLabel_${numWires}`;
+          return [
+            // Label background
+            ["rect", {
+              x: label.x + 1,
+              y: label.y - 1,
+              width: (label.text.length + 2) * 6 - 2,
+              height: 9,
+              class: `${labelClass} labelBackground`
+            }],
+            // Label text
+            ["text", {
+              x: label.x,
+              y: label.y + 7,
+              class: labelClass
+            }, `/${label.text}/`]
+          ];
+        });
+      }
     }
   });
 
@@ -7548,6 +7885,8 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
       var YosysModel_1 = __importDefault(require_YosysModel());
       var Skin_1 = __importDefault(require_Skin());
       var Port_1 = require_Port();
+      var drawModule_1 = require_drawModule();
+      var elkGraph_1 = require_elkGraph();
       var clone = require_clone();
       var onml = require_onml();
       var Cell = class _Cell {
@@ -7556,14 +7895,14 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
          * @param yPort the Yosys Port with our port data
          * @param name the name of the port
          */
-        static fromPort(yPort, name) {
+        static fromPort(yPort, name, parent = "") {
           const isInput = yPort.direction === YosysModel_1.default.Direction.Input;
           if (isInput) {
-            return new _Cell(name, "$_inputExt_", [], [new Port_1.Port("Y", yPort.bits)], {});
+            return new _Cell(name, "$_inputExt_", [], [new Port_1.Port("Y", yPort.bits)], {}, parent);
           }
-          return new _Cell(name, "$_outputExt_", [new Port_1.Port("A", yPort.bits)], [], {});
+          return new _Cell(name, "$_outputExt_", [new Port_1.Port("A", yPort.bits)], [], {}, parent);
         }
-        static fromYosysCell(yCell, name) {
+        static fromYosysCell(yCell, name, parent = "") {
           this.setAlternateCellType(yCell);
           const template = Skin_1.default.findSkinType(yCell.type) || [];
           const templateInputPids = Skin_1.default.getInputPids(template);
@@ -7577,31 +7916,52 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
             inputPorts = ports.filter((port) => port.keyIn(inputPids));
             outputPorts = ports.filter((port) => port.keyIn(outputPids));
           }
-          return new _Cell(name, yCell.type, inputPorts, outputPorts, yCell.attributes || {});
+          return new _Cell(name, yCell.type, inputPorts, outputPorts, yCell.attributes || {}, parent);
         }
-        static fromConstantInfo(name, constants) {
-          return new _Cell(name, "$_constant_", [], [new Port_1.Port("Y", constants)], {});
+        /**
+         * creates a Cell that represents an expanded submodule. The inner module is
+         * flattened recursively into its own FlatModule (one level deeper) so it can be
+         * rendered as a nested schematic inside this cell.
+         */
+        static createSubModule(yCell, name, parent, subModule, depth) {
+          const template = Skin_1.default.findSkinType(yCell.type) || [];
+          const templateInputPids = Skin_1.default.getInputPids(template);
+          const templateOutputPids = Skin_1.default.getOutputPids(template);
+          const ports = Object.entries(yCell.connections).map(([portName, conn]) => new Port_1.Port(portName, conn));
+          let inputPorts = ports.filter((port) => port.keyIn(templateInputPids));
+          let outputPorts = ports.filter((port) => port.keyIn(templateOutputPids));
+          if (inputPorts.length + outputPorts.length !== ports.length) {
+            const inputPids = YosysModel_1.default.getInputPortPids(yCell);
+            const outputPids = YosysModel_1.default.getOutputPortPids(yCell);
+            inputPorts = ports.filter((port) => port.keyIn(inputPids));
+            outputPorts = ports.filter((port) => port.keyIn(outputPids));
+          }
+          const mod = new FlatModule_1.FlatModule(subModule, name, depth + 1, parent);
+          return new _Cell(name, yCell.type, inputPorts, outputPorts, yCell.attributes || {}, parent, mod, depth);
+        }
+        static fromConstantInfo(name, constants, parent = "") {
+          return new _Cell(name, "$_constant_", [], [new Port_1.Port("Y", constants)], {}, parent);
         }
         /**
          * creates a join cell
          * @param target string name of net (starts and ends with and delimited by commas)
          * @param sources list of index strings (one number, or two numbers separated by a colon)
          */
-        static fromJoinInfo(target, sources) {
+        static fromJoinInfo(target, sources, parent = "") {
           const signalStrs = target.slice(1, -1).split(",");
           const signals = signalStrs.map((ss) => Number(ss));
           const joinOutPorts = [new Port_1.Port("Y", signals)];
           const inPorts = sources.map((name) => {
             return new Port_1.Port(name, getBits(signals, name));
           });
-          return new _Cell("$join$" + target, "$_join_", inPorts, joinOutPorts, {});
+          return new _Cell("$join$" + target, "$_join_", inPorts, joinOutPorts, {}, parent);
         }
         /**
          * creates a split cell
          * @param source string name of net (starts and ends with and delimited by commas)
          * @param targets list of index strings (one number, or two numbers separated by a colon)
          */
-        static fromSplitInfo(source, targets) {
+        static fromSplitInfo(source, targets, parent = "") {
           const sigStrs = source.slice(1, -1).split(",");
           const signals = sigStrs.map((s) => Number(s));
           const inPorts = [new Port_1.Port("A", signals)];
@@ -7609,7 +7969,7 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
             const sigs = getBits(signals, name);
             return new Port_1.Port(name, sigs);
           });
-          return new _Cell("$split$" + source, "$_split_", inPorts, splitOutPorts, {});
+          return new _Cell("$split$" + source, "$_split_", inPorts, splitOutPorts, {}, parent);
         }
         // Set cells to alternate types/tags based on their parameters
         static setAlternateCellType(yCell) {
@@ -7619,12 +7979,15 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
             }
           }
         }
-        constructor(key, type, inputPorts, outputPorts, attributes) {
+        constructor(key, type, inputPorts, outputPorts, attributes, parent = "", subModule = null, depth = null) {
           this.key = key;
           this.type = type;
           this.inputPorts = inputPorts;
           this.outputPorts = outputPorts;
           this.attributes = attributes || {};
+          this.parent = parent;
+          this.subModule = subModule;
+          this.depth = depth;
           inputPorts.forEach((ip) => {
             ip.parentNode = this;
           });
@@ -7650,7 +8013,7 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
         }
         findConstants(sigsByConstantName, maxNum, constantCollector) {
           this.inputPorts.forEach((ip) => {
-            maxNum = ip.findConstants(sigsByConstantName, maxNum, constantCollector);
+            maxNum = ip.findConstants(sigsByConstantName, maxNum, constantCollector, this.parent);
           });
           return maxNum;
         }
@@ -7689,7 +8052,7 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
           return "";
         }
         getTemplate() {
-          return Skin_1.default.findSkinType(this.type);
+          return Skin_1.default.findSkinType(this.type, this.depth);
         }
         buildElkChild() {
           const template = this.getTemplate();
@@ -7716,13 +8079,19 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
             const inPorts = this.inputPorts.map((ip, i) => ip.getGenericElkPort(i, inTemplates, "in"));
             const outPorts = this.outputPorts.map((op, i) => op.getGenericElkPort(i, outTemplates, "out"));
             const cell = {
-              id: this.key,
+              id: this.parent + "." + this.key,
               width: Number(template[1]["s:width"]),
               height: Number(this.getGenericHeight()),
               ports: inPorts.concat(outPorts),
               layoutOptions: layoutAttrs,
               labels: []
             };
+            if (type === "split") {
+              cell.ports[0].y = cell.height / 2;
+            }
+            if (type === "join") {
+              cell.ports[cell.ports.length - 1].y = cell.height / 2;
+            }
             if (fixedPosX) {
               cell.x = fixedPosX;
             }
@@ -7732,9 +8101,12 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
             this.addLabels(template, cell);
             return cell;
           }
+          if (type === "sub_odd" || type === "sub_even") {
+            return this.buildElkSubModule(template, fixedPosX, fixedPosY);
+          }
           const ports = Skin_1.default.getPortsWithPrefix(template, "").map((tp) => {
             return {
-              id: this.key + "." + tp[1]["s:pid"],
+              id: this.parent + "." + this.key + "." + tp[1]["s:pid"],
               width: 0,
               height: 0,
               x: Number(tp[1]["s:x"]),
@@ -7743,7 +8115,7 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
           });
           const nodeWidth = Number(template[1]["s:width"]);
           const ret = {
-            id: this.key,
+            id: this.parent + "." + this.key,
             width: nodeWidth,
             height: Number(template[1]["s:height"]),
             ports,
@@ -7758,6 +8130,87 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
           }
           this.addLabels(template, ret);
           return ret;
+        }
+        /**
+         * Builds an ELK node for an expanded submodule. The inner module is laid out as
+         * a nested ELK graph (children + edges), and the submodule's own external-port
+         * cells are folded into this node's ports so wires connect through.
+         */
+        buildElkSubModule(template, fixedPosX, fixedPosY) {
+          const subModule = this.subModule;
+          const inTemplates = Skin_1.default.getPortsWithPrefix(template, "in");
+          const outTemplates = Skin_1.default.getPortsWithPrefix(template, "out");
+          const inPorts = this.inputPorts.map((ip, i) => ip.getGenericElkPort(i, inTemplates, "in"));
+          const outPorts = this.outputPorts.map((op, i) => op.getGenericElkPort(i, outTemplates, "out"));
+          const elk = (0, elkGraph_1.buildElkGraph)(subModule);
+          const cell = {
+            id: this.parent + "." + this.key,
+            layoutOptions: { "org.eclipse.elk.portConstraints": "FIXED_SIDE" },
+            labels: [],
+            ports: inPorts.concat(outPorts),
+            children: [],
+            edges: []
+          };
+          elk.children.forEach((child) => {
+            const isPort = cell.ports.some((port) => this.parent + "." + child.id === port.id);
+            if (!isPort) {
+              cell.children.push(child);
+            }
+          });
+          elk.edges.forEach((edge) => {
+            cell.ports.forEach((port) => {
+              if (inPorts.indexOf(port) !== -1) {
+                if (edge.sourcePort === port.id.slice(this.parent.length + 1) + ".Y") {
+                  const source = port.id.split(".");
+                  source.pop();
+                  edge.source = source.join(".");
+                  edge.sourcePort = port.id;
+                }
+              } else {
+                if (edge.targetPort === port.id.slice(this.parent.length + 1) + ".A") {
+                  const target = port.id.split(".");
+                  target.pop();
+                  edge.target = target.join(".");
+                  edge.targetPort = port.id;
+                }
+              }
+            });
+            if (edge.source === edge.target) {
+              const dummyId = subModule.moduleName + ".$d_" + edge.sourcePort + "_" + edge.targetPort;
+              const dummy = {
+                id: dummyId,
+                width: 0,
+                height: 0,
+                ports: [
+                  { id: dummyId + ".pin", width: 0, height: 0 },
+                  { id: dummyId + ".pout", width: 0, height: 0 }
+                ],
+                layoutOptions: { "org.eclipse.elk.portConstraints": "FIXED_SIDE" }
+              };
+              const edgeId = edge.id;
+              const edgeCopy = { ...edge };
+              edge.target = dummyId;
+              edge.targetPort = dummyId + ".pin";
+              edge.id = subModule.moduleName + ".e_" + edge.sourcePort + "_" + edge.targetPort;
+              elkGraph_1.ElkModel.wireNameLookup[edge.id] = elkGraph_1.ElkModel.wireNameLookup[edgeId];
+              edgeCopy.source = dummyId;
+              edgeCopy.sourcePort = dummyId + ".pout";
+              edgeCopy.id = subModule.moduleName + ".e_" + edgeCopy.sourcePort + "_" + edgeCopy.targetPort;
+              elkGraph_1.ElkModel.wireNameLookup[edgeCopy.id] = elkGraph_1.ElkModel.wireNameLookup[edgeId];
+              cell.edges.push(edge, edgeCopy);
+              cell.children.push(dummy);
+            } else {
+              cell.edges.push(edge);
+            }
+          });
+          if (fixedPosX) {
+            cell.x = fixedPosX;
+          }
+          if (fixedPosY) {
+            cell.y = fixedPosY;
+          }
+          this.addLabels(template, cell);
+          return cell;
         }
         render(cell) {
           const template = this.getTemplate();
@@ -7830,7 +8283,38 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
               portClone[1].id = "port_" + port.parentNode.Key + "~" + port.Key;
               tempclone.push(portClone);
             });
-            tempclone[2][2] = this.type;
+            tempclone[2][2] = cleanType(this.type);
+          } else if (template[1]["s:type"] === "sub_odd" || template[1]["s:type"] === "sub_even") {
+            const subModuleSvg = (0, drawModule_1.drawSubModule)(cell, this.subModule);
+            tempclone[3][1].width = subModuleSvg[1].width;
+            tempclone[3][1].height = subModuleSvg[1].height;
+            tempclone[2][1].x = Number(tempclone[3][1].width) / 2;
+            tempclone[2][2] = cleanType(this.type);
+            tempclone.pop();
+            tempclone.pop();
+            tempclone.pop();
+            tempclone.pop();
+            subModuleSvg.shift();
+            subModuleSvg.shift();
+            subModuleSvg.forEach((child) => tempclone.push(child));
+            const inPorts = Skin_1.default.getPortsWithPrefix(template, "in");
+            const outPorts = Skin_1.default.getPortsWithPrefix(template, "out");
+            this.inputPorts.forEach((port) => {
+              const portElk = cell.ports.find((p) => p.id === cell.id + "." + port.Key);
+              const portClone = clone(inPorts[0]);
+              portClone[portClone.length - 1][2] = port.Key;
+              portClone[1].transform = "translate(" + portElk.x + "," + portElk.y + ")";
+              portClone[1].id = "port_" + port.parentNode.Key + "~" + port.Key;
+              tempclone.push(portClone);
+            });
+            this.outputPorts.forEach((port) => {
+              const portElk = cell.ports.find((p) => p.id === cell.id + "." + port.Key);
+              const portClone = clone(outPorts[0]);
+              portClone[portClone.length - 1][2] = port.Key;
+              portClone[1].transform = "translate(" + portElk.x + "," + portElk.y + ")";
+              portClone[1].id = "port_" + port.parentNode.Key + "~" + port.Key;
+              tempclone.push(portClone);
+            });
           }
           setClass(tempclone, "$cell_id", "cell_" + this.key);
           return tempclone;
@@ -7910,6 +8394,19 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
             }
           }
         });
+      }
+      function cleanType(type) {
+        if (typeof type === "string" && type.startsWith("$paramod")) {
+          const named = type.match(/^\$paramod\\([^\\]+)/);
+          if (named) {
+            return named[1];
+          }
+          const hashed = type.match(/^\$paramod\$[^\\]+\\([^\\]+)/);
+          if (hashed) {
+            return hashed[1];
+          }
+        }
+        return type;
       }
       function getBits(signals, indicesString) {
         const index = indicesString.indexOf(":");
@@ -7998,21 +8495,80 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
         const newEnd = targetSignal.substring(0, end - 1).lastIndexOf(",") + 1;
         processSplitsAndJoins(inputs, outputs, targetSignal, start, newEnd, splits, joins);
       }
-      var FlatModule = class {
+      var FlatModule = class _FlatModule {
         /**
-         * Create a new FlatModule from a Yosys netlist
+         * Entry point for building a (possibly hierarchical) FlatModule from a Yosys
+         * netlist and a configuration. Selects the top module, then recursively flattens
+         * it according to the hierarchy settings in the config.
          */
-        constructor(netlist) {
-          this.moduleName = Object.keys(netlist.modules).find((name) => {
-            var _a;
-            return ((_a = netlist.modules[name].attributes) === null || _a === void 0 ? void 0 : _a.top) === 1;
-          }) || Object.keys(netlist.modules)[0];
-          const topModule = netlist.modules[this.moduleName];
-          this.nodes = [
-            ...Object.entries(topModule.ports).map(([key, portData]) => Cell_1.default.fromPort(portData, key)),
-            ...Object.entries(topModule.cells).map(([key, cellData]) => Cell_1.default.fromYosysCell(cellData, key))
-          ];
+        static fromNetlist(netlist, config) {
+          this.layoutProps = Skin_1.default.getProperties();
+          this.modNames = Object.keys(netlist.modules);
+          this.netlist = netlist;
+          this.config = config;
+          let topName = null;
+          if (config.top.enable) {
+            topName = config.top.module;
+            if (!this.modNames.includes(topName)) {
+              throw new Error("Top module in config file not defined in input json file.");
+            }
+          } else {
+            Object.entries(netlist.modules).forEach(([name, mod]) => {
+              if (mod.attributes && Number(mod.attributes.top) === 1) {
+                topName = name;
+              }
+            });
+            if (topName == null) {
+              topName = this.modNames[0];
+            }
+          }
+          const top = netlist.modules[topName];
+          return new _FlatModule(top, topName, 0);
+        }
+        /**
+         * Create a FlatModule for a single module. `depth` is the hierarchy depth
+         * (0 for the top module) and `parent` is the name of the enclosing module.
+         */
+        constructor(mod, name, depth, parent = null) {
+          this.parent = parent;
+          this.moduleName = name;
+          const ports = Object.entries(mod.ports).map(([portName, portData]) => Cell_1.default.fromPort(portData, portName, this.moduleName));
+          const cells = Object.entries(mod.cells).map(([key, c]) => this.buildCell(c, key, depth));
+          this.nodes = cells.concat(ports);
           this.wires = [];
+          if (_FlatModule.layoutProps.constants !== false) {
+            this.addConstants();
+          }
+          if (_FlatModule.layoutProps.splitsAndJoins !== false) {
+            this.addSplitsJoins();
+          }
+          this.createWires();
+        }
+        /**
+         * Decide whether a child cell should be rendered as an expanded submodule or as
+         * an opaque box, based on the hierarchy configuration and current depth.
+         */
+        buildCell(c, key, depth) {
+          const cfg = _FlatModule.config.hierarchy;
+          const isModule = _FlatModule.modNames.includes(c.type);
+          const expand = () => Cell_1.default.createSubModule(c, key, this.moduleName, _FlatModule.netlist.modules[c.type], depth);
+          const box = () => Cell_1.default.fromYosysCell(c, key, this.moduleName);
+          switch (cfg.enable) {
+            case "level":
+              return cfg.expandLevel > depth && isModule ? expand() : box();
+            case "all":
+              return isModule ? expand() : box();
+            case "modules":
+              if (cfg.expandModules.types.includes(c.type) || cfg.expandModules.ids.includes(key)) {
+                if (!isModule) {
+                  throw new Error("Submodule in config file not defined in input json file.");
+                }
+                return expand();
+              }
+              return box();
+            default:
+              return box();
+          }
         }
         /**
          * Add constant value nodes to the module
@@ -8038,8 +8594,8 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
           for (const input of allInputs) {
             processSplitsAndJoins(allOutputs, inputsCopy, input, 0, input.length, splits, joins);
           }
-          const joinCells = Object.entries(joins).map(([joinInput, joinOutputs]) => Cell_1.default.fromJoinInfo(joinInput, joinOutputs));
-          const splitCells = Object.entries(splits).map(([splitInput, splitOutputs]) => Cell_1.default.fromSplitInfo(splitInput, splitOutputs));
+          const joinCells = Object.entries(joins).map(([joinInput, joinOutputs]) => Cell_1.default.fromJoinInfo(joinInput, joinOutputs, this.moduleName));
+          const splitCells = Object.entries(splits).map(([splitInput, splitOutputs]) => Cell_1.default.fromSplitInfo(splitInput, splitOutputs, this.moduleName));
           this.nodes.push(...joinCells, ...splitCells);
         }
         /**
@@ -8073,296 +8629,6 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
     }
   });
 
-  // built/elkGraph.js
-  var require_elkGraph = __commonJS({
-    "built/elkGraph.js"(exports) {
-      "use strict";
-      Object.defineProperty(exports, "__esModule", { value: true });
-      exports.ElkModel = void 0;
-      exports.buildElkGraph = buildElkGraph;
-      var ElkModel;
-      (function(ElkModel2) {
-        ElkModel2.wireNameLookup = {};
-        ElkModel2.dummyNum = 0;
-        ElkModel2.edgeIndex = 0;
-      })(ElkModel || (exports.ElkModel = ElkModel = {}));
-      function buildElkGraph(module2) {
-        const children = module2.nodes.map((n) => n.buildElkChild());
-        ElkModel.edgeIndex = 0;
-        ElkModel.dummyNum = 0;
-        const edges = [];
-        module2.wires.forEach((wire) => {
-          const numWires = wire.netName.split(",").length - 2;
-          const { drivers, riders, laterals } = wire;
-          if (drivers.length > 0 && riders.length > 0 && laterals.length === 0) {
-            createEdges(drivers, riders, edges, numWires);
-          } else if (drivers.concat(riders).length > 0 && laterals.length > 0) {
-            createEdges(drivers, laterals, edges, numWires);
-            createEdges(laterals, riders, edges, numWires);
-          } else if (riders.length === 0 && drivers.length > 1) {
-            const dummyId = addDummy(children);
-            drivers.forEach((driver) => {
-              edges.push(createDummyEdge(driver, dummyId, "source", driver.wire.netName));
-            });
-          } else if (riders.length > 1 && drivers.length === 0) {
-            const dummyId = addDummy(children);
-            riders.forEach((rider) => {
-              edges.push(createDummyEdge(rider, dummyId, "target", rider.wire.netName));
-            });
-          } else if (laterals.length > 1) {
-            const [source, ...otherLaterals] = laterals;
-            otherLaterals.forEach((lateral) => {
-              const id = `e${ElkModel.edgeIndex++}`;
-              edges.push({
-                id,
-                source: source.parentNode.Key,
-                sourcePort: `${source.parentNode.Key}.${source.key}`,
-                target: lateral.parentNode.Key,
-                targetPort: `${lateral.parentNode.Key}.${lateral.key}`
-              });
-              ElkModel.wireNameLookup[id] = lateral.wire.netName;
-            });
-          }
-        });
-        return {
-          id: module2.moduleName,
-          children,
-          edges
-        };
-      }
-      function createEdges(sourcePorts, targetPorts, edges, numWires) {
-        for (const sourcePort of sourcePorts) {
-          const sourceParentKey = sourcePort.parentNode.Key;
-          const sourceKey = `${sourceParentKey}.${sourcePort.key}`;
-          const edgeLabel = numWires > 1 ? [{
-            id: `label_${ElkModel.edgeIndex}`,
-            text: String(numWires),
-            width: 4,
-            height: 6,
-            x: 0,
-            y: 0,
-            layoutOptions: { "org.eclipse.elk.edgeLabels.inline": true }
-          }] : void 0;
-          for (const targetPort of targetPorts) {
-            const targetParentKey = targetPort.parentNode.Key;
-            const targetKey = `${targetParentKey}.${targetPort.key}`;
-            const id = `e${ElkModel.edgeIndex++}`;
-            edges.push({
-              id,
-              labels: edgeLabel,
-              sources: [sourceKey],
-              targets: [targetKey],
-              layoutOptions: {
-                "org.eclipse.elk.layered.priority.direction": sourcePort.parentNode.type !== "$dff" ? 10 : void 0,
-                "org.eclipse.elk.edge.thickness": numWires > 1 ? 2 : 1
-              }
-            });
-            ElkModel.wireNameLookup[id] = targetPort.wire.netName;
-          }
-        }
-      }
-      function addDummy(children) {
-        const dummyId = `$d_${ElkModel.dummyNum++}`;
-        children.push({
-          id: dummyId,
-          width: 0,
-          height: 0,
-          ports: [{ id: `${dummyId}.p`, width: 0, height: 0 }],
-          layoutOptions: { "org.eclipse.elk.portConstraints": "FIXED_SIDE" }
-        });
-        return dummyId;
-      }
-      function createDummyEdge(port, dummyId, type, netName) {
-        const parentKey = port.parentNode.Key;
-        const id = `e${ElkModel.edgeIndex++}`;
-        const edge = {
-          id,
-          [type === "source" ? "source" : "target"]: parentKey,
-          [type === "source" ? "sourcePort" : "targetPort"]: `${parentKey}.${port.key}`,
-          [type === "source" ? "target" : "source"]: dummyId,
-          [type === "source" ? "targetPort" : "sourcePort"]: `${dummyId}.p`
-        };
-        ElkModel.wireNameLookup[id] = netName;
-        return edge;
-      }
-    }
-  });
-
-  // built/drawModule.js
-  var require_drawModule = __commonJS({
-    "built/drawModule.js"(exports) {
-      "use strict";
-      var __importDefault = exports && exports.__importDefault || function(mod) {
-        return mod && mod.__esModule ? mod : { "default": mod };
-      };
-      Object.defineProperty(exports, "__esModule", { value: true });
-      exports.removeDummyEdges = removeDummyEdges;
-      exports.default = drawModule;
-      var elkGraph_1 = require_elkGraph();
-      var Skin_1 = __importDefault(require_Skin());
-      var onml = require_onml();
-      var WireDirection;
-      (function(WireDirection2) {
-        WireDirection2[WireDirection2["Up"] = 0] = "Up";
-        WireDirection2[WireDirection2["Down"] = 1] = "Down";
-        WireDirection2[WireDirection2["Left"] = 2] = "Left";
-        WireDirection2[WireDirection2["Right"] = 3] = "Right";
-      })(WireDirection || (WireDirection = {}));
-      function getWireDirection(start, end) {
-        if (end.x === start.x && end.y === start.y) {
-          throw new Error("Points cannot be identical");
-        }
-        if (end.x !== start.x && end.y !== start.y) {
-          throw new Error("Points must be orthogonal");
-        }
-        if (end.x > start.x)
-          return WireDirection.Right;
-        if (end.x < start.x)
-          return WireDirection.Left;
-        if (end.y > start.y)
-          return WireDirection.Down;
-        return WireDirection.Up;
-      }
-      function findNearestBend(edges, dummyIsSource, dummyLocation) {
-        const candidates = edges.map((edge) => {
-          const bends = edge.sections[0].bendPoints || [];
-          return dummyIsSource ? bends[0] : bends[bends.length - 1];
-        }).filter((p) => p !== void 0);
-        if (candidates.length === 0)
-          return void 0;
-        return candidates.reduce((closest, current) => {
-          const closestDist = (closest.x - dummyLocation.x) ** 2 + (closest.y - dummyLocation.y) ** 2;
-          const currentDist = (current.x - dummyLocation.x) ** 2 + (current.y - dummyLocation.y) ** 2;
-          return currentDist < closestDist ? current : closest;
-        });
-      }
-      function removeDummyEdges(graph) {
-        var _a, _b;
-        while (true) {
-          const dummyId = `$d_${elkGraph_1.ElkModel.dummyNum}`;
-          const edgesWithDummy = graph.edges.filter((e) => e.source === dummyId || e.target === dummyId);
-          if (edgesWithDummy.length === 0)
-            break;
-          const firstEdge = edgesWithDummy[0];
-          const dummyIsSource = firstEdge.source === dummyId;
-          const dummyLocation = dummyIsSource ? firstEdge.sections[0].startPoint : firstEdge.sections[0].endPoint;
-          const newEndpoint = findNearestBend(edgesWithDummy, dummyIsSource, dummyLocation);
-          if (!newEndpoint) {
-            elkGraph_1.ElkModel.dummyNum += 1;
-            continue;
-          }
-          for (const edge of edgesWithDummy) {
-            const section = edge.sections[0];
-            if (dummyIsSource) {
-              section.startPoint = newEndpoint;
-              (_a = section.bendPoints) === null || _a === void 0 ? void 0 : _a.shift();
-            } else {
-              section.endPoint = newEndpoint;
-              (_b = section.bendPoints) === null || _b === void 0 ? void 0 : _b.pop();
-            }
-          }
-          const directions = new Set(edgesWithDummy.map((edge) => {
-            var _a2, _b2;
-            const section = edge.sections[0];
-            const point = dummyIsSource ? ((_a2 = section.bendPoints) === null || _a2 === void 0 ? void 0 : _a2[0]) || section.endPoint : ((_b2 = section.bendPoints) === null || _b2 === void 0 ? void 0 : _b2[section.bendPoints.length - 1]) || section.startPoint;
-            return getWireDirection(newEndpoint, point);
-          }));
-          if (directions.size < 3) {
-            for (const edge of edgesWithDummy) {
-              edge.junctionPoints = (edge.junctionPoints || []).filter((junction) => !(junction.x === newEndpoint.x && junction.y === newEndpoint.y));
-            }
-          }
-          elkGraph_1.ElkModel.dummyNum += 1;
-        }
-      }
-      function drawModule(graph, module2) {
-        const nodes = module2.nodes.map((node) => {
-          const matchedChild = graph.children.find((child) => child.id === node.Key);
-          return node.render(matchedChild);
-        });
-        removeDummyEdges(graph);
-        const lines = graph.edges.flatMap((edge) => {
-          const netId = elkGraph_1.ElkModel.wireNameLookup[edge.id];
-          const numWires = netId.split(",").length - 2;
-          const lineWidth = numWires > 1 ? 2 : 1;
-          const netClass = `net_${netId.slice(1, -1)} width_${numWires}`;
-          return edge.sections.flatMap((section) => {
-            let currentPoint = section.startPoint;
-            const wireSegments = [];
-            const bendPoints = section.bendPoints || [];
-            bendPoints.forEach((bendPoint) => {
-              wireSegments.push(["line", {
-                x1: currentPoint.x,
-                y1: currentPoint.y,
-                x2: bendPoint.x,
-                y2: bendPoint.y,
-                class: netClass,
-                style: `stroke-width: ${lineWidth}`
-              }]);
-              currentPoint = bendPoint;
-            });
-            const junctions = (edge.junctionPoints || []).map((junction) => ["circle", {
-              cx: junction.x,
-              cy: junction.y,
-              r: numWires > 1 ? 3 : 2,
-              class: `${netClass} junction`
-            }]);
-            wireSegments.push(["line", {
-              x1: currentPoint.x,
-              y1: currentPoint.y,
-              x2: section.endPoint.x,
-              y2: section.endPoint.y,
-              class: netClass,
-              style: `stroke-width: ${lineWidth}`
-            }]);
-            return [...wireSegments, ...junctions];
-          });
-        });
-        const labels = graph.edges.flatMap((edge) => {
-          var _a, _b;
-          if (!((_b = (_a = edge.labels) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.text))
-            return [];
-          const label = edge.labels[0];
-          const netId = elkGraph_1.ElkModel.wireNameLookup[edge.id];
-          const numWires = netId.split(",").length - 2;
-          const labelClass = `net_${netId.slice(1, -1)} width_${numWires} busLabel_${numWires}`;
-          return [
-            // Label background
-            ["rect", {
-              x: label.x + 1,
-              y: label.y - 1,
-              width: (label.text.length + 2) * 6 - 2,
-              height: 9,
-              class: `${labelClass} labelBackground`
-            }],
-            // Label text
-            ["text", {
-              x: label.x,
-              y: label.y + 7,
-              class: labelClass
-            }, `/${label.text}/`]
-          ];
-        });
-        if (labels.length > 0) {
-          lines.push(...labels);
-        }
-        const svgAttributes = { ...Skin_1.default.skin[1] };
-        svgAttributes.width = String(graph.width);
-        svgAttributes.height = String(graph.height);
-        const styles = ["style", {}, ""];
-        onml.traverse(Skin_1.default.skin, {
-          enter: (node) => {
-            if (node.name === "style") {
-              styles[2] += node.full[2];
-            }
-          }
-        });
-        const svgElement = ["svg", svgAttributes, styles, ...nodes, ...lines];
-        return onml.s(svgElement);
-      }
-    }
-  });
-
   // built/index.js
   var require_built = __commonJS({
     "built/index.js"(exports) {
@@ -8380,18 +8646,18 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
       var elkGraph_1 = require_elkGraph();
       var drawModule_1 = __importDefault(require_drawModule());
       var elk = new elkjs_1.default();
-      function createFlatModule(skinData, yosysNetlist) {
+      var defaultConfig = {
+        hierarchy: {
+          enable: "off",
+          expandLevel: 0,
+          expandModules: { types: [], ids: [] }
+        },
+        top: { enable: false, module: "" }
+      };
+      function createFlatModule(skinData, yosysNetlist, configData) {
         Skin_1.default.skin = onml.p(skinData);
-        const layoutProps = Skin_1.default.getProperties();
-        const flatModule = new FlatModule_1.FlatModule(yosysNetlist);
-        if (layoutProps.constants !== false) {
-          flatModule.addConstants();
-        }
-        if (layoutProps.splitsAndJoins !== false) {
-          flatModule.addSplitsJoins();
-        }
-        flatModule.createWires();
-        return flatModule;
+        const config = configData || defaultConfig;
+        return FlatModule_1.FlatModule.fromNetlist(yosysNetlist, config);
       }
       async function dumpLayout(skinData, yosysNetlist, prelayout, done) {
         try {
@@ -8408,8 +8674,8 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
           done(error instanceof Error ? error : new Error(String(error)));
         }
       }
-      function render2(skinData, yosysNetlist, done, elkData) {
-        const flatModule = createFlatModule(skinData, yosysNetlist);
+      function render2(skinData, yosysNetlist, done, elkData, configData) {
+        const flatModule = createFlatModule(skinData, yosysNetlist, configData);
         const kgraph = (0, elkGraph_1.buildElkGraph)(flatModule);
         const layoutProps = Skin_1.default.getProperties();
         const renderPromise = (async () => {
@@ -8440,12 +8706,18 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
   var textarea = document.querySelector("#editor");
   var skinSelect = document.querySelector("#skinSelect");
   var exampleSelect = document.querySelector("#exampleSelect");
+  var configSelect = document.querySelector("#configSelect");
   var formatButton = document.querySelector("#formatButton");
   var downloadButton = document.querySelector("#downloadButton");
   var svgImage = document.querySelector("#svgArea");
   var emptyState = document.querySelector("#emptyState");
   var toast = document.querySelector("#toast");
   var currentSvgString = "";
+  var HIERARCHY_CONFIGS = {
+    all: { hierarchy: { enable: "all", expandLevel: 0, expandModules: { types: [], ids: [] } }, top: { enable: false, module: "" } },
+    level1: { hierarchy: { enable: "level", expandLevel: 1, expandModules: { types: [], ids: [] } }, top: { enable: false, module: "" } },
+    foo: { hierarchy: { enable: "modules", expandLevel: 0, expandModules: { types: [], ids: ["foo"] } }, top: { enable: false, module: "" } }
+  };
   function showToast(message) {
     toast.textContent = message;
     toast.style.display = "block";
@@ -8486,9 +8758,11 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
     }
     try {
       const netlist = JSON5.parse(textarea.value);
-      const svgString = await netlistRenderer.render(skinSelect.value, netlist);
+      const config = HIERARCHY_CONFIGS[configSelect.value];
+      const svgString = await netlistRenderer.render(skinSelect.value, netlist, void 0, void 0, config);
       currentSvgString = svgString;
-      svgImage.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgString)));
+      const darkSvg = svgString.replace("<svg ", '<svg class="dark" ');
+      svgImage.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(darkSvg)));
       svgImage.style.display = "block";
       emptyState.style.display = "none";
       downloadButton.style.display = "block";
@@ -8513,12 +8787,26 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
       showToast("Invalid JSON5. Please check your input.");
     }
   }
+  function selectSkinByPath(substr) {
+    for (const option of skinSelect.options) {
+      if (option.text.includes(substr)) {
+        skinSelect.value = option.value;
+        return;
+      }
+    }
+  }
   async function handleExampleChange() {
     const examplePath = exampleSelect.value;
     if (!examplePath) return;
     try {
       const res = await superagent.get(examplePath);
       textarea.value = res.text;
+      if (examplePath.includes("hierarchy")) {
+        selectSkinByPath("default.svg");
+        configSelect.value = "all";
+      } else {
+        configSelect.value = "";
+      }
       format();
       render();
     } catch (error) {
@@ -8556,6 +8844,7 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
     downloadButton.addEventListener("click", handleDownload);
     exampleSelect.addEventListener("change", handleExampleChange);
     skinSelect.addEventListener("change", render);
+    configSelect.addEventListener("change", render);
     const debouncedRender = debounce(render, 300);
     textarea.addEventListener("input", debouncedRender);
     await handleExampleChange();

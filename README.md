@@ -46,11 +46,60 @@ nix-env -iA netlist2svg -f https://github.com/ajsb85/netlist2svg/archive/main.ta
 
 You can execute Netlist2SVG like this.
 ```
-netlist2svg input_json_file [-o output_svg_file] [--skin skin_file]
+netlist2svg input_json_file [-o output_svg_file] [--skin skin_file] [--layout elk_json_file] [--config config_json_file]
 ```
 The default value for the output file is out.svg.
 
 Should work on Linux, OSX, and Windows. Running the build scripts (makefiles and the web demo) is easiest on Linux and OSX.
+
+## Configuration file (hierarchy)
+
+A configuration file lets you render **hierarchical** schematics — drawing the inner
+schematic of submodules inline instead of as opaque boxes — and lets you pick which
+module to treat as the top. Pass it with `--config`; when omitted, hierarchy is off
+and the top module is taken from the input JSON. The default configuration lives in
+[`lib/config.json`](./lib/config.json):
+
+```json
+{
+  "hierarchy": {
+    "enable": "off",
+    "expandLevel": 0,
+    "expandModules": {
+      "types": [],
+      "ids": []
+    },
+    "colour": ["#e9e9e9"]
+  },
+  "top": {
+    "enable": false,
+    "module": ""
+  }
+}
+```
+
+In the `"hierarchy"` subsection:
+
+* `"enable"`: `"off"` keeps submodules as boxes; `"all"` expands every submodule;
+  `"level"` expands submodules up to `"expandLevel"` levels deep; `"modules"` expands
+  only the submodules listed in `"expandModules"`.
+* `"expandLevel"`: the maximum depth expanded when `"enable"` is `"level"`.
+* `"expandModules"`: when `"enable"` is `"modules"`, expand submodules selected by
+  module type (`"types"`) or by instance name (`"ids"`).
+* `"colour"`: background colours per hierarchy depth (the submodule backgrounds are
+  also configurable through the `sub_odd` / `sub_even` skin templates).
+
+The `"top"` subsection can override the top module: when `"enable"` is `true`, the
+module named in `"module"` is rendered as the top module.
+
+For example, [`examples/config/config.json`](./examples/config/config.json) expands the
+`foo` instance of [`examples/hierarchy.v`](./examples/hierarchy.v):
+
+![hierarchy example](./doc/hierarchy.svg?sanitize=true)
+
+You can try this interactively in the [online demo](https://nturley.github.io/netlistsvg):
+pick the **Hierarchy (Submodule)** example and switch the **HIERARCHY** selector between
+`OFF`, `EXPAND_ALL`, `EXPAND_LVL_1`, and `EXPAND_'foo'`.
 
 ## Web bundle
 
