@@ -274,7 +274,9 @@ select:focus {
 
 .editor-wrap { padding: 0; }
 
-#editor {
+/* The Yosys editor and the WASM request/response views are the SAME kind of element
+   (a full-height textarea) so they share the identical scroll behaviour. */
+#editor, .io-view {
     font-family: var(--font-mono);
     font-size: 0.82rem;
     line-height: 1.65;
@@ -288,8 +290,36 @@ select:focus {
     color: var(--text);
     background: var(--panel);
 }
-#editor:focus { outline: none; }
+#editor:focus, .io-view:focus { outline: none; }
 #editor::placeholder { color: var(--muted); }
+
+/* ---------- Input tabs (Yosys JSON / WASM request / WASM response) ---------- */
+.tabbar {
+    display: flex;
+    gap: 2px;
+    padding: 0 12px;
+    background: var(--panel-header);
+    border-bottom: 1px solid var(--border);
+}
+.tabbar .tab {
+    appearance: none;
+    border: none;
+    background: none;
+    padding: 9px 12px;
+    font-family: var(--font-ui);
+    font-size: 0.76rem;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+}
+.tabbar .tab:hover { color: var(--text); }
+.tabbar .tab.is-active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+    font-weight: 600;
+}
+.io-view[hidden], #editor[hidden] { display: none; }
 
 /* ---------- Schematic preview ---------- */
 .preview {

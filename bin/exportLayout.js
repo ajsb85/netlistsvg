@@ -14,18 +14,19 @@ require('ajv-errors')(ajv);
 if (require.main === module) {
     var argv = yargs
         .demand(1)
-        .usage('usage: $0 input_json_file [-o output_json_file] [--skin skin_file] [--pre]')
+        .usage('usage: $0 input_json_file [-o output_json_file] [--skin skin_file] [--pre] [--engine wasm|elkjs|auto]')
+        .option('engine', {describe: 'layout engine: wasm (elk-rust), elkjs (reference), or auto', default: 'auto'})
         .argv;
-    main(argv._[0], argv.o, argv.skin, argv.pre);
+    main(argv._[0], argv.o, argv.skin, argv.pre, argv.engine);
 }
 
-function dump(skinData, netlist, outputPath, preLayout) {
+function dump(skinData, netlist, outputPath, preLayout, engine) {
     lib.dumpLayout(skinData, netlist, preLayout, (err, jsonData) => {
         if (err) throw err;
         fs.writeFile(outputPath, jsonData, 'utf-8', (err) => {
             if (err) throw err;
         });
-    });
+    }, engine);
 }
 
 function parseFiles(skinPath, netlistPath, callback) {
@@ -38,7 +39,7 @@ function parseFiles(skinPath, netlistPath, callback) {
     });
 }
 
-function main(netlistPath, outputPath, skinPath, preLayout) {
+function main(netlistPath, outputPath, skinPath, preLayout, engine) {
     skinPath = skinPath || path.join(__dirname, '../skin/default.svg');
     outputPath = outputPath || 'out.json';
     var schemaPath = path.join(__dirname, '../lib/yosys.schema.json5');
@@ -48,7 +49,7 @@ function main(netlistPath, outputPath, skinPath, preLayout) {
         if (!valid) {
             throw Error(JSON.stringify(ajv.errors, null, 2));
         }
-        dump(skinData, netlistJson, outputPath, preLayout);
+        dump(skinData, netlistJson, outputPath, preLayout, engine);
     });
 }
 

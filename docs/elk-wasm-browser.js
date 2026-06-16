@@ -16,9 +16,17 @@
   window.ELK = class {
     async layout(graph, opts = {}) {
       const elk = await ready;
-      return parse(
-        elk.layout(JSON.stringify(graph), JSON.stringify(opts.layoutOptions || {}), '{}'),
-      );
+      // The exact strings handed to the wasm-bindgen `layout(graph, layoutOptions, options)`.
+      const graphStr = JSON.stringify(graph);
+      const optsStr = JSON.stringify(opts.layoutOptions || {});
+      const resultStr = elk.layout(graphStr, optsStr, '{}');
+      // Stash the last request/response so the demo's inspector tabs can show them.
+      window.__elkIO = {
+        request: { graph: parse(graphStr), layoutOptions: parse(optsStr) },
+        response: parse(resultStr),
+      };
+      window.dispatchEvent(new CustomEvent('elk-io'));
+      return parse(resultStr);
     }
     async knownLayoutAlgorithms() {
       return parse((await ready).knownLayoutAlgorithms());

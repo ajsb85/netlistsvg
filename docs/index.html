@@ -63,8 +63,15 @@
                     <button id="formatButton" class="btn btn-secondary">Format</button>
                 </div>
             </div>
+            <div class="tabbar" id="inputTabs" role="tablist">
+                <button class="tab is-active" type="button" data-tab="editor" role="tab" aria-selected="true">Yosys JSON</button>
+                <button class="tab" type="button" data-tab="request" role="tab" aria-selected="false">WASM&nbsp;&rarr; Request</button>
+                <button class="tab" type="button" data-tab="response" role="tab" aria-selected="false">WASM&nbsp;&larr; Response</button>
+            </div>
             <div class="panel-body editor-wrap">
                 <textarea id="editor" spellcheck="false" placeholder="Paste a Yosys JSON netlist, or choose an example above…"></textarea>
+                <textarea id="wasmRequest" class="io-view" readonly spellcheck="false" hidden>— render a schematic to see the ELK graph + layout options sent to the WASM —</textarea>
+                <textarea id="wasmResponse" class="io-view" readonly spellcheck="false" hidden>— render a schematic to see the laid-out graph returned by the WASM —</textarea>
             </div>
         </section>
 
@@ -122,5 +129,6 @@
     <!-- Layout engine: elk-rust WebAssembly (swapped in for elkjs's elk.bundled.js). -->
     <script type="text/javascript" src="elk-wasm-browser.js"></script>
     <script type="text/javascript" src="bundle.js"></script>
+    <script type="text/javascript" src="demo-tabs.js"></script>
 </body>
 </html>

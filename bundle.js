@@ -8637,6 +8637,8 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
         return mod && mod.__esModule ? mod : { "default": mod };
       };
       Object.defineProperty(exports, "__esModule", { value: true });
+      exports.createEngine = createEngine;
+      exports.buildLayoutGraph = buildLayoutGraph;
       exports.dumpLayout = dumpLayout;
       exports.render = render2;
       var elkjs_1 = __importDefault(__require("elkjs"));
@@ -8645,7 +8647,15 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
       var Skin_1 = __importDefault(require_Skin());
       var elkGraph_1 = require_elkGraph();
       var drawModule_1 = __importDefault(require_drawModule());
-      var elk = new elkjs_1.default();
+      function createEngine(engine = "auto") {
+        const useWasm = engine === "wasm" || engine === "auto" && typeof window === "undefined";
+        if (useWasm) {
+          const WasmELK = __require("./elkWasmAdapter").default;
+          return new WasmELK();
+        }
+        return new elkjs_1.default();
+      }
+      var elk = createEngine("auto");
       var defaultConfig = {
         hierarchy: {
           enable: "off",
@@ -8659,7 +8669,13 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
         const config = configData || defaultConfig;
         return FlatModule_1.FlatModule.fromNetlist(yosysNetlist, config);
       }
-      async function dumpLayout(skinData, yosysNetlist, prelayout, done) {
+      function buildLayoutGraph(skinData, yosysNetlist, configData) {
+        const flatModule = createFlatModule(skinData, yosysNetlist, configData);
+        const kgraph = (0, elkGraph_1.buildElkGraph)(flatModule);
+        const layoutOptions = Skin_1.default.getProperties().layoutEngine || {};
+        return { flatModule, kgraph, layoutOptions };
+      }
+      async function dumpLayout(skinData, yosysNetlist, prelayout, done, engine = "auto") {
         try {
           const flatModule = createFlatModule(skinData, yosysNetlist);
           const kgraph = (0, elkGraph_1.buildElkGraph)(flatModule);
@@ -8668,7 +8684,8 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
             return;
           }
           const layoutProps = Skin_1.default.getProperties();
-          const graph = await elk.layout(kgraph, { layoutOptions: layoutProps.layoutEngine });
+          const eng = engine === "auto" ? elk : createEngine(engine);
+          const graph = await eng.layout(kgraph, { layoutOptions: layoutProps.layoutEngine });
           done(null, JSON.stringify(graph, null, 2));
         } catch (error) {
           done(error instanceof Error ? error : new Error(String(error)));

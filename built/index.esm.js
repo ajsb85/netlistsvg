@@ -1,12 +1,294 @@
+var __create = Object.create;
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
 var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require : typeof Proxy !== "undefined" ? new Proxy(x, {
   get: (a, b) => (typeof require !== "undefined" ? require : a)[b]
 }) : x)(function(x) {
   if (typeof require !== "undefined") return require.apply(this, arguments);
   throw Error('Dynamic require of "' + x + '" is not supported');
 });
+var __esm = (fn, res, err) => function __init() {
+  if (err) throw err[0];
+  try {
+    return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
+  } catch (e) {
+    throw err = [e], e;
+  }
+};
+var __commonJS = (cb, mod) => function __require2() {
+  try {
+    return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
+  } catch (e) {
+    throw mod = 0, e;
+  }
+};
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+));
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+
+// wasm-eval/elk-wasm/elk_wasm.js
+var require_elk_wasm = __commonJS({
+  "wasm-eval/elk-wasm/elk_wasm.js"(exports) {
+    "use strict";
+    var Elk = class {
+      __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        ElkFinalization.unregister(this);
+        return ptr;
+      }
+      free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_elk_free(ptr, 0);
+      }
+      /**
+       * `algorithms` command — `knownLayoutAlgorithms()` JSON.
+       * @returns {string}
+       */
+      knownLayoutAlgorithms() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+          const ret = wasm.elk_knownLayoutAlgorithms(this.__wbg_ptr);
+          deferred1_0 = ret[0];
+          deferred1_1 = ret[1];
+          return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+          wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
+      }
+      /**
+       * `categories` command — `knownLayoutCategories()` JSON.
+       * @returns {string}
+       */
+      knownLayoutCategories() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+          const ret = wasm.elk_knownLayoutCategories(this.__wbg_ptr);
+          deferred1_0 = ret[0];
+          deferred1_1 = ret[1];
+          return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+          wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
+      }
+      /**
+       * `options` command — `knownLayoutOptions()` JSON.
+       * @returns {string}
+       */
+      knownLayoutOptions() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+          const ret = wasm.elk_knownLayoutOptions(this.__wbg_ptr);
+          deferred1_0 = ret[0];
+          deferred1_1 = ret[1];
+          return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+          wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
+      }
+      /**
+       * `layout` command. Takes the graph JSON string plus optional global
+       * `layoutOptions` and `options` JSON (empty string = none); returns the
+       * laid-out graph JSON.
+       * @param {string} graph
+       * @param {string} layout_options
+       * @param {string} options
+       * @returns {string}
+       */
+      layout(graph, layout_options, options) {
+        let deferred5_0;
+        let deferred5_1;
+        try {
+          const ptr0 = passStringToWasm0(graph, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+          const len0 = WASM_VECTOR_LEN;
+          const ptr1 = passStringToWasm0(layout_options, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+          const len1 = WASM_VECTOR_LEN;
+          const ptr2 = passStringToWasm0(options, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+          const len2 = WASM_VECTOR_LEN;
+          const ret = wasm.elk_layout(this.__wbg_ptr, ptr0, len0, ptr1, len1, ptr2, len2);
+          var ptr4 = ret[0];
+          var len4 = ret[1];
+          if (ret[3]) {
+            ptr4 = 0;
+            len4 = 0;
+            throw takeFromExternrefTable0(ret[2]);
+          }
+          deferred5_0 = ptr4;
+          deferred5_1 = len4;
+          return getStringFromWasm0(ptr4, len4);
+        } finally {
+          wasm.__wbindgen_free(deferred5_0, deferred5_1, 1);
+        }
+      }
+      constructor() {
+        const ret = wasm.elk_new();
+        this.__wbg_ptr = ret;
+        ElkFinalization.register(this, this.__wbg_ptr, this);
+        return this;
+      }
+    };
+    if (Symbol.dispose) Elk.prototype[Symbol.dispose] = Elk.prototype.free;
+    exports.Elk = Elk;
+    function __wbg_get_imports() {
+      const import0 = {
+        __proto__: null,
+        __wbg_Error_fdd633d4bb5dd76a: function(arg0, arg1) {
+          const ret = Error(getStringFromWasm0(arg0, arg1));
+          return ret;
+        },
+        __wbg___wbindgen_throw_ea4887a5f8f9a9db: function(arg0, arg1) {
+          throw new Error(getStringFromWasm0(arg0, arg1));
+        },
+        __wbindgen_init_externref_table: function() {
+          const table = wasm.__wbindgen_externrefs;
+          const offset = table.grow(4);
+          table.set(0, void 0);
+          table.set(offset + 0, void 0);
+          table.set(offset + 1, null);
+          table.set(offset + 2, true);
+          table.set(offset + 3, false);
+        }
+      };
+      return {
+        __proto__: null,
+        "./elk_wasm_bg.js": import0
+      };
+    }
+    var ElkFinalization = typeof FinalizationRegistry === "undefined" ? { register: () => {
+    }, unregister: () => {
+    } } : new FinalizationRegistry((ptr) => wasm.__wbg_elk_free(ptr, 1));
+    function getStringFromWasm0(ptr, len) {
+      return decodeText(ptr >>> 0, len);
+    }
+    var cachedUint8ArrayMemory0 = null;
+    function getUint8ArrayMemory0() {
+      if (cachedUint8ArrayMemory0 === null || cachedUint8ArrayMemory0.byteLength === 0) {
+        cachedUint8ArrayMemory0 = new Uint8Array(wasm.memory.buffer);
+      }
+      return cachedUint8ArrayMemory0;
+    }
+    function passStringToWasm0(arg, malloc, realloc) {
+      if (realloc === void 0) {
+        const buf = cachedTextEncoder.encode(arg);
+        const ptr2 = malloc(buf.length, 1) >>> 0;
+        getUint8ArrayMemory0().subarray(ptr2, ptr2 + buf.length).set(buf);
+        WASM_VECTOR_LEN = buf.length;
+        return ptr2;
+      }
+      let len = arg.length;
+      let ptr = malloc(len, 1) >>> 0;
+      const mem = getUint8ArrayMemory0();
+      let offset = 0;
+      for (; offset < len; offset++) {
+        const code = arg.charCodeAt(offset);
+        if (code > 127) break;
+        mem[ptr + offset] = code;
+      }
+      if (offset !== len) {
+        if (offset !== 0) {
+          arg = arg.slice(offset);
+        }
+        ptr = realloc(ptr, len, len = offset + arg.length * 3, 1) >>> 0;
+        const view = getUint8ArrayMemory0().subarray(ptr + offset, ptr + len);
+        const ret = cachedTextEncoder.encodeInto(arg, view);
+        offset += ret.written;
+        ptr = realloc(ptr, len, offset, 1) >>> 0;
+      }
+      WASM_VECTOR_LEN = offset;
+      return ptr;
+    }
+    function takeFromExternrefTable0(idx) {
+      const value = wasm.__wbindgen_externrefs.get(idx);
+      wasm.__externref_table_dealloc(idx);
+      return value;
+    }
+    var cachedTextDecoder = new TextDecoder("utf-8", { ignoreBOM: true, fatal: true });
+    cachedTextDecoder.decode();
+    function decodeText(ptr, len) {
+      return cachedTextDecoder.decode(getUint8ArrayMemory0().subarray(ptr, ptr + len));
+    }
+    var cachedTextEncoder = new TextEncoder();
+    if (!("encodeInto" in cachedTextEncoder)) {
+      cachedTextEncoder.encodeInto = function(arg, view) {
+        const buf = cachedTextEncoder.encode(arg);
+        view.set(buf);
+        return {
+          read: arg.length,
+          written: buf.length
+        };
+      };
+    }
+    var WASM_VECTOR_LEN = 0;
+    var wasmPath = `${__dirname}/elk_wasm_bg.wasm`;
+    var wasmBytes = __require("fs").readFileSync(wasmPath);
+    var wasmModule = new WebAssembly.Module(wasmBytes);
+    var wasmInstance = new WebAssembly.Instance(wasmModule, __wbg_get_imports());
+    var wasm = wasmInstance.exports;
+    wasm.__wbindgen_start();
+  }
+});
+
+// lib/elkWasmAdapter.ts
+var elkWasmAdapter_exports = {};
+__export(elkWasmAdapter_exports, {
+  default: () => ELK
+});
+var import_elk_wasm, ELK;
+var init_elkWasmAdapter = __esm({
+  "lib/elkWasmAdapter.ts"() {
+    "use strict";
+    import_elk_wasm = __toESM(require_elk_wasm());
+    ELK = class {
+      constructor() {
+        this.elk = new import_elk_wasm.Elk();
+      }
+      async layout(graph, opts = {}) {
+        const result = this.elk.layout(
+          JSON.stringify(graph),
+          JSON.stringify(opts.layoutOptions ?? {}),
+          "{}"
+        );
+        return JSON.parse(result);
+      }
+      async knownLayoutAlgorithms() {
+        return JSON.parse(this.elk.knownLayoutAlgorithms());
+      }
+      async knownLayoutOptions() {
+        return JSON.parse(this.elk.knownLayoutOptions());
+      }
+      async knownLayoutCategories() {
+        return JSON.parse(this.elk.knownLayoutCategories());
+      }
+    };
+  }
+});
 
 // lib/index.ts
-import ELK from "elkjs";
+import ELK2 from "elkjs";
 
 // lib/Skin.ts
 var onml = __require("onml");
@@ -1274,7 +1556,15 @@ var FlatModule = class _FlatModule {
 
 // lib/index.ts
 var onml4 = __require("onml");
-var elk = new ELK();
+function createEngine(engine = "auto") {
+  const useWasm = engine === "wasm" || engine === "auto" && typeof window === "undefined";
+  if (useWasm) {
+    const WasmELK = (init_elkWasmAdapter(), __toCommonJS(elkWasmAdapter_exports)).default;
+    return new WasmELK();
+  }
+  return new ELK2();
+}
+var elk = createEngine("auto");
 var defaultConfig = {
   hierarchy: {
     enable: "off",
@@ -1288,7 +1578,13 @@ function createFlatModule(skinData, yosysNetlist, configData) {
   const config = configData || defaultConfig;
   return FlatModule.fromNetlist(yosysNetlist, config);
 }
-async function dumpLayout(skinData, yosysNetlist, prelayout, done) {
+function buildLayoutGraph(skinData, yosysNetlist, configData) {
+  const flatModule = createFlatModule(skinData, yosysNetlist, configData);
+  const kgraph = buildElkGraph(flatModule);
+  const layoutOptions = Skin_default.getProperties().layoutEngine || {};
+  return { flatModule, kgraph, layoutOptions };
+}
+async function dumpLayout(skinData, yosysNetlist, prelayout, done, engine = "auto") {
   try {
     const flatModule = createFlatModule(skinData, yosysNetlist);
     const kgraph = buildElkGraph(flatModule);
@@ -1297,7 +1593,8 @@ async function dumpLayout(skinData, yosysNetlist, prelayout, done) {
       return;
     }
     const layoutProps = Skin_default.getProperties();
-    const graph = await elk.layout(kgraph, { layoutOptions: layoutProps.layoutEngine });
+    const eng = engine === "auto" ? elk : createEngine(engine);
+    const graph = await eng.layout(kgraph, { layoutOptions: layoutProps.layoutEngine });
     done(null, JSON.stringify(graph, null, 2));
   } catch (error) {
     done(error instanceof Error ? error : new Error(String(error)));
@@ -1325,6 +1622,8 @@ function render(skinData, yosysNetlist, done, elkData, configData) {
   return renderPromise;
 }
 export {
+  buildLayoutGraph,
+  createEngine,
   dumpLayout,
   render
 };
