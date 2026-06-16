@@ -1,5 +1,12 @@
 # Netlist2SVG
 
+[![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
+[![NPM Version](https://img.shields.io/npm/v/netlist2svg.svg)](https://www.npmjs.com/package/netlist2svg)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![NPM Downloads](https://img.shields.io/npm/dm/netlist2svg.svg)](https://www.npmjs.com/package/netlist2svg)
+[![Node.js CI](https://github.com/ajsb85/netlist2svg/actions/workflows/node.js.yml/badge.svg)](https://github.com/ajsb85/netlist2svg/actions/workflows/node.js.yml)
+[![Socket Badge](https://socket.dev/api/badge/npm/package/netlist2svg)](https://socket.dev/npm/package/netlist2svg)
+
 > **⚠️ Notice:** This repository is an [orphan fork](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/what-happens-to-forks-when-a-repository-is-deleted-or-changes-visibility) maintained by [@ajsb85](https://github.com/ajsb85). The original upstream repository by nturley is no longer maintained or available.
 
 draws an SVG schematic from a [yosys](https://github.com/yosyshq/yosys) JSON netlist. This can be generated using [the `write_json` command](https://yosyshq.readthedocs.io/projects/yosys/en/latest/cmd/index_backends.html#write-json-write-design-to-a-json-file). It uses [elkjs](https://github.com/OpenKieler/elkjs) for layout.
@@ -314,8 +321,7 @@ Here's an digital netlist produced by Yosys along with the diagram that Netlist2
 ```
 </details>
 
-![example](https://raw.githubusercontent.com/ajsb85/netlist2svg/main/doc/up3down5.svg?sanitize=true#gh-light-mode-only)
-![example](https://raw.githubusercontent.com/ajsb85/netlist2svg/main/doc/up3down5-dark.svg?sanitize=true#gh-dark-mode-only)
+![example](https://raw.githubusercontent.com/ajsb85/netlist2svg/main/doc/up3down5.svg?sanitize=true)
 
 You can also write out the JSON by hand, of course. We support [JSON5](https://json5.org) syntax.
 
@@ -468,19 +474,16 @@ Here's an analog example.
 ```
 </details>
 
-![example](https://raw.githubusercontent.com/ajsb85/netlist2svg/main/doc/and.svg?sanitize=true#gh-light-mode-only)
-![example](https://raw.githubusercontent.com/ajsb85/netlist2svg/main/doc/and-dark.svg?sanitize=true#gh-dark-mode-only)
+![example](https://raw.githubusercontent.com/ajsb85/netlist2svg/main/doc/and.svg?sanitize=true)
 
 ## Skin File
 It pulls the node icons and configuration options from a SVG skin file. This our default digital skin file.
 
-![digital skin](https://raw.githubusercontent.com/ajsb85/netlist2svg/main/skin/default.svg?sanitize=true#gh-light-mode-only)
-![digital skin](https://raw.githubusercontent.com/ajsb85/netlist2svg/main/skin/default-dark.svg?sanitize=true#gh-dark-mode-only)
+![digital skin](https://raw.githubusercontent.com/ajsb85/netlist2svg/main/skin/default.svg?sanitize=true)
 
 This is our analog skin file.
 
-![analog skin](https://raw.githubusercontent.com/ajsb85/netlist2svg/main/skin/analog.svg?sanitize=true#gh-light-mode-only)
-![analog skin](https://raw.githubusercontent.com/ajsb85/netlist2svg/main/skin/analog-dark.svg?sanitize=true#gh-dark-mode-only)
+![analog skin](https://raw.githubusercontent.com/ajsb85/netlist2svg/main/skin/analog.svg?sanitize=true)
 
 A skin file can use style tags or inline CSS to style the elements. That will be copied onto the output file. A skin file also defines a library of components to use. Each component has an alias list. It will use that component as a template for any cell with that type that it encounters. Each component defines the position and id of each of its ports so we know where to attach the wires to.
 

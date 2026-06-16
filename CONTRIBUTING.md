@@ -46,6 +46,12 @@ The project is configured to publish automatically whenever a new version tag is
 
 We use [Socket Security](https://socket.dev) to audit our dependencies for malware, typo-squatting, and suspicious updates. All PRs are automatically scanned to prevent supply chain attacks.
 
+### Dependency Graph
+
+Below is a visualization of the project's internal module dependencies:
+
+![Dependency Graph](./docs/dependencies.svg)
+
 ## Code Style
 
 - Use **Single Quotes** for strings.
