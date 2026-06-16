@@ -27,6 +27,16 @@ sudo npm install -g . # install netlistsvg to system
 sudo npm uninstall -g netlistsvg # uninstall from system
 ```
 
+### Nix
+If you have [Nix](https://nixos.org/) installed, you can run netlistsvg directly without installing nodejs:
+```sh
+nix run github:ajsb85/netlistsvg
+```
+Or install it to your profile:
+```sh
+nix-env -iA netlistsvg -f https://github.com/ajsb85/netlistsvg/archive/main.tar.gz
+```
+
 You can execute netlistsvg like this.
 ```
 netlistsvg input_json_file [-o output_svg_file] [--skin skin_file]
