@@ -945,8 +945,7 @@ function drawModule(graph, module) {
           cx: junction.x,
           cy: junction.y,
           r: numWires > 1 ? 3 : 2,
-          style: "fill:#000",
-          class: netClass
+          class: `${netClass} junction`
         }]
       );
       wireSegments.push(["line", {
@@ -973,8 +972,7 @@ function drawModule(graph, module) {
         y: label.y - 1,
         width: (label.text.length + 2) * 6 - 2,
         height: 9,
-        class: labelClass,
-        style: "fill: white; stroke: none"
+        class: `${labelClass} labelBackground`
       }],
       // Label text
       ["text", {

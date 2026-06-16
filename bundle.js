@@ -8305,8 +8305,7 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
               cx: junction.x,
               cy: junction.y,
               r: numWires > 1 ? 3 : 2,
-              style: "fill:#000",
-              class: netClass
+              class: `${netClass} junction`
             }]);
             wireSegments.push(["line", {
               x1: currentPoint.x,
@@ -8334,8 +8333,7 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
               y: label.y - 1,
               width: (label.text.length + 2) * 6 - 2,
               height: 9,
-              class: labelClass,
-              style: "fill: white; stroke: none"
+              class: `${labelClass} labelBackground`
             }],
             // Label text
             ["text", {

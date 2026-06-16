@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:s="https://github.com/ajsb85/netlist2svg" width="44" height="104">
-  <style>svg {
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:s="https://github.com/ajsb85/netlist2svg" width="44" height="104"><style>
+  svg {
     stroke: #000;
     fill: none;
   }
@@ -19,17 +19,24 @@
   .splitjoinBody {
     fill: #000;
   }
-  .symbol {
+  .junction {
+    fill: #000;
+  }
+  .labelBackground {
+    fill: #fff;
+    stroke: none;
+  }
+  .detail, .symbol {
     stroke-linejoin: round;
     stroke-linecap: round;
+  }
+  .symbol {
     stroke-width: 2;
   }
   .detail {
-    stroke-linejoin: round;
-    stroke-linecap: round;
     fill: #000;
   }
-  
+
   @media (prefers-color-scheme: dark) {
     svg {
       stroke: #fff !important;
@@ -39,6 +46,12 @@
     }
     .splitjoinBody {
       fill: #fff !important;
+    }
+    .junction {
+      fill: #fff !important;
+    }
+    .labelBackground {
+      fill: #0a192f !important; /* Blueprint background or transparent */
     }
     .detail {
       fill: #fff !important;
@@ -54,6 +67,7 @@
     }
   }
 </style>
+  
   <g s:type="vcc" s:width="20" s:height="30" transform="translate(12,12)" id="cell_vcc">
     <s:alias val="vcc"/>
     <text x="10" y="-4" class="nodelabel cell_vcc" s:attribute="name">+12V</text>

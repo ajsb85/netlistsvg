@@ -1,49 +1,44 @@
 <svg xmlns="http://www.w3.org/2000/svg"
   xmlns:xlink="http://www.w3.org/1999/xlink"
-  xmlns:s="https://github.com/ajsb85/netlist2svg">
-  <s:properties
-    constants="false"
-    splitsAndJoins="false"
-    genericsLaterals="true">
-    <s:layoutEngine
-      org.eclipse.elk.layered.spacing.nodeNodeBetweenLayers="5"
-      org.eclipse.elk.layered.compaction.postCompaction.strategy="4"
-      org.eclipse.elk.spacing.nodeNode="35"
-      org.eclipse.elk.direction="DOWN" />
-  </s:properties>
-  <style>
-    svg {
+  xmlns:s="https://github.com/ajsb85/netlist2svg"><style>
+  svg {
     stroke: #000;
     fill: none;
-    }
-    text {
+  }
+  text {
     fill: #000;
     stroke: none;
     font-size: 10px;
     font-weight: bold;
     font-family: "Courier New", monospace;
-    }
-    .nodelabel {
+  }
+  .nodelabel {
     text-anchor: middle;
-    }
-    .inputPortLabel {
+  }
+  .inputPortLabel {
     text-anchor: end;
-    }
-    .splitjoinBody {
+  }
+  .splitjoinBody {
     fill: #000;
-    }
-    .symbol {
+  }
+  .junction {
+    fill: #000;
+  }
+  .labelBackground {
+    fill: #fff;
+    stroke: none;
+  }
+  .detail, .symbol {
     stroke-linejoin: round;
     stroke-linecap: round;
+  }
+  .symbol {
     stroke-width: 2;
-    }
-    .detail {
-    stroke-linejoin: round;
-    stroke-linecap: round;
+  }
+  .detail {
     fill: #000;
-    }
+  }
 
-  
   @media (prefers-color-scheme: dark) {
     svg {
       stroke: #fff !important;
@@ -53,6 +48,12 @@
     }
     .splitjoinBody {
       fill: #fff !important;
+    }
+    .junction {
+      fill: #fff !important;
+    }
+    .labelBackground {
+      fill: #0a192f !important; /* Blueprint background or transparent */
     }
     .detail {
       fill: #fff !important;
@@ -68,6 +69,17 @@
     }
   }
 </style>
+  <s:properties
+    constants="false"
+    splitsAndJoins="false"
+    genericsLaterals="true">
+    <s:layoutEngine
+      org.eclipse.elk.layered.spacing.nodeNodeBetweenLayers="5"
+      org.eclipse.elk.layered.compaction.postCompaction.strategy="4"
+      org.eclipse.elk.spacing.nodeNode="35"
+      org.eclipse.elk.direction="DOWN" />
+  </s:properties>
+  
 
   <!-- power -->
   <g s:type="vcc" s:width="20" s:height="30" transform="translate(5,20)">

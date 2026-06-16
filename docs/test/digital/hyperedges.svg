@@ -1,27 +1,42 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:s="https://github.com/ajsb85/netlist2svg" width="289" height="184"><style>svg {
-  stroke:#000;
-  fill:none;
-}
-text {
-  fill:#000;
-  stroke:none;
-  font-size:10px;
-  font-weight: bold;
-  font-family: "Courier New", monospace;
-}
-line {
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:s="https://github.com/ajsb85/netlist2svg" width="289" height="184"><style>
+  svg {
+    stroke: #000;
+    fill: none;
+  }
+  text {
+    fill: #000;
+    stroke: none;
+    font-size: 10px;
+    font-weight: bold;
+    font-family: "Courier New", monospace;
+  }
+  .nodelabel {
+    text-anchor: middle;
+  }
+  .inputPortLabel {
+    text-anchor: end;
+  }
+  .splitjoinBody {
+    fill: #000;
+  }
+  .junction {
+    fill: #000;
+  }
+  .labelBackground {
+    fill: #fff;
+    stroke: none;
+  }
+  .detail, .symbol {
+    stroke-linejoin: round;
     stroke-linecap: round;
-}
-.nodelabel {
-  text-anchor: middle;
-}
-.inputPortLabel {
-  text-anchor: end;
-}
-.splitjoinBody {
-  fill:#000;
-}
-  
+  }
+  .symbol {
+    stroke-width: 2;
+  }
+  .detail {
+    fill: #000;
+  }
+
   @media (prefers-color-scheme: dark) {
     svg {
       stroke: #fff !important;
@@ -31,6 +46,12 @@ line {
     }
     .splitjoinBody {
       fill: #fff !important;
+    }
+    .junction {
+      fill: #fff !important;
+    }
+    .labelBackground {
+      fill: #0a192f !important; /* Blueprint background or transparent */
     }
     .detail {
       fill: #fff !important;
