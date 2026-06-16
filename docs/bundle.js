@@ -8702,7 +8702,7 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
   var superagent = require_client();
   var JSON5 = require_dist();
   var netlistRenderer = require_built();
-  var skinPaths = ["skin/horizontal.svg", "skin/default.svg"];
+  var skinPaths = ["skin/default.svg", "skin/analog.svg", "skin/horizontal.svg"];
   var textarea = document.querySelector("#editor");
   var skinSelect = document.querySelector("#skinSelect");
   var exampleSelect = document.querySelector("#exampleSelect");
@@ -8713,6 +8713,8 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
   var emptyState = document.querySelector("#emptyState");
   var toast = document.querySelector("#toast");
   var themeToggle = document.querySelector("#themeToggle");
+  var orientSelect = document.querySelector("#orientSelect");
+  var metricsEl = document.querySelector("#metrics");
   var currentSvgString = "";
   var THEME_KEY = "netlist2svg-theme";
   var THEME_MODES = ["system", "light", "dark"];
@@ -8795,23 +8797,157 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
       skinSelect.append(option);
     });
   }
+  var ORIENT_BASES = ["r", "c", "l", "d_led"];
+  var MAX_AUTO_PARTS = 6;
+  var ORIENT_LABELS = {
+    "": "As authored",
+    vertical: "All vertical",
+    horizontal: "All horizontal",
+    auto: "Auto (fewest bends)"
+  };
+  function orientBase(type) {
+    if (typeof type !== "string") return null;
+    const m = type.match(/^(.*)_(v|h)$/);
+    if (m && ORIENT_BASES.includes(m[1])) return m[1];
+    if (ORIENT_BASES.includes(type)) return type;
+    return null;
+  }
+  function orientableCount(netlist) {
+    let n = 0;
+    for (const mod of Object.values(netlist.modules || {})) {
+      for (const cell of Object.values(mod.cells || {})) {
+        if (orientBase(cell.type)) n++;
+      }
+    }
+    return n;
+  }
+  function applyOrientation(netlist, mode) {
+    const nl = JSON.parse(JSON.stringify(netlist));
+    for (const mod of Object.values(nl.modules || {})) {
+      for (const cell of Object.values(mod.cells || {})) {
+        const base = orientBase(cell.type);
+        if (!base) continue;
+        if (mode === "vertical") cell.type = base + "_v";
+        else if (mode === "horizontal") cell.type = base + "_h";
+        else if (cell.type === base) cell.type = base + "_v";
+      }
+    }
+    return nl;
+  }
+  function orientVariant(netlist, mask) {
+    const nl = JSON.parse(JSON.stringify(netlist));
+    let i = 0;
+    for (const mod of Object.values(nl.modules || {})) {
+      for (const cell of Object.values(mod.cells || {})) {
+        const base = orientBase(cell.type);
+        if (!base) continue;
+        cell.type = base + (mask >> i & 1 ? "_v" : "_h");
+        i++;
+      }
+    }
+    return nl;
+  }
+  function layoutGraph(netlist) {
+    return new Promise((resolve, reject) => {
+      netlistRenderer.dumpLayout(skinSelect.value, netlist, false, (err, out) => {
+        if (err) reject(err);
+        else resolve(JSON.parse(out));
+      });
+    });
+  }
+  function countBends(graph) {
+    return (graph.edges || []).reduce((acc, e) => acc + (e.sections || []).reduce((s, sec) => {
+      const a = sec.startPoint, b = sec.endPoint;
+      if (a && b && a.x !== b.x && a.y !== b.y) return s + (sec.bendPoints || []).length;
+      return s;
+    }, 0), 0);
+  }
+  function graphSize(graph) {
+    return { w: Math.round(graph.width || 0), h: Math.round(graph.height || 0) };
+  }
+  async function autoOrient(netlist) {
+    const count = orientableCount(netlist);
+    if (count === 0) {
+      return { netlist: applyOrientation(netlist, "as-authored"), bends: 0, size: { w: 0, h: 0 }, layouts: 0 };
+    }
+    if (count > MAX_AUTO_PARTS) {
+      const nl = applyOrientation(netlist, "vertical");
+      const g = await layoutGraph(nl);
+      return {
+        netlist: nl,
+        bends: countBends(g),
+        size: graphSize(g),
+        layouts: 0,
+        note: `${count} parts \u2192 2^${count} layouts too many; showing all-vertical`
+      };
+    }
+    let best = null, bestBends = Infinity, bestArea = Infinity, bestSize = null;
+    const total = 1 << count;
+    for (let mask = 0; mask < total; mask++) {
+      const nl = orientVariant(netlist, mask);
+      const g = await layoutGraph(nl);
+      const bends = countBends(g);
+      const area = (g.width || 0) * (g.height || 0);
+      if (bends < bestBends || bends === bestBends && area < bestArea) {
+        best = nl;
+        bestBends = bends;
+        bestArea = area;
+        bestSize = graphSize(g);
+      }
+    }
+    return { netlist: best, bends: bestBends, size: bestSize, layouts: total };
+  }
+  async function updateMetrics(netlist, mode, pre) {
+    const count = orientableCount(netlist);
+    if (count === 0) {
+      metricsEl.hidden = true;
+      return;
+    }
+    let bends, size, note = "";
+    if (pre) {
+      bends = pre.bends;
+      size = pre.size;
+      note = pre.note ? pre.note : pre.layouts ? `evaluated ${pre.layouts} orientations` : "";
+    } else {
+      const g = await layoutGraph(netlist);
+      bends = countBends(g);
+      size = graphSize(g);
+    }
+    const isAuto = mode === "auto";
+    metricsEl.innerHTML = `<span class="stat${isAuto ? " win" : ""}">Orientation: <strong>${ORIENT_LABELS[mode] || ORIENT_LABELS[""]}</strong></span><span class="stat">Bends: <strong>${bends}</strong></span><span class="stat">Size: <strong>${size.w}&times;${size.h}</strong></span><span class="stat">Orientable parts: <strong>${count}</strong></span>` + (note ? `<span class="stat">${note}</span>` : "");
+    metricsEl.hidden = false;
+  }
   async function render() {
     hideToast();
     if (!textarea.value.trim()) {
       svgImage.style.display = "none";
       emptyState.style.display = "flex";
       downloadButton.style.display = "none";
+      metricsEl.hidden = true;
       return;
     }
     try {
       const netlist = JSON5.parse(textarea.value);
       const config = HIERARCHY_CONFIGS[configSelect.value];
-      const svgString = await netlistRenderer.render(skinSelect.value, netlist, void 0, void 0, config);
+      const mode = orientSelect.value;
+      let toRender;
+      let pre = null;
+      if (mode === "auto") {
+        pre = await autoOrient(netlist);
+        toRender = pre.netlist;
+        if (pre.note) showToast("Auto-orient: " + pre.note);
+      } else {
+        toRender = applyOrientation(netlist, mode || "as-authored");
+      }
+      const svgString = await netlistRenderer.render(skinSelect.value, toRender, void 0, void 0, config);
       currentSvgString = svgString;
       applySchematicTheme();
       svgImage.style.display = "block";
       emptyState.style.display = "none";
       downloadButton.style.display = "block";
+      updateMetrics(toRender, mode, pre).catch(() => {
+        metricsEl.hidden = true;
+      });
     } catch (error) {
       console.error("Error rendering netlist:", error);
       if (error instanceof SyntaxError) {
@@ -8822,6 +8958,7 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
       svgImage.style.display = "none";
       emptyState.style.display = "flex";
       downloadButton.style.display = "none";
+      metricsEl.hidden = true;
     }
   }
   function format() {
@@ -8847,10 +8984,14 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
     try {
       const res = await superagent.get(examplePath);
       textarea.value = res.text;
-      if (examplePath.includes("hierarchy")) {
+      if (examplePath.includes("/analog/")) {
+        selectSkinByPath("analog.svg");
+        configSelect.value = "";
+      } else if (examplePath.includes("hierarchy")) {
         selectSkinByPath("default.svg");
         configSelect.value = "all";
       } else {
+        selectSkinByPath("default.svg");
         configSelect.value = "";
       }
       format();
@@ -8892,6 +9033,7 @@ const require = (name) => name === 'elkjs' ? window.ELK : undefined;
     exampleSelect.addEventListener("change", handleExampleChange);
     skinSelect.addEventListener("change", render);
     configSelect.addEventListener("change", render);
+    orientSelect.addEventListener("change", render);
     if (themeToggle) {
       themeToggle.addEventListener("click", cycleTheme);
     }

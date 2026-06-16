@@ -55,6 +55,8 @@
                             <option value="test/digital/hierarchy.json">hierarchy — submodule</option>
                             <option value="test/analog/and.json" selected>and — analog</option>
                             <option value="test/analog/resistor_divider.json">resistor divider — analog</option>
+                            <option value="test/analog/common_emitter_full.json">common emitter — analog</option>
+                            <option value="test/analog/charlie_plex.json">charlieplex — analog (orientation)</option>
                         </select>
                     </label>
                     <button id="formatButton" class="btn btn-secondary">Format</button>
@@ -81,6 +83,14 @@
                             <option value="foo">Expand &lsquo;foo&rsquo;</option>
                         </select>
                     </label>
+                    <label class="field" for="orientSelect">Orientation
+                        <select id="orientSelect" title="Analog component orientation (evaluates PR #40 auto-orientation)">
+                            <option value="" selected>As authored</option>
+                            <option value="vertical">All vertical</option>
+                            <option value="horizontal">All horizontal</option>
+                            <option value="auto">Auto — fewest bends</option>
+                        </select>
+                    </label>
                     <button id="downloadButton" class="btn btn-primary" style="display: none;">Download SVG</button>
                 </div>
             </div>
@@ -97,12 +107,13 @@
                 </div>
                 <img id="svgArea" alt="Rendered schematic">
             </div>
+            <div class="panel-status" id="metrics" hidden></div>
         </section>
     </main>
 
     <footer class="site-footer">
         <span class="meta">Layout: Eclipse&nbsp;ELK &middot; Renderer: netlistsvg &middot; Input: Yosys&nbsp;JSON</span>
-        <span>Tip: the <strong>Hierarchy</strong> control expands submodules inline.</span>
+        <span>Tip: try <strong>Orientation &rarr; Auto</strong> on an analog example (evaluates PR&nbsp;#40).</span>
     </footer>
 
     <div id="toast" class="toast" role="alert" aria-live="assertive"></div>

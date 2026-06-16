@@ -4,7 +4,7 @@ const superagent = require('superagent');
 const JSON5 = require('json5');
 const netlistRenderer = require('../built');
 
-const skinPaths = ['skin/horizontal.svg', 'skin/default.svg'];
+const skinPaths = ['skin/default.svg', 'skin/analog.svg', 'skin/horizontal.svg'];
 
 const textarea = document.querySelector('#editor');
 const skinSelect = document.querySelector('#skinSelect');
@@ -16,6 +16,8 @@ const svgImage = document.querySelector('#svgArea');
 const emptyState = document.querySelector('#emptyState');
 const toast = document.querySelector('#toast');
 const themeToggle = document.querySelector('#themeToggle');
+const orientSelect = document.querySelector('#orientSelect');
+const metricsEl = document.querySelector('#metrics');
 
 let currentSvgString = '';
 
@@ -114,19 +116,169 @@ function populateSkinSelect(skins) {
     });
 }
 
+/* ---------------- Analog component orientation (evaluation of PR #40) ----------------
+   Many analog skins ship vertical and horizontal variants of a component
+   (resistor r_v/r_h, capacitor c_v/c_h, inductor l_v/l_h, LED d_led_v/d_led_h).
+   Today the netlist author must pick the orientation by hand. PR #40 proposed
+   choosing it automatically by trying combinations and minimizing wire bends.
+
+   Here we let you compare As-authored / All-vertical / All-horizontal / Auto, with a
+   live metric readout, so the value of auto-orientation can be judged directly.
+   "Auto" brute-forces 2^N orientations (capped) and picks the fewest bends, using
+   total ELK bend points (ignoring straight runs) with graph area as a tiebreaker —
+   a small refinement over the original PR which used bends alone. */
+const ORIENT_BASES = ['r', 'c', 'l', 'd_led'];
+const MAX_AUTO_PARTS = 6; // 2^6 = 64 layouts; beyond this we fall back to all-vertical
+const ORIENT_LABELS = {
+    '': 'As authored', vertical: 'All vertical', horizontal: 'All horizontal', auto: 'Auto (fewest bends)',
+};
+
+function orientBase(type) {
+    if (typeof type !== 'string') return null;
+    const m = type.match(/^(.*)_(v|h)$/);
+    if (m && ORIENT_BASES.includes(m[1])) return m[1];
+    if (ORIENT_BASES.includes(type)) return type;
+    return null;
+}
+
+// Count orientable components across all modules (stable iteration order).
+function orientableCount(netlist) {
+    let n = 0;
+    for (const mod of Object.values(netlist.modules || {})) {
+        for (const cell of Object.values(mod.cells || {})) {
+            if (orientBase(cell.type)) n++;
+        }
+    }
+    return n;
+}
+
+// Re-orient every orientable component. mode: 'vertical' | 'horizontal' | 'as-authored'.
+function applyOrientation(netlist, mode) {
+    const nl = JSON.parse(JSON.stringify(netlist));
+    for (const mod of Object.values(nl.modules || {})) {
+        for (const cell of Object.values(mod.cells || {})) {
+            const base = orientBase(cell.type);
+            if (!base) continue;
+            if (mode === 'vertical') cell.type = base + '_v';
+            else if (mode === 'horizontal') cell.type = base + '_h';
+            else if (cell.type === base) cell.type = base + '_v'; // normalize bare base
+        }
+    }
+    return nl;
+}
+
+// Build the variant for a bitmask: bit i set => component i vertical, else horizontal.
+function orientVariant(netlist, mask) {
+    const nl = JSON.parse(JSON.stringify(netlist));
+    let i = 0;
+    for (const mod of Object.values(nl.modules || {})) {
+        for (const cell of Object.values(mod.cells || {})) {
+            const base = orientBase(cell.type);
+            if (!base) continue;
+            cell.type = base + (((mask >> i) & 1) ? '_v' : '_h');
+            i++;
+        }
+    }
+    return nl;
+}
+
+function layoutGraph(netlist) {
+    return new Promise((resolve, reject) => {
+        netlistRenderer.dumpLayout(skinSelect.value, netlist, false, (err, out) => {
+            if (err) reject(err); else resolve(JSON.parse(out));
+        });
+    });
+}
+
+// Total bend points across all edges, ignoring straight runs (ELK reports bends on
+// straight segments too). This is the PR #40 readability metric.
+function countBends(graph) {
+    return (graph.edges || []).reduce((acc, e) => acc + (e.sections || []).reduce((s, sec) => {
+        const a = sec.startPoint, b = sec.endPoint;
+        if (a && b && a.x !== b.x && a.y !== b.y) return s + (sec.bendPoints || []).length;
+        return s;
+    }, 0), 0);
+}
+
+function graphSize(graph) {
+    return { w: Math.round(graph.width || 0), h: Math.round(graph.height || 0) };
+}
+
+// Brute-force the orientation with the fewest bends (area as tiebreaker).
+async function autoOrient(netlist) {
+    const count = orientableCount(netlist);
+    if (count === 0) {
+        return { netlist: applyOrientation(netlist, 'as-authored'), bends: 0, size: { w: 0, h: 0 }, layouts: 0 };
+    }
+    if (count > MAX_AUTO_PARTS) {
+        const nl = applyOrientation(netlist, 'vertical');
+        const g = await layoutGraph(nl);
+        return {
+            netlist: nl, bends: countBends(g), size: graphSize(g), layouts: 0,
+            note: `${count} parts → 2^${count} layouts too many; showing all-vertical`,
+        };
+    }
+    let best = null, bestBends = Infinity, bestArea = Infinity, bestSize = null;
+    const total = 1 << count;
+    for (let mask = 0; mask < total; mask++) {
+        const nl = orientVariant(netlist, mask);
+        const g = await layoutGraph(nl);
+        const bends = countBends(g);
+        const area = (g.width || 0) * (g.height || 0);
+        if (bends < bestBends || (bends === bestBends && area < bestArea)) {
+            best = nl; bestBends = bends; bestArea = area; bestSize = graphSize(g);
+        }
+    }
+    return { netlist: best, bends: bestBends, size: bestSize, layouts: total };
+}
+
+async function updateMetrics(netlist, mode, pre) {
+    const count = orientableCount(netlist);
+    if (count === 0) { metricsEl.hidden = true; return; } // no orientable parts (e.g. digital)
+    let bends, size, note = '';
+    if (pre) {
+        bends = pre.bends; size = pre.size;
+        note = pre.note ? pre.note : (pre.layouts ? `evaluated ${pre.layouts} orientations` : '');
+    } else {
+        const g = await layoutGraph(netlist);
+        bends = countBends(g); size = graphSize(g);
+    }
+    const isAuto = mode === 'auto';
+    metricsEl.innerHTML =
+        `<span class="stat${isAuto ? ' win' : ''}">Orientation: <strong>${ORIENT_LABELS[mode] || ORIENT_LABELS['']}</strong></span>` +
+        `<span class="stat">Bends: <strong>${bends}</strong></span>` +
+        `<span class="stat">Size: <strong>${size.w}&times;${size.h}</strong></span>` +
+        `<span class="stat">Orientable parts: <strong>${count}</strong></span>` +
+        (note ? `<span class="stat">${note}</span>` : '');
+    metricsEl.hidden = false;
+}
+
 async function render() {
     hideToast();
     if (!textarea.value.trim()) {
         svgImage.style.display = 'none';
         emptyState.style.display = 'flex';
         downloadButton.style.display = 'none';
+        metricsEl.hidden = true;
         return;
     }
 
     try {
         const netlist = JSON5.parse(textarea.value);
         const config = HIERARCHY_CONFIGS[configSelect.value];
-        const svgString = await netlistRenderer.render(skinSelect.value, netlist, undefined, undefined, config);
+        const mode = orientSelect.value;
+
+        let toRender;
+        let pre = null;
+        if (mode === 'auto') {
+            pre = await autoOrient(netlist);
+            toRender = pre.netlist;
+            if (pre.note) showToast('Auto-orient: ' + pre.note);
+        } else {
+            toRender = applyOrientation(netlist, mode || 'as-authored');
+        }
+
+        const svgString = await netlistRenderer.render(skinSelect.value, toRender, undefined, undefined, config);
         // Keep the theme-neutral SVG for export; the preview is themed to match the
         // active light/dark theme via applySchematicTheme().
         currentSvgString = svgString;
@@ -135,6 +287,8 @@ async function render() {
         svgImage.style.display = 'block';
         emptyState.style.display = 'none';
         downloadButton.style.display = 'block';
+
+        updateMetrics(toRender, mode, pre).catch(() => { metricsEl.hidden = true; });
     } catch (error) {
         console.error('Error rendering netlist:', error);
         if (error instanceof SyntaxError) {
@@ -145,6 +299,7 @@ async function render() {
         svgImage.style.display = 'none';
         emptyState.style.display = 'flex';
         downloadButton.style.display = 'none';
+        metricsEl.hidden = true;
     }
 }
 
@@ -175,14 +330,17 @@ async function handleExampleChange() {
     try {
         const res = await superagent.get(examplePath);
         textarea.value = res.text;
-        // Auto-enable hierarchy expansion for the hierarchy example so the new
-        // feature is visible immediately. The default skin is required because it
-        // defines the sub_odd/sub_even templates and the constant/split passes the
-        // hierarchical netlist relies on.
-        if (examplePath.includes('hierarchy')) {
+        // Pick a sensible skin per example: analog parts need the analog skin, the
+        // hierarchy example needs the default skin (sub_odd/sub_even templates) with
+        // expansion on; everything else uses the default digital skin.
+        if (examplePath.includes('/analog/')) {
+            selectSkinByPath('analog.svg');
+            configSelect.value = '';
+        } else if (examplePath.includes('hierarchy')) {
             selectSkinByPath('default.svg');
             configSelect.value = 'all';
         } else {
+            selectSkinByPath('default.svg');
             configSelect.value = '';
         }
         format();
@@ -233,6 +391,7 @@ async function init() {
     exampleSelect.addEventListener('change', handleExampleChange);
     skinSelect.addEventListener('change', render);
     configSelect.addEventListener('change', render);
+    orientSelect.addEventListener('change', render);
     if (themeToggle) {
         themeToggle.addEventListener('click', cycleTheme);
     }

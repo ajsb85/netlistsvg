@@ -331,6 +331,22 @@ select:focus {
 .empty-state svg { opacity: 0.5; }
 .empty-state .hint { font-family: var(--font-mono); font-size: 0.75rem; }
 
+/* Metric readout under the schematic (orientation evaluation) */
+.panel-status {
+    border-top: 1px solid var(--border);
+    background: var(--panel-header);
+    padding: 8px 18px;
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    color: var(--muted);
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+.panel-status[hidden] { display: none; }
+.panel-status .stat strong { color: var(--text); font-weight: 600; }
+.panel-status .stat.win strong { color: var(--accent); }
+
 /* ---------- Footer ---------- */
 .site-footer {
     margin-top: 20px;
