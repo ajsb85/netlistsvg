@@ -1,0 +1,17 @@
+{
+  "name": "elk-wasm",
+  "type": "module",
+  "description": "WASM entry point: the 5-command worker dispatcher matching elkjs's elk-worker.js.",
+  "version": "0.12.0",
+  "license": "EPL-2.0",
+  "files": [
+    "elk_wasm_bg.wasm",
+    "elk_wasm.js",
+    "elk_wasm.d.ts"
+  ],
+  "main": "elk_wasm.js",
+  "types": "elk_wasm.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
