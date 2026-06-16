@@ -37,7 +37,7 @@ Should work on Linux, OSX, and Windows. Running the build scripts (makefiles and
 
 ## Web bundle
 
-I have a web bundle hosted on github pages here: https://github.com/ajsb85/netlistsvg/releases/latest/download/netlistsvg.bundle.js
+I provide a web bundle distributed via GitHub Releases here: https://github.com/ajsb85/netlistsvg/releases/latest/download/netlistsvg.bundle.js
 It doesn't wrap ELKjs, so you'll need to include it separately. ELK creates a global variable, so you'll need to include ELKjs before netlistsvg.
 
 In HTML it would look something like this
