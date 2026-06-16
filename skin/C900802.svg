@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg"
   xmlns:xlink="http://www.w3.org/1999/xlink"
-  xmlns:s="https://github.com/ajsb85/netlistsvg">
+  xmlns:s="https://github.com/ajsb85/netlist2svg">
   <defs id="patterns">
     <pattern id="gridPattern2" x="0" y="0" width="10" height="10" patternUnits="userSpaceOnUse">
       <path id="gridCell2" d="M10 0V10H0" fill="none" stroke="#CCCCCC"

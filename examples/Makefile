@@ -16,7 +16,7 @@ $(error "Can not find node(js), please set $$NODE to the node binary")
 endif
 endif
 
-NETLISTSVG = ../bin/netlistsvg
+NETLISTSVG = ../bin/netlist2svg
 NETLISTSVG_SKIN ?= ../skin/default.svg
 NETLISTSVG_DPI  ?= 300
 

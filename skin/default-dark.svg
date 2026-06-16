@@ -1,6 +1,6 @@
 <svg  xmlns="http://www.w3.org/2000/svg"
   xmlns:xlink="http://www.w3.org/1999/xlink"
-  xmlns:s="https://github.com/ajsb85/netlistsvg"
+  xmlns:s="https://github.com/ajsb85/netlist2svg"
   width="800" height="500">
   <s:properties>
     <s:layoutEngine

@@ -1,5 +1,5 @@
 {
-  "name": "netlistsvg",
+  "name": "netlist2svg",
   "version": "1.1.0",
   "description": "rendering a schematic from a netlist",
   "main": "built/index.js",
@@ -25,11 +25,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ajsb85/netlistsvg.git"
+    "url": "git+https://github.com/ajsb85/netlist2svg.git"
   },
   "bin": {
-    "netlistsvg": "./bin/netlistsvg.js",
-    "netlistsvg-dumplayout": "./bin/exportLayout.js"
+    "netlist2svg": "./bin/netlist2svg.js",
+    "netlist2svg-dumplayout": "./bin/exportLayout.js"
   },
   "scripts": {
     "build": "tsc && esbuild lib/index.ts --bundle --platform=node --format=esm --outfile=built/index.esm.js --packages=external && npm run build-module && npm run build-demo",
@@ -37,7 +37,7 @@
     "lint": "eslint .",
     "test": "npm run -s test-examples && npm run -s lint && jest",
     "build-demo": "cp docs/index.html . && cp node_modules/elkjs/lib/elk.bundled.js . && esbuild docs/demo.js --bundle --outfile=bundle.js --platform=browser --external:elkjs --banner:js=\"const require = (name) => name === 'elkjs' ? window.ELK : undefined;\"",
-    "build-module": "esbuild jsmodule/index.js --bundle --format=iife --global-name=netlistsvg --outfile=built/netlistsvg.bundle.js --loader:.svg=text --loader:.json5=text --platform=browser --external:elkjs --banner:js=\"const require = (name) => name === 'elkjs' ? window.ELK : undefined;\"",
+    "build-module": "esbuild jsmodule/index.js --bundle --format=iife --global-name=netlist2svg --outfile=built/netlist2svg.bundle.js --loader:.svg=text --loader:.json5=text --platform=browser --external:elkjs --banner:js=\"const require = (name) => name === 'elkjs' ? window.ELK : undefined;\"",
     "serve": "http-server . -o index.html"
   },
   "keywords": [
@@ -45,9 +45,9 @@
     "netlist"
   ],
   "bugs": {
-    "url": "https://github.com/ajsb85/netlistsvg/issues"
+    "url": "https://github.com/ajsb85/netlist2svg/issues"
   },
-  "homepage": "https://github.com/ajsb85/netlistsvg#readme",
+  "homepage": "https://github.com/ajsb85/netlist2svg#readme",
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/jest": "^30.0.0",

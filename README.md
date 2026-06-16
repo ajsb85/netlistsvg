@@ -1,10 +1,10 @@
-# NetlistSVG
+# Netlist2SVG
 
 > **⚠️ Notice:** This repository is an [orphan fork](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/what-happens-to-forks-when-a-repository-is-deleted-or-changes-visibility) maintained by [@ajsb85](https://github.com/ajsb85). The original upstream repository by nturley is no longer maintained or available.
 
 draws an SVG schematic from a [yosys](https://github.com/yosyshq/yosys) JSON netlist. This can be generated using [the `write_json` command](https://yosyshq.readthedocs.io/projects/yosys/en/latest/cmd/index_backends.html#write-json-write-design-to-a-json-file). It uses [elkjs](https://github.com/OpenKieler/elkjs) for layout.
 
-You can see an online demo [here](https://ajsb85.github.io/netlistsvg)
+You can see an online demo [here](https://ajsb85.github.io/netlist2svg)
 
 # Installation/Usage Instructions
 
@@ -13,33 +13,33 @@ Install nodejs if isn't already installed.
 
 To install the latest version from npm:
 ```sh
-npm install -g netlistsvg
+npm install -g netlist2svg
 ```
 
 To install the latest version from source:
 ```sh
-git clone https://github.com/ajsb85/netlistsvg
-cd netlistsvg
+git clone https://github.com/ajsb85/netlist2svg
+cd netlist2svg
 npm install # install dependencies
 npm run build # compile the typescript source
-sudo npm install -g . # install netlistsvg to system
+sudo npm install -g . # install netlist2svg to system
 
-sudo npm uninstall -g netlistsvg # uninstall from system
+sudo npm uninstall -g netlist2svg # uninstall from system
 ```
 
 ### Nix
-If you have [Nix](https://nixos.org/) installed, you can run NetlistSVG directly without installing nodejs:
+If you have [Nix](https://nixos.org/) installed, you can run Netlist2SVG directly without installing nodejs:
 ```sh
-nix run github:ajsb85/netlistsvg
+nix run github:ajsb85/netlist2svg
 ```
 Or install it to your profile:
 ```sh
-nix-env -iA netlistsvg -f https://github.com/ajsb85/netlistsvg/archive/main.tar.gz
+nix-env -iA netlist2svg -f https://github.com/ajsb85/netlist2svg/archive/main.tar.gz
 ```
 
-You can execute NetlistSVG like this.
+You can execute Netlist2SVG like this.
 ```
-netlistsvg input_json_file [-o output_svg_file] [--skin skin_file]
+netlist2svg input_json_file [-o output_svg_file] [--skin skin_file]
 ```
 The default value for the output file is out.svg.
 
@@ -47,22 +47,22 @@ Should work on Linux, OSX, and Windows. Running the build scripts (makefiles and
 
 ## Web bundle
 
-I provide a web bundle distributed via GitHub Releases here: https://github.com/ajsb85/netlistsvg/releases/latest/download/netlistsvg.bundle.js
-It doesn't wrap ELKjs, so you'll need to include it separately. ELK creates a global variable, so you'll need to include ELKjs before NetlistSVG.
+I provide a web bundle distributed via GitHub Releases here: https://github.com/ajsb85/netlist2svg/releases/latest/download/netlist2svg.bundle.js
+It doesn't wrap ELKjs, so you'll need to include it separately. ELK creates a global variable, so you'll need to include ELKjs before Netlist2SVG.
 
 In HTML it would look something like this
 ```html
-<script type="text/javascript" src="https://github.com/ajsb85/netlistsvg/releases/latest/download/elk.bundled.js"></script>
-<script type="text/javascript" src="https://github.com/ajsb85/netlistsvg/releases/latest/download/netlistsvg.bundle.js"></script>
+<script type="text/javascript" src="https://github.com/ajsb85/netlist2svg/releases/latest/download/elk.bundled.js"></script>
+<script type="text/javascript" src="https://github.com/ajsb85/netlist2svg/releases/latest/download/netlist2svg.bundle.js"></script>
 ```
 
 On ObservableHQ, you can require it like this.
 
 ```javascript
-netlistsvg = {
-  var ELK = await require('https://github.com/ajsb85/netlistsvg/releases/latest/download/elk.bundled.js')
+netlist2svg = {
+  var ELK = await require('https://github.com/ajsb85/netlist2svg/releases/latest/download/elk.bundled.js')
   window.ELK = ELK
-  return require('https://github.com/ajsb85/netlistsvg/releases/latest/download/netlistsvg.bundle.js')
+  return require('https://github.com/ajsb85/netlist2svg/releases/latest/download/netlist2svg.bundle.js')
 }
 ```
 
@@ -70,18 +70,18 @@ You may want to download and host your own copy.
 
 The web bundle includes both the analog and digital skin and an example netlist for each. Using a promise would look like this.
 ```javascript
-await netlistsvg.render(netlistsvg.digitalSkin, netlistsvg.exampleDigital);
+await netlist2svg.render(netlist2svg.digitalSkin, netlist2svg.exampleDigital);
 ```
 Or to log the result to console using the callback API:
 ```javascript
-netlistsvg.render(netlistsvg.digitalSkin, netlistsvg.exampleDigital, (err, result) => console.log(result));
+netlist2svg.render(netlist2svg.digitalSkin, netlist2svg.exampleDigital, (err, result) => console.log(result));
 ```
 
 To turn Verilog into YosysJSON in the browser, you can use [YosysJS](https://yosyshq.net/yosys/yosysjs.html)
 
 ## Development
 
-The `lib/` folder contains the main source code for NetlistSVG in Typescript. The `built/` folder contains said source code compiled to Javascript. When wanting to make changes to NetlistSVG, one should modify the Typescript source, compile to Javascript, then test their modifications.
+The `lib/` folder contains the main source code for Netlist2SVG in Typescript. The `built/` folder contains said source code compiled to Javascript. When wanting to make changes to Netlist2SVG, one should modify the Typescript source, compile to Javascript, then test their modifications.
 
 To compile, lint, and do self-tests, run
 ```sh
@@ -95,7 +95,7 @@ npm run build-module
 
 # Examples
 
-Here's an digital netlist produced by Yosys along with the diagram that NetlistSVG created from it.
+Here's an digital netlist produced by Yosys along with the diagram that Netlist2SVG created from it.
 <details>
   <summary>JSON Source</summary>
 
@@ -314,8 +314,8 @@ Here's an digital netlist produced by Yosys along with the diagram that NetlistS
 ```
 </details>
 
-![example](https://raw.githubusercontent.com/ajsb85/netlistsvg/main/doc/up3down5.svg?sanitize=true#gh-light-mode-only)
-![example](https://raw.githubusercontent.com/ajsb85/netlistsvg/main/doc/up3down5-dark.svg?sanitize=true#gh-dark-mode-only)
+![example](https://raw.githubusercontent.com/ajsb85/netlist2svg/main/doc/up3down5.svg?sanitize=true#gh-light-mode-only)
+![example](https://raw.githubusercontent.com/ajsb85/netlist2svg/main/doc/up3down5-dark.svg?sanitize=true#gh-dark-mode-only)
 
 You can also write out the JSON by hand, of course. We support [JSON5](https://json5.org) syntax.
 
@@ -468,19 +468,19 @@ Here's an analog example.
 ```
 </details>
 
-![example](https://raw.githubusercontent.com/ajsb85/netlistsvg/main/doc/and.svg?sanitize=true#gh-light-mode-only)
-![example](https://raw.githubusercontent.com/ajsb85/netlistsvg/main/doc/and-dark.svg?sanitize=true#gh-dark-mode-only)
+![example](https://raw.githubusercontent.com/ajsb85/netlist2svg/main/doc/and.svg?sanitize=true#gh-light-mode-only)
+![example](https://raw.githubusercontent.com/ajsb85/netlist2svg/main/doc/and-dark.svg?sanitize=true#gh-dark-mode-only)
 
 ## Skin File
 It pulls the node icons and configuration options from a SVG skin file. This our default digital skin file.
 
-![digital skin](https://raw.githubusercontent.com/ajsb85/netlistsvg/main/skin/default.svg?sanitize=true#gh-light-mode-only)
-![digital skin](https://raw.githubusercontent.com/ajsb85/netlistsvg/main/skin/default-dark.svg?sanitize=true#gh-dark-mode-only)
+![digital skin](https://raw.githubusercontent.com/ajsb85/netlist2svg/main/skin/default.svg?sanitize=true#gh-light-mode-only)
+![digital skin](https://raw.githubusercontent.com/ajsb85/netlist2svg/main/skin/default-dark.svg?sanitize=true#gh-dark-mode-only)
 
 This is our analog skin file.
 
-![analog skin](https://raw.githubusercontent.com/ajsb85/netlistsvg/main/skin/analog.svg?sanitize=true#gh-light-mode-only)
-![analog skin](https://raw.githubusercontent.com/ajsb85/netlistsvg/main/skin/analog-dark.svg?sanitize=true#gh-dark-mode-only)
+![analog skin](https://raw.githubusercontent.com/ajsb85/netlist2svg/main/skin/analog.svg?sanitize=true#gh-light-mode-only)
+![analog skin](https://raw.githubusercontent.com/ajsb85/netlist2svg/main/skin/analog-dark.svg?sanitize=true#gh-dark-mode-only)
 
 A skin file can use style tags or inline CSS to style the elements. That will be copied onto the output file. A skin file also defines a library of components to use. Each component has an alias list. It will use that component as a template for any cell with that type that it encounters. Each component defines the position and id of each of its ports so we know where to attach the wires to.
 

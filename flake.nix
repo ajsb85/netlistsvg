@@ -7,10 +7,10 @@
   outputs = { self, nixpkgs, flake-utils }:
     flake-utils.lib.eachSystem ["x86_64-linux" "x86_64-darwin"] (system: {
 
-      packages.netlistsvg =
+      packages.netlist2svg =
         with import nixpkgs { inherit system; };
           (callPackage ./default.nix {}).package;
 
-      defaultPackage = self.packages.${system}.netlistsvg;
+      defaultPackage = self.packages.${system}.netlist2svg;
     });
 }

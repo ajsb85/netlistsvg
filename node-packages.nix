@@ -321,8 +321,8 @@ let
     };
   };
   args = {
-    name = "netlistsvg";
-    packageName = "netlistsvg";
+    name = "netlist2svg";
+    packageName = "netlist2svg";
     version = "1.0.2";
     src = ./.;
     dependencies = [
@@ -365,7 +365,7 @@ let
     buildInputs = globalBuildInputs;
     meta = {
       description = "rendering a schematic from a netlist";
-      homepage = "https://github.com/ajsb85/netlistsvg#readme";
+      homepage = "https://github.com/ajsb85/netlist2svg#readme";
       license = "MIT";
     };
     production = true;

@@ -21,7 +21,7 @@ File Contents
 --------------------------------------------------
 
 
-/mnt/dataset/dev/netlistsvg/lib/index.ts
+/mnt/dataset/dev/netlist2svg/lib/index.ts
 File type: .ts
 import ELK = require('elkjs');
 import onml = require('onml');
@@ -105,7 +105,7 @@ File End
 --------------------------------------------------
 
 
-/mnt/dataset/dev/netlistsvg/lib/drawModule.ts
+/mnt/dataset/dev/netlist2svg/lib/drawModule.ts
 File type: .ts
 import { ElkModel } from './elkGraph';
 import { FlatModule } from './FlatModule';
@@ -302,7 +302,7 @@ File End
 --------------------------------------------------
 
 
-/mnt/dataset/dev/netlistsvg/lib/YosysModel.ts
+/mnt/dataset/dev/netlist2svg/lib/YosysModel.ts
 File type: .ts
 namespace Yosys {
     // Use string enums for better readability and type safety
@@ -410,7 +410,7 @@ File End
 --------------------------------------------------
 
 
-/mnt/dataset/dev/netlistsvg/lib/elkGraph.ts
+/mnt/dataset/dev/netlist2svg/lib/elkGraph.ts
 File type: .ts
 import { FlatModule } from './FlatModule';
 
@@ -615,7 +615,7 @@ File End
 --------------------------------------------------
 
 
-/mnt/dataset/dev/netlistsvg/lib/Skin.ts
+/mnt/dataset/dev/netlist2svg/lib/Skin.ts
 File type: .ts
 import onml = require('onml');
 import { ElkModel } from './elkGraph';
@@ -740,7 +740,7 @@ File End
 --------------------------------------------------
 
 
-/mnt/dataset/dev/netlistsvg/lib/FlatModule.ts
+/mnt/dataset/dev/netlist2svg/lib/FlatModule.ts
 File type: .ts
 // FlatModule.ts
 import Yosys from './YosysModel';
@@ -934,7 +934,7 @@ File End
 --------------------------------------------------
 
 
-/mnt/dataset/dev/netlistsvg/lib/Cell.ts
+/mnt/dataset/dev/netlist2svg/lib/Cell.ts
 File type: .ts
 import { SigsByConstName, NameToPorts, addToDefaultDict } from './FlatModule';
 import Yosys from './YosysModel';
@@ -1381,7 +1381,7 @@ File End
 --------------------------------------------------
 
 
-/mnt/dataset/dev/netlistsvg/lib/yosys.schema.json5
+/mnt/dataset/dev/netlist2svg/lib/yosys.schema.json5
 File type: .json5
 {
   "description": "JSON Schema for Yosys netlists in JSON format",
@@ -1580,7 +1580,7 @@ File End
 --------------------------------------------------
 
 
-/mnt/dataset/dev/netlistsvg/lib/Port.ts
+/mnt/dataset/dev/netlist2svg/lib/Port.ts
 File type: .ts
 import Cell from './Cell';
 import { SigsByConstName } from './FlatModule';
@@ -1707,7 +1707,7 @@ File End
 --------------------------------------------------
 
 
-/mnt/dataset/dev/netlistsvg/lib/@types/onml/index.d.ts
+/mnt/dataset/dev/netlist2svg/lib/@types/onml/index.d.ts
 File type: .ts
 declare module 'onml' {
 
@@ -1747,7 +1747,7 @@ File End
 --------------------------------------------------
 
 
-/mnt/dataset/dev/netlistsvg/lib/@types/elkjs/index.d.ts
+/mnt/dataset/dev/netlist2svg/lib/@types/elkjs/index.d.ts
 File type: .ts
 declare module 'elkjs/lib/elk.bundled' { // Correct module path
     export interface ElkLayoutOptions {
