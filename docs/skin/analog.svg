@@ -68,6 +68,37 @@
       stroke: #fff !important;
     }
   }
+
+  /* Forced dark theme (used by the always-dark interactive demo). Mirrors the
+     prefers-color-scheme rules above but is triggered by class="dark" on the
+     root svg, so it works even when the host page/OS is not in dark mode. */
+  svg.dark {
+    stroke: #fff !important;
+  }
+  svg.dark text {
+    fill: #fff !important;
+  }
+  svg.dark .splitjoinBody {
+    fill: #fff !important;
+  }
+  svg.dark .junction {
+    fill: #fff !important;
+  }
+  svg.dark .labelBackground {
+    fill: #0a192f !important;
+  }
+  svg.dark .detail {
+    fill: #fff !important;
+  }
+  svg.dark circle, svg.dark path, svg.dark rect, svg.dark line {
+    stroke: #fff;
+  }
+  svg.dark [style*="fill:#000"], svg.dark [style*="fill:#000000"] {
+    fill: #fff !important;
+  }
+  svg.dark [style*="stroke:#000"], svg.dark [style*="stroke:#000000"] {
+    stroke: #fff !important;
+  }
 </style>
   <s:properties
     constants="false"
