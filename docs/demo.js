@@ -128,7 +128,8 @@ function populateSkinSelect(skins) {
    total ELK bend points (ignoring straight runs) with graph area as a tiebreaker —
    a small refinement over the original PR which used bends alone. */
 const ORIENT_BASES = ['r', 'c', 'l', 'd_led'];
-const MAX_AUTO_PARTS = 6; // 2^6 = 64 layouts; beyond this we fall back to all-vertical
+const MAX_EXHAUSTIVE = 6;  // <= this many parts: exact brute force (2^N layouts)
+const MAX_GREEDY_PASSES = 3; // larger nets: greedy coordinate descent
 const ORIENT_LABELS = {
     '': 'As authored', vertical: 'All vertical', horizontal: 'All horizontal', auto: 'Auto (fewest bends)',
 };
@@ -204,33 +205,71 @@ function graphSize(graph) {
     return { w: Math.round(graph.width || 0), h: Math.round(graph.height || 0) };
 }
 
-// Brute-force the orientation with the fewest bends (area as tiebreaker).
+// Build a variant from an array of 'v'/'h' per orientable component.
+function orientVariantFromArray(netlist, orient) {
+    const nl = JSON.parse(JSON.stringify(netlist));
+    let i = 0;
+    for (const mod of Object.values(nl.modules || {})) {
+        for (const cell of Object.values(mod.cells || {})) {
+            const base = orientBase(cell.type);
+            if (!base) continue;
+            cell.type = base + '_' + orient[i];
+            i++;
+        }
+    }
+    return nl;
+}
+
+async function scoreNetlist(netlist) {
+    const g = await layoutGraph(netlist);
+    return { bends: countBends(g), area: (g.width || 0) * (g.height || 0), size: graphSize(g) };
+}
+
+// Choose the orientation with the fewest bends (area as tiebreaker).
+// Small nets: exact brute force. Larger nets: greedy coordinate descent starting
+// from all-vertical (flip one component at a time, keep improvements) — this scales
+// roughly linearly instead of 2^N, an enhancement over PR #40's pure brute force.
 async function autoOrient(netlist) {
     const count = orientableCount(netlist);
     if (count === 0) {
-        return { netlist: applyOrientation(netlist, 'as-authored'), bends: 0, size: { w: 0, h: 0 }, layouts: 0 };
+        return { netlist: applyOrientation(netlist, 'as-authored'), bends: 0, size: { w: 0, h: 0 }, layouts: 0, method: 'none' };
     }
-    if (count > MAX_AUTO_PARTS) {
-        const nl = applyOrientation(netlist, 'vertical');
-        const g = await layoutGraph(nl);
-        return {
-            netlist: nl, bends: countBends(g), size: graphSize(g), layouts: 0,
-            note: `${count} parts → 2^${count} layouts too many; showing all-vertical`,
-        };
+
+    if (count <= MAX_EXHAUSTIVE) {
+        let best = null, bestBends = Infinity, bestArea = Infinity, bestSize = null, worst = 0;
+        const total = 1 << count;
+        for (let mask = 0; mask < total; mask++) {
+            const nl = orientVariant(netlist, mask);
+            const s = await scoreNetlist(nl);
+            worst = Math.max(worst, s.bends);
+            if (s.bends < bestBends || (s.bends === bestBends && s.area < bestArea)) {
+                best = nl; bestBends = s.bends; bestArea = s.area; bestSize = s.size;
+            }
+        }
+        return { netlist: best, bends: bestBends, worst, size: bestSize, layouts: total, method: 'exhaustive' };
     }
-    let best = null, bestBends = Infinity, bestArea = Infinity, bestSize = null, worstBends = 0;
-    const total = 1 << count;
-    for (let mask = 0; mask < total; mask++) {
-        const nl = orientVariant(netlist, mask);
-        const g = await layoutGraph(nl);
-        const bends = countBends(g);
-        const area = (g.width || 0) * (g.height || 0);
-        worstBends = Math.max(worstBends, bends);
-        if (bends < bestBends || (bends === bestBends && area < bestArea)) {
-            best = nl; bestBends = bends; bestArea = area; bestSize = graphSize(g);
+
+    // Greedy coordinate descent
+    let orient = new Array(count).fill('v');
+    let cur = await scoreNetlist(orientVariantFromArray(netlist, orient));
+    const startBends = cur.bends;
+    let layouts = 1, improved = true, passes = 0;
+    while (improved && passes < MAX_GREEDY_PASSES) {
+        improved = false; passes++;
+        for (let i = 0; i < count; i++) {
+            const trial = orient.slice();
+            trial[i] = trial[i] === 'v' ? 'h' : 'v';
+            const s = await scoreNetlist(orientVariantFromArray(netlist, trial));
+            layouts++;
+            if (s.bends < cur.bends || (s.bends === cur.bends && s.area < cur.area)) {
+                orient = trial; cur = s; improved = true;
+            }
         }
     }
-    return { netlist: best, bends: bestBends, worst: worstBends, size: bestSize, layouts: total };
+    return {
+        netlist: orientVariantFromArray(netlist, orient),
+        bends: cur.bends, size: cur.size, layouts, method: 'greedy', startBends,
+    };
 }
 
 async function updateMetrics(netlist, mode, pre) {
@@ -239,10 +278,10 @@ async function updateMetrics(netlist, mode, pre) {
     let bends, size, note = '';
     if (pre) {
         bends = pre.bends; size = pre.size;
-        if (pre.note) {
-            note = pre.note;
-        } else if (pre.layouts) {
-            note = `best of ${pre.layouts} orientations` + (pre.worst > pre.bends ? ` (worst was ${pre.worst} bends)` : '');
+        if (pre.method === 'exhaustive') {
+            note = `exact: best of ${pre.layouts} orientations` + (pre.worst > pre.bends ? ` (worst was ${pre.worst} bends)` : '');
+        } else if (pre.method === 'greedy') {
+            note = `greedy search · ${pre.layouts} layouts` + (pre.startBends > pre.bends ? ` (improved ${pre.startBends}→${pre.bends})` : '');
         }
     } else {
         const g = await layoutGraph(netlist);
@@ -278,7 +317,6 @@ async function render() {
         if (mode === 'auto') {
             pre = await autoOrient(netlist);
             toRender = pre.netlist;
-            if (pre.note) showToast('Auto-orient: ' + pre.note);
         } else {
             toRender = applyOrientation(netlist, mode || 'as-authored');
         }

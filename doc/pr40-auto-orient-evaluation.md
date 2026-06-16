@@ -37,7 +37,9 @@ Automating that choice is a legitimately useful goal — it removes per-componen
    *"Everything just seems to favor complete vertical orientation so far."* The
    metric doesn't yet surface useful mixed-orientation layouts.
 2. **Brute force does not scale.** It is `2^N` full ELK layouts. `charlie_plex`
-   has 9 orientable parts → 512 layouts; real boards have dozens of parts.
+   has 9 orientable parts → 512 layouts; real boards have dozens of parts. (This
+   demo mitigates it with a greedy coordinate-descent search for larger nets — see
+   below — which scales but trades away the global-optimum guarantee.)
 
 **Verdict:** valuable *direction*, not production-ready. The payoff depends on a
 better objective (e.g. favor straight signal paths / fewer crossings, not just
@@ -59,15 +61,20 @@ Things to try:
   `All vertical` and `As authored` all look identical, because the bend-optimum is
   all-vertical. Only `All horizontal` differs (worse). This is the limitation in
   one picture — Auto adds nothing over "default to vertical" here.
-- **`charlieplex`** (9 parts): exceeds the 2^6 brute-force cap, so `Auto` falls
-  back to all-vertical. Compare with `All horizontal` to see orientation matters.
+- **`charlieplex`** (9 parts): too many for an exact 2^9 search, so `Auto` uses a
+  **greedy coordinate-descent** search (~10 layouts) — it scales linearly, though
+  it is not guaranteed to find the global optimum. Compare with `All horizontal`
+  to see orientation matters.
 
 Notes on this demonstration (an enhancement over the raw PR):
 - It is **demo-only** — the core library is untouched, so a fragile/exponential
   algorithm is not committed to the renderer.
 - `Auto` uses bends as the primary metric with **graph area as a tiebreaker**
   (a small refinement over the PR, which used bends alone).
-- `Auto` is capped at `2^6 = 64` layouts; larger nets fall back to all-vertical
-  with a notice (demonstrating the scalability limit honestly).
+- `Auto` runs the exact `2^N` search only for small nets (`N <= 6`); for larger
+  nets it switches to **greedy coordinate descent** (start all-vertical, flip one
+  component at a time, keep improvements) so it scales roughly linearly instead of
+  exponentially. This directly addresses PR #40's brute-force scalability problem,
+  at the cost of global-optimality guarantees.
 - The demo also fixes skin selection so analog examples render with the analog
   skin.
