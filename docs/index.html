@@ -107,7 +107,10 @@
 
     <div id="toast" class="toast" role="alert" aria-live="assertive"></div>
 
+    <!-- Layout engine: elkjs provides coordinates; elk-ts (pure-TS port) wraps it and
+         becomes window.ELK, so the renderer below lays out through elk-ts. -->
     <script type="text/javascript" src="elk.bundled.js"></script>
+    <script type="text/javascript" src="elk-ts.bundle.js"></script>
     <script type="text/javascript" src="bundle.js"></script>
 </body>
 </html>
