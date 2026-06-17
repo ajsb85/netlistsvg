@@ -1,0 +1,143 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:s="https://github.com/ajsb85/netlist2svg" width="297" height="122"><style>  svg {
+    stroke: #000;
+    fill: none;
+  }
+  text {
+    fill: #000;
+    stroke: none;
+    font-size: 10px;
+    font-weight: bold;
+    font-family: "Courier New", monospace;
+  }
+  .nodelabel {
+    text-anchor: middle;
+  }
+  .inputPortLabel {
+    text-anchor: end;
+  }
+  .splitjoinBody {
+    fill: #000;
+  }
+  .junction {
+    fill: #000;
+  }
+  .labelBackground {
+    fill: #fff;
+    stroke: none;
+  }
+  .detail, .symbol {
+    stroke-linejoin: round;
+    stroke-linecap: round;
+  }
+  .symbol {
+    stroke-width: 2;
+  }
+  .detail {
+    fill: #000;
+  }
+  @media (prefers-color-scheme: dark) {
+    svg {
+      stroke: #fff !important;
+    }
+    text {
+      fill: #fff !important;
+    }
+    .splitjoinBody {
+      fill: #fff !important;
+    }
+    .junction {
+      fill: #fff !important;
+    }
+    .labelBackground {
+      fill: #0a192f !important; /* Blueprint background or transparent */
+    }
+    .detail {
+      fill: #fff !important;
+    }
+    circle, path, rect, line {
+      stroke: #fff;
+    }
+    [style*="fill:#000"], [style*="fill:#000000"] {
+      fill: #fff !important;
+    }
+    [style*="stroke:#000"], [style*="stroke:#000000"] {
+      stroke: #fff !important;
+    }
+    .subModuleOdd {
+      fill: #0e2238 !important;
+    }
+    .subModuleEven {
+      fill: #16365a !important;
+    }
+  }
+  /* Forced dark theme (used by the always-dark interactive demo). Mirrors the
+     prefers-color-scheme rules above but is triggered by class="dark" on the
+     root svg, so it works even when the host page/OS is not in dark mode. */
+  svg.dark {
+    stroke: #fff !important;
+  }
+  svg.dark text {
+    fill: #fff !important;
+  }
+  svg.dark .splitjoinBody {
+    fill: #fff !important;
+  }
+  svg.dark .junction {
+    fill: #fff !important;
+  }
+  svg.dark .labelBackground {
+    fill: #0a192f !important;
+  }
+  svg.dark .detail {
+    fill: #fff !important;
+  }
+  svg.dark circle, svg.dark path, svg.dark rect, svg.dark line {
+    stroke: #fff;
+  }
+  svg.dark .subModuleOdd {
+    fill: #0e2238 !important;
+  }
+  svg.dark .subModuleEven {
+    fill: #16365a !important;
+  }
+  svg.dark [style*="fill:#000"], svg.dark [style*="fill:#000000"] {
+    fill: #fff !important;
+  }
+  svg.dark [style*="stroke:#000"], svg.dark [style*="stroke:#000000"] {
+    stroke: #fff !important;
+  }
+  /* Forced light theme: overrides the prefers-color-scheme:dark rules above so a
+     light-forced render (class="light") stays light even on a dark OS. */
+  svg.light {
+    stroke: #000 !important;
+  }
+  svg.light text {
+    fill: #000 !important;
+  }
+  svg.light .splitjoinBody {
+    fill: #000 !important;
+  }
+  svg.light .junction {
+    fill: #000 !important;
+  }
+  svg.light .labelBackground {
+    fill: #fff !important;
+  }
+  svg.light .detail {
+    fill: #000 !important;
+  }
+  svg.light circle, svg.light path, svg.light rect, svg.light line {
+    stroke: #000;
+  }
+  svg.light .subModuleOdd {
+    fill: #e9e9e9 !important;
+  }
+  svg.light .subModuleEven {
+    fill: #ffffff !important;
+  }
+  svg.light [style*="fill:#000"], svg.light [style*="fill:#000000"] {
+    fill: #000 !important;
+  }
+  svg.light [style*="stroke:#000"], svg.light [style*="stroke:#000000"] {
+    stroke: #000 !important;
+  }</style><g s:type="generic" transform="translate(92,22)" s:width="30" s:height="40" id="cell_r1"><text x="15" y="-4" class="nodelabel cell_r1" s:attribute="ref">r_v</text><rect width="30" height="20" s:generic="body" class="cell_r1"/><g transform="translate(0,10)" s:x="0" s:y="10" s:pid="in0" id="port_r1~A"><text x="-3" y="-4" class="inputPortLabel cell_r1">A</text></g><g transform="translate(30,10)" s:x="30" s:y="10" s:pid="out0" id="port_r1~B"><text x="5" y="-4" style="fill:#000; stroke:none" class="cell_r1">B</text></g></g><g s:type="generic" transform="translate(172,22)" s:width="30" s:height="40" id="cell_r2"><text x="15" y="-4" class="nodelabel cell_r2" s:attribute="ref">r_v</text><rect width="30" height="20" s:generic="body" class="cell_r2"/><g transform="translate(0,10)" s:x="0" s:y="10" s:pid="in0" id="port_r2~A"><text x="-3" y="-4" class="inputPortLabel cell_r2">A</text></g><g transform="translate(30,10)" s:x="30" s:y="10" s:pid="out0" id="port_r2~B"><text x="5" y="-4" style="fill:#000; stroke:none" class="cell_r2">B</text></g></g><g s:type="generic" transform="translate(12,22)" s:width="30" s:height="40" id="cell_vcc"><text x="15" y="-4" class="nodelabel cell_vcc" s:attribute="ref">vcc</text><rect width="30" height="20" s:generic="body" class="cell_vcc"/><g transform="translate(30,10)" s:x="30" s:y="10" s:pid="out0" id="port_vcc~A"><text x="5" y="-4" style="fill:#000; stroke:none" class="cell_vcc">A</text></g></g><g s:type="generic" transform="translate(252,22)" s:width="30" s:height="40" id="cell_gnd"><text x="15" y="-4" class="nodelabel cell_gnd" s:attribute="ref">gnd</text><rect width="30" height="20" s:generic="body" class="cell_gnd"/><g transform="translate(0,10)" s:x="0" s:y="10" s:pid="in0" id="port_gnd~A"><text x="-3" y="-4" class="inputPortLabel cell_gnd">A</text></g></g><g s:type="outputExt" transform="translate(246,90)" s:width="30" s:height="20" id="cell_vout"><text x="15" y="-4" class="nodelabel cell_vout" s:attribute="ref">vout</text><s:alias val="$_outputExt_"/><path d="M30,0 L30,20 L15,20 L0,10 L15,0 Z" class="cell_vout"/><g s:x="0" s:y="10" s:pid="A"/></g><line x1="43" y1="32.5" x2="92" y2="32.5" class="net_2 width_1" style="stroke-width: 1"/><line x1="123" y1="32.5" x2="172" y2="32.5" class="net_3 width_1" style="stroke-width: 1"/><line x1="123" y1="32.5" x2="140" y2="32.5" class="net_3 width_1" style="stroke-width: 1"/><line x1="140" y1="32.5" x2="140" y2="100" class="net_3 width_1" style="stroke-width: 1"/><line x1="140" y1="100" x2="246" y2="100" class="net_3 width_1" style="stroke-width: 1"/><circle cx="140" cy="32.5" r="2" class="net_3 width_1 junction"/><line x1="203" y1="32.5" x2="252" y2="32.5" class="net_4 width_1" style="stroke-width: 1"/></svg>
