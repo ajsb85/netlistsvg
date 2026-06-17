@@ -12,7 +12,7 @@ browser (bundle.js: new ELK().layout(graph,{layoutOptions}))
    │     • next     : sends requestPatch = diff(lastRequest, request)
    ▼  ws://
 elk-py server  (session memory + LRU compute cache)
-   │     JsonImporter → Java ELK 0.11.0 (coords) → transfer_layout
+   │     engine: Java ELK 0.11.0 subprocess  OR  pure-Python native layered engine
    ▲     • 1st reply : {type:"full",  data}
    │     • next      : {type:"patch", patch}        (empty when unchanged)
    └─ browser applies the patch to its remembered response → full graph for drawModule
@@ -48,8 +48,18 @@ round-trip and server time, and whether the cache was hit.
    ```bash
    cd ../elk-py
    python -m venv .venv && . .venv/bin/activate && pip install -e .
-   elk-py-server                 # ws://127.0.0.1:8765
+   elk-py-server                    # ws://127.0.0.1:8765  (engine: java — real ELK 0.11.0)
+   # or the pure-Python native layered engine (no Java/elkjs at runtime):
+   elk-py-server --engine native
    ```
+
+   **Engines.** `--engine java` (default) shells out to the real ELK 0.11.0 — exact for
+   every example in this gallery. `--engine native` runs elk-py's pure-Python port of the
+   ELK layered algorithm; it is **bit-exact for flat, connected graphs with FIXED_POS ports
+   and no port labels**, and runs (with minor port-label/placement differences) on the rest.
+   The Yosys-generated examples here use port labels and disconnected components, so for a
+   pixel-perfect gallery keep the **java** engine; use **native** to see the from-scratch
+   Python engine drive the same WebSocket protocol. Either way the browser side is identical.
 
 2. **Serve this folder** and open the WS demo (the `/` root is the old elkjs demo — use
    **`index-ws.html`**):
